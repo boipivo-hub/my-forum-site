@@ -3,41 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мой Официальный Форум</title>
+    <title>ARIES ROLE PLAY | Форум проекта</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
-        header { background-color: #2563eb; color: white; padding: 20px; text-align: center; }
-        h1 { margin: 0; font-size: 22px; }
-        main { max-width: 100%; margin: 15px; padding: 15px; background: white; border-radius: 10px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0d0d0d; color: #ffffff; margin: 0; padding: 0; }
+        header { background: linear-gradient(180deg, #1a1a1a 0%, #000000 100%); padding: 20px; text-align: center; border-bottom: 3px solid #ff003c; box-shadow: 0 4px 15px rgba(255, 0, 60, 0.3); }
+        .logo { max-width: 160px; border-radius: 50%; border: 3px solid #ff003c; box-shadow: 0 0 15px #ff003c; margin-bottom: 10px; }
+        h1 { margin: 5px 0; font-size: 24px; text-transform: uppercase; letter-spacing: 2px; color: #ffffff; text-shadow: 0 0 10px rgba(255,0,60,0.6); }
+        .server-title { color: #ff003c; font-weight: bold; }
+        .forum-branches { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-width: 600px; margin: 20px auto; padding: 0 15px; }
+        .branch-btn { background-color: #1a1a1a; border: 2px solid #333; color: #bbb; padding: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; text-transform: uppercase; font-size: 12px; transition: all 0.3s ease; text-align: center; text-decoration: none; }
+        .branch-btn.active { background-color: #ff003c; border-color: #ff003c; color: #fff; box-shadow: 0 0 10px rgba(255, 0, 60, 0.5); }
+        main { max-width: 850px; margin: 20px auto; padding: 20px; background: #141414; border-radius: 10px; border: 1px solid #222; box-shadow: 0 5px 15px rgba(0,0,0,0.5); margin-bottom: 50px; }
+        .info-box { border-bottom: 1px solid #222; padding-bottom: 15px; margin-bottom: 25px; text-align: center; }
+        .info-box h2 { margin-top: 0; color: #ff003c; font-size: 18px; text-transform: uppercase; }
+        .info-box p { color: #888; font-size: 14px; margin: 5px 0; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>💬 Добро пожаловать на мой forum!</h1>
+        <img class="logo" src="https://api.screenshotone.com/take?url=https%3A%2F%2Fstorage.googleapis.com%2Fgemkick_corpus_image_attachments%2Fuploaded%3A2412.png-e718fe3d-b21e-411f-a46e-186283b75366&access_key=dummy" alt="ARIES RP LOGO" onerror="this.src='https://i.postimg.cc/mDCHYg8g/aries.png';this.onerror=null;">
+        <h1>Aries <span class="server-title">Role Play</span></h1>
     </header>
 
+    <div class="forum-branches">
+        <a href="?section=gos" class="branch-btn" id="btn-gos">Гос. структуры</a>
+        <a href="?section=ghetto" class="branch-btn" id="btn-ghetto">Гетто / Мафии</a>
+        <a href="?section=complaints" class="branch-btn" id="btn-complaints">Жалобы</a>
+        <a href="?section=tech" class="branch-btn" id="btn-tech">Тех. раздел</a>
+    </div>
+
     <main>
-        <h3>Комната для общения проекта</h3>
-        <p>Чтобы написать сообщение или создать тему, войдите через свой GitHub в окне ниже:</p>
-        
-        <script src="https://giscus.app/client.js"
-                data-repo="boipivo-hub/forum-data"
-                data-repo-id="R_kgDNOTV98w"
-                data-category="General"
-                data-category-id="DIC_kwDNOTV9884CkWp0"
-                data-mapping="pathname"
-                data-strict="0"
-                data-reactions-enabled="1"
-                data-emit-metadata="0"
-                data-input-position="bottom"
-                data-theme="light"
-                data-lang="ru"
-                crossorigin="anonymous"
-                async>
-        </script>
-        
+        <div class="info-box">
+            <h2 id="section-title">Государственные структуры</h2>
+            <p>Официальные обсуждения, приказы лидеров и заявки в академии.</p>
+        </div>
+
+        <div class="giscus-container">
+            <script src="https://giscus.app/client.js"
+                    data-repo="boipivo-hub/forum-data"
+                    data-repo-id="R_kgDNOTV98w"
+                    data-category="General"
+                    data-category-id="DIC_kwDNOTV9884CkWp0"
+                    data-mapping="search"
+                    data-strict="0"
+                    data-reactions-enabled="1"
+                    data-emit-metadata="0"
+                    data-input-position="bottom"
+                    data-theme="dark"
+                    data-lang="ru"
+                    crossorigin="anonymous"
+                    async>
+            </script>
+        </div>
     </main>
 
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentSection = urlParams.get('section') || 'gos';
+        const sections = {
+            'gos': { title: 'Государственные структуры', desc: 'Официальные обсуждения, приказы лидеров и заявки в организации.' },
+            'ghetto': { title: 'Гетто и Мафии', desc: 'Обсуждение каптов, стрел, дипломатии и криминальной жизни сервера.' },
+            'complaints': { title: 'Раздел жалоб', desc: 'Подача жалоб на игроков, лидеров и администрацию сервера Aries RP.' },
+            'tech': { title: 'Технический раздел', desc: 'Сообщения о багах, проблемах с донатом или утере аккаунтов.' }
+        };
+        if (!sections[currentSection]) currentSection = 'gos';
+        document.getElementById(`btn-${currentSection}`).classList.add('active');
+        document.getElementById('section-title').innerText = sections[currentSection].title;
+        document.querySelector('.info-box p').innerText = sections[currentSection].desc;
+    </script>
 </body>
 </html>
