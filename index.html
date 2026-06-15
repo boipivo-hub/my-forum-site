@@ -1,87 +1,136 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ARIES RP | Исполнительный Веб-Портал</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- ВЕРХНИЙ ИНФО-БАР -->
-    <div style="background:#07070a; padding:10px 40px; display:flex; justify-content:space-between; font-size:12px; border-bottom:1px solid #1c1c28;">
-        <div>Текущая сессия: Эмуляция Ядра XenForo Active Node</div>
-        <div style="cursor:pointer; color:var(--xf-red)" onclick="viewProfile('Qumestlies_Shawty')">Привет, Qumestlies_Shawty 👑</div>
+    <!-- ВЕРХНЯЯ СЛУЖЕБНАЯ СТРОКА СЕССИИ -->
+    <div class="xf-top-bar">
+        <div>Ядро Форума: <span style="color:#6f6f7f;">XenForo Native Web SPA Engine v6.0</span></div>
+        <div id="auth-top-block">
+            <!-- Динамическое наполнение через JS Core -->
+        </div>
     </div>
 
-    <!-- ШАПКА -->
+    <!-- ФОРУМНАЯ ШАПКА (HEADER) -->
     <div class="xf-header">
-        <img class="xf-logo" src="https://i.postimg.cc/mDCHYg8g/aries.png" alt="Logo">
-        <h1 style="margin:10px 0 0; text-transform:uppercase; letter-spacing:2px;">Aries <span style="color:var(--xf-red)">Role Play</span></h1>
+        <img class="xf-logo" src="https://i.postimg.cc/mDCHYg8g/aries.png" alt="Aries RP Logo">
+        <h1 style="margin:12px 0 0; text-transform:uppercase; letter-spacing:3px; font-weight:800; font-size:26px;">
+            Aries <span style="color:var(--xf-red)">Role Play</span>
+        </h1>
     </div>
 
-    <!-- ОСНОВНАЯ СЕТКА -->
+    <!-- ГЛАВНЫЙ ИНТЕРФЕЙСНЫЙ БЛОК -->
     <div class="xf-page-container">
         
-        <!-- НАВИГАЦИЯ СЛЕНА -->
+        <!--ЛЕВАЯ ПАНЕЛЬ СЕТКИ -->
         <div class="xf-sidebar">
             <div class="xf-sidebar-block">
-                <div class="xf-sidebar-title">Навигация</div>
-                <a href="#" class="xf-node-row active" id="n-chat" onclick="switchNode('chat')">💬 Общий чат</a>
-                <a href="#" class="xf-node-row" id="n-gos" onclick="switchNode('gos')">🏢 Гос. Организации</a>
-                <a href="#" class="xf-node-row" id="n-ghetto" onclick="switchNode('ghetto')">🥷 Уличные группировки</a>
-                <a href="#" class="xf-node-row" id="n-complaints" onclick="switchNode('complaints')">⚖️ Жалобы на адм.</a>
+                <div class="xf-sidebar-title">Навигация по разделам</div>
+                <a href="#" class="xf-node-row active" id="n-chat" onclick="switchNode('chat')">💬 Общий чат игроков</a>
+                <a href="#" class="xf-node-row" id="n-gos" onclick="switchNode('gos')">🏢 Государственные структуры</a>
+                <a href="#" class="xf-node-row" id="n-ghetto" onclick="switchNode('ghetto')">🥷 Уличные группировки (Ghetto)</a>
+                <a href="#" class="xf-node-row" id="n-complaints" onclick="switchNode('complaints')">⚖️ Жалобы на администрацию</a>
             </div>
-            <button class="xf-btn" style="width:100%; padding:12px;" onclick="openAdminModal()">⚙️ Системная Админка</button>
+            
+            <button class="xf-btn" id="admin-panel-btn" style="width:100%; padding:14px; display:none;" onclick="openAdminModal()">
+                ⚙️ Системный Центр Управления
+            </button>
         </div>
 
-        <!-- КОНТЕНТ СПРАВА -->
+        <!-- ПРАВАЯ ЧАСТЬ - КОНТЕНТНЫЙ ДВИЖОК РЕНДЕРИНГА -->
         <div class="xf-main-content" id="xen-content-render">
-            <!-- Сюда инжектится весь форум -->
+            <!-- Сюда встраивается разметка JavaScript ядра -->
         </div>
 
     </div>
 
-    <!-- МОДAЛКА АДМИНКИ -->
-    <div class="xf-overlay" id="modal-admin">
+    <!-- МЕНЮ: АВТОРИЗАЦИЯ И РЕГИСТРАЦИЯ -->
+    <div class="xf-overlay" id="modal-auth">
         <div class="xf-modal-window">
-            <div style="background:#1c1c28; padding:15px; font-weight:bold; display:flex; justify-content:between;">
-                <span>УПРАВЛЕНИЕ ХАРАКТЕРИСТИКАМИ АККАУНТОВ</span>
-                <span style="cursor:pointer; margin-left:auto;" onclick="closeModal('modal-admin')">&times;</span>
+            <div class="xf-modal-header">
+                <span id="auth-modal-title">Вход в аккаунт</span>
+                <span class="xf-modal-close" onclick="closeModal('modal-auth')">&times;</span>
             </div>
-            <div style="padding:25px;">
-                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px;">ЦЕЛЕВОЙ ПОЛЬЗОВАТЕЛЬ</label>
+            <div class="xf-modal-body">
+                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px; text-transform:uppercase;">Игровой Никнейм</label>
+                <input class="xf-input" id="auth-username" placeholder="Пример: Name_Surname" autocomplete="off">
+                
+                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px; text-transform:uppercase;">Пароль доступа</label>
+                <input class="xf-input" type="password" id="auth-password" placeholder="••••••••">
+                
+                <div id="auth-action-box" style="margin-top:10px;">
+                    <!-- Динамические кнопки переключения -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- МЕНЮ: СИСТЕМНАЯ АДМИНКА -->
+    <div class="xf-overlay" id="modal-admin">
+        <div class="xf-modal-window" style="max-width:520px;">
+            <div class="xf-modal-header">
+                <span>МОДИФИКАЦИЯ БАЗЫ ДАННЫХ ПОЛЬЗОВАТЕЛЕЙ</span>
+                <span class="xf-modal-close" onclick="closeModal('modal-admin')">&times;</span>
+            </div>
+            <div class="xf-modal-body">
+                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px;">ВЫБЕРИТЕ УЧЕТНУЮ ЗАПИСЬ</label>
                 <select class="xf-input" id="adm-user"></select>
                 
-                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px;">ГРУППА ДОСТУПА</label>
+                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px;">ГРУППА ПОЛЬЗОВАТЕЛЯ (ТЕГИ И СВЕЧЕНИЕ)</label>
                 <select class="xf-input" id="adm-group">
-                    <option value="founder">Основатель (Neon Glow)</option>
-                    <option value="ga">Главный Администратор</option>
-                    <option value="admin">Администратор</option>
-                    <option value="user">Игрок</option>
+                    <option value="founder">Founder (Основатель)</option>
+                    <option value="ga">Main Administrator (ГА)</option>
+                    <option value="admin">Administrator (Администратор)</option>
+                    <option value="user">Registered User (Игрок)</option>
                 </select>
 
-                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px;">INSTAGRAM ВЕРИФИКАЦИЯ</label>
+                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px;">СИСТЕМА СИНЕЙ ВЕРИФИКАЦИИ INSTAGRAM</label>
                 <select class="xf-input" id="adm-ver">
-                    <option value="yes">Выдать синий знак верификации</option>
-                    <option value="no">Отозвать галочку</option>
+                    <option value="yes">Активировать статус верификации</option>
+                    <option value="no">Деактивировать статус верификации</option>
                 </select>
 
-                <button class="xf-btn" style="width:100%; margin-top:10px;" onclick="saveAdminData()">Применить к базе данных</button>
+                <button class="xf-btn" style="width:100%; margin-top:10px;" onclick="saveAdminData()">
+                    Перезаписать данные в localStorage
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- КАРТОЧКА ПРОФИЛЯ -->
+    <!-- МЕНЮ: ЛИЧНЫЙ КАБИНЕТ (ПРОФИЛЬ И ЗАГРУЗКА АВАТАРОК) -->
     <div class="xf-overlay" id="modal-profile">
-        <div class="xf-modal-window" style="max-width:400px; text-align:center; padding:30px; position:relative;">
-            <span style="position:absolute; top:10px; right:15px; cursor:pointer; font-size:20px;" onclick="closeModal('modal-profile')">&times;</span>
-            <img id="p-ava" style="width:110px; height:110px; object-fit:cover; border:2px solid var(--border-medium); margin-bottom:15px;">
-            <h2 id="p-nick" style="margin:5px 0; font-size:22px;"></h2>
-            <div id="p-banner"></div>
+        <div class="xf-modal-window" style="max-width:420px;">
+            <div class="xf-modal-header">
+                <span>Профиль пользователя</span>
+                <span class="xf-modal-close" onclick="closeModal('modal-profile')">&times;</span>
+            </div>
+            <div class="xf-modal-body" style="text-align:center;">
+                
+                <div style="position:relative; width:120px; height:120px; margin:0 auto 20px;">
+                    <img id="p-ava" src="" style="width:120px; height:120px; object-fit:cover; border:3px solid var(--border-medium);" alt="Avatar">
+                    <label for="avatar-uploader" id="p-upload-label" style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.8); font-size:10px; padding:5px; cursor:pointer; color:#fff; font-weight:bold; text-transform:uppercase; display:none;">
+                        Загрузить аватар
+                    </label>
+                    <input type="file" id="avatar-uploader" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)">
+                </div>
+                
+                <h2 id="p-nick" style="margin:5px 0; font-size:24px; font-weight:700;"></h2>
+                <div id="p-banner" style="margin-bottom:20px;"></div>
+                
+                <div style="background:var(--bg-canvas); padding:15px; border-radius:4px; text-align:left; border:1px solid var(--border-weak);">
+                    <div style="font-size:12px; color:#6f6f7f;">Статус подключения: <span style="color:#00ff66;">Защищено сессией</span></div>
+                    <div style="font-size:12px; color:#6f6f7f; margin-top:4px;">Хранилище данных: <span style="color:var(--instagram-blue);">HTML5 LocalStorage Cluster</span></div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- ПОДКЛЮЧАЕМ ЛОГИЧЕСКИЙ ДВИЖОК -->
+    <!-- ЛОГИЧЕСКИЙ СТРУКТУРНЫЙ КОД ДВИЖКА -->
     <script src="engine.js"></script>
 </body>
 </html>
