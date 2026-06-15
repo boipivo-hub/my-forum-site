@@ -1,21 +1,26 @@
 /* ==========================================================================
-   XENFORO CORE STYLESHEET EMULATOR v4.8 (ARIES RP EDITION)
+   XENFORO PLATFORM STYLESHEET EMULATOR v6.0.0 (MONOLITHIC PRODUCTION)
    ========================================================================== */
 
 :root {
-    --bg-base: #0a0a0f;
-    --bg-canvas: #0f0f14;
-    --bg-container: #14141f;
-    --bg-subbed: #1b1b2a;
-    --border-weak: #222232;
-    --border-medium: #32324d;
-    --border-strong: #47476b;
+    /* Цветовая палитра UI */
+    --bg-base: #060609;
+    --bg-canvas: #0b0b11;
+    --bg-container: #10101a;
+    --bg-subbed: #171726;
+    --bg-input: #0a0a10;
     
+    /* Границы */
+    --border-weak: #1d1d2d;
+    --border-medium: #2a2a42;
+    --border-strong: #3f3f64;
+    
+    /* Брендовые цвета */
     --xf-red: #ff003c;
     --xf-red-glow: rgba(255, 0, 60, 0.6);
     --instagram-blue: #0095f6;
     
-    /* XenForo Group Palette */
+    /* Групповой спектр никнеймов */
     --xf-founder: #ff003c;
     --xf-developer: #00ffcc;
     --xf-ga: #ffaa00;
@@ -24,227 +29,327 @@
     --xf-moder: #00aaff;
     --xf-leader: #00ff66;
     --xf-user: #a5a5b5;
+    
+    /* Шрифты и переходы */
+    --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --anim-fast: 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* Сброс и глобальные параметры */
-*, *::before, *::after { box-sizing: border-box; }
+/* Глобальный сброс параметров */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 body {
     background-color: var(--bg-base);
     color: #dfdfe6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--font-stack);
     font-size: 14px;
-    line-height: 1.5;
+    line-height: 1.6;
     margin: 0;
     padding: 0;
+    -webkit-font-smoothing: antialiased;
+    overflow-y: scroll;
 }
 
-/* Instagram Verified Badge Engine */
-.instagram-verified-badge {
-    display: inline-flex;
+/* Кастомный Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-base);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border-medium);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--border-strong);
+}
+
+/* СЕТКА И АРХИТЕКТУРА СТРАНИЦЫ */
+.xf-top-bar {
+    background: #040407;
+    padding: 12px 40px;
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    width: 14px;
-    height: 14px;
-    background-color: var(--instagram-blue);
-    border-radius: 50%;
-    position: relative;
-    margin-left: 6px;
-    vertical-align: middle;
-    box-shadow: 0 0 6px rgba(0, 149, 246, 0.4);
-    transform: translateY(-1px);
-}
-.instagram-verified-badge::after {
-    content: '';
-    position: absolute;
-    left: 4.5px;
-    top: 2px;
-    width: 2.5px;
-    height: 5px;
-    border: solid #ffffff;
-    border-width: 0 1.5px 1.5px 0;
-    transform: rotate(45deg);
+    font-size: 12px;
+    border-bottom: 1px solid var(--border-weak);
+    letter-spacing: 0.5px;
 }
 
-/* Анимации и эффекты ников высшей администрации */
-.xf-glow-founder {
-    color: var(--xf-founder);
-    font-weight: 700;
-    text-shadow: 0 0 10px var(--xf-red-glow);
-    animation: xfNeonPulse 2.5s infinite alternate;
-}
-.xf-glow-dev {
-    color: var(--xf-developer);
-    font-weight: 700;
-    text-shadow: 0 0 8px rgba(0, 255, 204, 0.4);
-}
-.xf-glow-ga {
-    color: var(--xf-ga);
-    font-weight: 700;
-    text-shadow: 0 0 6px rgba(255, 170, 0, 0.3);
-}
-.xf-glow-admin { color: var(--xf-admin); font-weight: bold; }
-.xf-glow-user { color: var(--xf-user); }
-
-@keyframes xfNeonPulse {
-    0% { text-shadow: 0 0 5px rgba(255, 0, 60, 0.5), 0 0 10px rgba(255, 0, 60, 0.3); }
-    100% { text-shadow: 0 0 15px rgba(255, 0, 60, 0.9), 0 0 25px rgba(255, 0, 60, 0.6); }
-}
-
-/* XenForo Баннеры Групп */
-.xf-user-banner {
-    display: block;
-    padding: 4px 8px;
-    font-size: 10px;
-    font-weight: bold;
-    text-align: center;
-    text-transform: uppercase;
-    border-radius: 2px;
-    margin-top: 6px;
-    letter-spacing: 0.8px;
-    border: 1px solid transparent;
-}
-.xf-banner-founder { background: rgba(255, 0, 60, 0.12); color: #ff3366; border-color: rgba(255, 0, 60, 0.35); }
-.xf-banner-ga { background: rgba(255, 170, 0, 0.12); color: #ffaa00; border-color: rgba(255, 170, 0, 0.3); }
-.xf-banner-admin { background: rgba(255, 68, 68, 0.1); color: #ff4444; border-color: rgba(255, 68, 68, 0.25); }
-.xf-banner-user { background: #232333; color: #8f8f9f; border-color: #333344; }
-
-/* Сетка и Структура */
 .xf-header {
-    background: linear-gradient(180deg, #12121a 0%, #0a0a0f 100%);
-    padding: 35px 20px;
+    background: linear-gradient(180deg, #0d0d14 0%, var(--bg-base) 100%);
+    padding: 40px 20px;
     text-align: center;
     border-bottom: 3px solid var(--xf-red);
+    position: relative;
 }
+
 .xf-logo {
-    max-width: 110px;
+    max-width: 105px;
+    height: auto;
     border-radius: 50%;
     border: 2px solid var(--xf-red);
-    box-shadow: 0 0 15px var(--xf-red-glow);
+    box-shadow: 0 0 20px var(--xf-red-glow);
+    transition: transform var(--anim-fast);
+}
+.xf-logo:hover {
+    transform: scale(1.05);
 }
 
 .xf-page-container {
-    max-width: 1350px;
-    margin: 25px auto;
+    max-width: 1400px;
+    margin: 30px auto;
     display: grid;
-    grid-template-columns: 300px 1fr;
-    gap: 25px;
-    padding: 0 20px;
+    grid-template-columns: 320px 1fr;
+    gap: 30px;
+    padding: 0 25px;
 }
 
-/* Навигация разделов (Категории) */
+/* БОКОВАЯ НАВИГАЦИЯ (SIDEBAR) */
 .xf-sidebar-block {
     background: var(--bg-container);
     border: 1px solid var(--border-weak);
-    border-radius: 3px;
-    margin-bottom: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
+
 .xf-sidebar-title {
-    background: #181824;
-    padding: 12px 16px;
-    font-size: 13px;
+    background: #141422;
+    padding: 14px 18px;
+    font-size: 12.5px;
     font-weight: 700;
     text-transform: uppercase;
-    color: #fff;
-    border-left: 3px solid var(--xf-red);
+    color: #ffffff;
+    border-left: 4px solid var(--xf-red);
+    letter-spacing: 1px;
 }
+
 .xf-node-row {
-    display: block;
-    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
     color: #a5a5b5;
     text-decoration: none;
-    border-bottom: 1px solid rgba(255,255,255,0.02);
-    transition: all 0.15s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.01);
+    transition: all var(--anim-fast);
+    font-weight: 500;
 }
 .xf-node-row:hover, .xf-node-row.active {
     background: var(--bg-subbed);
-    color: #fff;
-    padding-left: 22px;
+    color: #ffffff;
+    padding-left: 24px;
 }
-.xf-node-row.active { border-right: 3px solid var(--xf-red); }
+.xf-node-row.active {
+    border-right: 4px solid var(--xf-red);
+}
 
-/* Основной контентный узел */
+/* ОСНОВНОЙ КОНТЕНТНЫЙ БЛОК */
 .xf-main-content {
     background: var(--bg-container);
     border: 1px solid var(--border-weak);
-    border-radius: 3px;
-    padding: 25px;
+    border-radius: 4px;
+    padding: 30px;
     min-height: 650px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 
-/* Окна тем и постов */
+/* ТЕМЫ И СПИСКИ */
 .xf-thread-row {
     background: var(--bg-canvas);
     border: 1px solid var(--border-weak);
-    padding: 16px 20px;
-    margin-bottom: 10px;
+    padding: 18px 24px;
+    margin-bottom: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
-    border-radius: 3px;
+    border-radius: 4px;
+    transition: border-color var(--anim-fast), background var(--anim-fast);
 }
-.xf-thread-row:hover { background: var(--bg-subbed); border-color: var(--border-medium); }
+.xf-thread-row:hover {
+    background: var(--bg-subbed);
+    border-color: var(--border-medium);
+}
 
+/* ПОСТЫ И СООБЩЕНИЯ (POST ENGINE) */
 .xf-post-block {
     display: grid;
-    grid-template-columns: 200px 1fr;
+    grid-template-columns: 210px 1fr;
     background: var(--bg-canvas);
     border: 1px solid var(--border-weak);
-    margin-bottom: 15px;
-    border-radius: 3px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    overflow: hidden;
 }
+
 .xf-post-userzone {
-    background: #12121c;
-    padding: 20px;
+    background: #0d0d16;
+    padding: 25px 15px;
     text-align: center;
     border-right: 1px solid var(--border-weak);
 }
+
 .xf-post-avatar {
-    width: 90px;
-    height: 90px;
-    border-radius: 0px; /* СТРОГИЙ КВАДРАТ */
+    width: 96px;
+    height: 96px;
     object-fit: cover;
     border: 2px solid var(--border-medium);
+    border-radius: 0px; /* Квадратные аватарки */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    transition: transform var(--anim-fast);
 }
-.xf-post-main { padding: 20px; }
+.xf-post-avatar:hover {
+    transform: scale(1.03);
+}
 
-/* Формы, Инпуты, Оверлеи */
+.xf-post-main {
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* ФОРМЫ, КНОПКИ, ИНПУТЫ */
 .xf-input {
     width: 100%;
-    background: var(--bg-base);
+    background: var(--bg-input);
     border: 1px solid var(--border-medium);
-    padding: 10px 14px;
-    color: #fff;
+    padding: 12px 16px;
+    color: #ffffff;
     border-radius: 3px;
-    margin-bottom: 12px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    font-family: var(--font-stack);
+    transition: border-color var(--anim-fast), box-shadow var(--anim-fast);
 }
-.xf-input:focus { border-color: var(--xf-red); outline: none; }
+.xf-input:focus {
+    border-color: var(--xf-red);
+    box-shadow: 0 0 8px rgba(255, 0, 60, 0.25);
+    outline: none;
+}
+
 .xf-btn {
     background: var(--xf-red);
-    color: #fff;
+    color: #ffffff;
     border: none;
-    padding: 10px 20px;
-    font-weight: bold;
+    padding: 12px 24px;
+    font-weight: 700;
     text-transform: uppercase;
     cursor: pointer;
-    border-radius: 2px;
+    border-radius: 3px;
+    font-size: 12px;
+    letter-spacing: 0.8px;
+    transition: background var(--anim-fast), transform var(--anim-fast);
 }
-.xf-btn:hover { background: #ff2553; }
+.xf-btn:hover {
+    background: #ff2553;
+}
+.xf-btn:active {
+    transform: scale(0.98);
+}
 
-/* Модалки */
+/* ИДЕАЛЬНАЯ INSTAGRAM ГАЛОЧКА (ВЕКТОРНАЯ ТОЧНОСТЬ) */
+.instagram-verified-badge {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230095f6' d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E");
+    background-color: var(--instagram-blue);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M23.36 10.27a2 2 0 0 0-1-1.65l-1.61-1a2 2 0 0 1-.85-1.44l-.23-1.89a2 2 0 0 0-1.65-1.74l-1.87-.36a2 2 0 0 1-1.44-.85L13.73.74a2 2 0 0 0-1.91 0l-1.64 1a2 2 0 0 1-1.44.85l-1.87.36a2 2 0 0 0-1.66 1.74l-.23 1.89a2 2 0 0 1-.85 1.44l-1.61 1a2 2 0 0 0-1 1.65l.36 1.87a2 2 0 0 1 0 1.66l-.36 1.87a2 2 0 0 0 1 1.65l1.61 1a2 2 0 0 1 .85 1.44l.23 1.89a2 2 0 0 0 1.65 1.74l1.87.36a2 2 0 0 1 1.44.85l1.09 1.63a2 2 0 0 0 1.91 0l1.64-1a2 2 0 0 1 1.44-.85l1.87-.36a2 2 0 0 0 1.66-1.74l.23-1.89a2 2 0 0 1 .85-1.44l1.61-1a2 2 0 0 0 1-1.65l-.36-1.87a2 2 0 0 1 0-1.66z'/%3E%3C/svg%3E");
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M23.36 10.27a2 2 0 0 0-1-1.65l-1.61-1a2 2 0 0 1-.85-1.44l-.23-1.89a2 2 0 0 0-1.65-1.74l-1.87-.36a2 2 0 0 1-1.44-.85L13.73.74a2 2 0 0 0-1.91 0l-1.64 1a2 2 0 0 1-1.44.85l-1.87.36a2 2 0 0 0-1.66 1.74l-.23 1.89a2 2 0 0 1-.85 1.44l-1.61 1a2 2 0 0 0-1 1.65l.36 1.87a2 2 0 0 1 0 1.66l-.36 1.87a2 2 0 0 0 1 1.65l1.61 1a2 2 0 0 1 .85 1.44l.23 1.89a2 2 0 0 0 1.65 1.74l1.87.36a2 2 0 0 1 1.44.85l1.09 1.63a2 2 0 0 0 1.91 0l1.64-1a2 2 0 0 1 1.44-.85l1.87-.36a2 2 0 0 0 1.66-1.74l.23-1.89a2 2 0 0 1 .85-1.44l1.61-1a2 2 0 0 0 1-1.65l-.36-1.87a2 2 0 0 1 0-1.66z'/%3E%3C/svg%3E");
+    background-size: 60%;
+    background-position: center;
+    background-repeat: no-repeat;
+    vertical-align: middle;
+    margin-left: 6px;
+    box-shadow: 0 0 5px rgba(0, 149, 246, 0.5);
+}
+
+/* НЕОНОВОЕ СВЕЧЕНИЕ НИКНЕЙМОВ АДМИНИСТРАЦИИ */
+.xf-glow-founder { color: var(--xf-founder); font-weight: 700; text-shadow: 0 0 10px var(--xf-red-glow); animation: xfFounderPulse 2s infinite alternate; }
+.xf-glow-dev { color: var(--xf-developer); font-weight: 700; text-shadow: 0 0 8px rgba(0, 255, 204, 0.6); }
+.xf-glow-ga { color: var(--xf-ga); font-weight: 700; text-shadow: 0 0 8px rgba(255, 170, 0, 0.5); }
+.xf-glow-admin { color: var(--xf-admin); font-weight: 700; }
+.xf-glow-user { color: var(--xf-user); font-weight: 600; }
+
+@keyframes xfFounderPulse {
+    0% { text-shadow: 0 0 4px rgba(255, 0, 60, 0.4), 0 0 8px rgba(255, 0, 60, 0.2); }
+    100% { text-shadow: 0 0 12px rgba(255, 0, 60, 0.8), 0 0 20px rgba(255, 0, 60, 0.5); }
+}
+
+/* XENFORO СТИЛИЗОВАННЫЕ БАННЕРЫ */
+.xf-user-banner {
+    display: block;
+    padding: 4px 6px;
+    font-size: 10px;
+    font-weight: 800;
+    text-align: center;
+    text-transform: uppercase;
+    border-radius: 2px;
+    margin-top: 8px;
+    letter-spacing: 0.5px;
+    border: 1px solid transparent;
+}
+.xf-banner-founder { background: rgba(255, 0, 60, 0.12); color: #ff3366; border-color: rgba(255, 0, 60, 0.4); }
+.xf-banner-ga { background: rgba(255, 170, 0, 0.12); color: #ffaa00; border-color: rgba(255, 170, 0, 0.35); }
+.xf-banner-admin { background: rgba(255, 68, 68, 0.1); color: #ff4444; border-color: rgba(255, 68, 68, 0.25); }
+.xf-banner-user { background: #1a1a26; color: #8f8f9f; border-color: #2a2a3d; }
+
+/* МОДАЛЬНЫЕ ОКНА И ОВЕРЛЕИ */
 .xf-overlay {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0, 0, 0, 0.85);
     z-index: 9999;
     align-items: center;
     justify-content: center;
+    backdrop-filter: blur(4px);
+    padding: 20px;
 }
+
 .xf-modal-window {
     background: var(--bg-container);
     border: 1px solid var(--border-strong);
     width: 100%;
-    max-width: 550px;
+    max-width: 480px;
     border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    animation: modalFadeIn 0.25s cubic-bezier(0.1, 0.8, 0.25, 1);
+}
+
+@keyframes modalFadeIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.xf-modal-header {
+    background: #151524;
+    padding: 16px 20px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-weak);
+}
+
+.xf-modal-close {
+    cursor: pointer;
+    font-size: 20px;
+    color: #6f6f7f;
+    transition: color var(--anim-fast);
+}
+.xf-modal-close:hover {
+    color: #ffffff;
+}
+
+.xf-modal-body {
+    padding: 25px;
 }
