@@ -2,74 +2,86 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>ARIES RP | Форум в стиле XenForo</title>
-    <style>
-        :root { --dark-bg: #141414; --xen-blue: #0095f6; --admin-red: #ff3333; --ga-orange: #ffaa00; }
-        body { background: #000; color: #ccc; font-family: 'Segoe UI', sans-serif; margin: 0; }
-        
-        /* Стили групп (как в XenForo) */
-        .nick-admin { color: var(--admin-red); font-weight: bold; text-shadow: 0 0 5px rgba(255,51,51,0.5); }
-        .nick-ga { color: var(--ga-orange); font-weight: bold; }
-        .nick-user { color: #fff; }
-        .badge-verified { color: var(--xen-blue); font-size: 12px; margin-left: 4px; }
-
-        /* Общие элементы */
-        .forum-header { background: #1a1a1a; padding: 20px; border-bottom: 2px solid var(--admin-red); text-align: center; }
-        .main-container { max-width: 950px; margin: 20px auto; background: #111; border: 1px solid #333; padding: 20px; }
-        
-        /* Админ-панель */
-        .admin-box { border: 1px solid #444; padding: 15px; margin-bottom: 20px; background: #0a0a0a; border-radius: 4px; }
-        button { background: #333; color: white; border: none; padding: 8px 15px; cursor: pointer; border-radius: 3px; }
-        button:hover { background: #555; }
-    </style>
+    <title>ARIES RP | Исполнительный Веб-Портал</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="forum-header">
-        <h1>ARIES <span style="color:var(--admin-red)">ROLE PLAY</span></h1>
+    <!-- ВЕРХНИЙ ИНФО-БАР -->
+    <div style="background:#07070a; padding:10px 40px; display:flex; justify-content:space-between; font-size:12px; border-bottom:1px solid #1c1c28;">
+        <div>Текущая сессия: Эмуляция Ядра XenForo Active Node</div>
+        <div style="cursor:pointer; color:var(--xf-red)" onclick="viewProfile('Qumestlies_Shawty')">Привет, Qumestlies_Shawty 👑</div>
     </div>
 
-    <div class="main-container">
-        <!-- Панель управления -->
-        <div class="admin-box">
-            <strong>⚙️ Панель управления (XenForo Style):</strong><br><br>
-            <select id="user-select"><option value="Qumestlies_Shawty">Qumestlies_Shawty</option><option value="Sam_Mason">Sam_Mason</option></select>
-            <select id="role-select"><option value="admin">Администратор</option><option value="ga">ГА</option><option value="user">Игрок</option></select>
-            <input type="checkbox" id="check-ver"> Верификация (Галочка)
-            <button onclick="applyXenStyle()">Применить стиль</button>
+    <!-- ШАПКА -->
+    <div class="xf-header">
+        <img class="xf-logo" src="https://i.postimg.cc/mDCHYg8g/aries.png" alt="Logo">
+        <h1 style="margin:10px 0 0; text-transform:uppercase; letter-spacing:2px;">Aries <span style="color:var(--xf-red)">Role Play</span></h1>
+    </div>
+
+    <!-- ОСНОВНАЯ СЕТКА -->
+    <div class="xf-page-container">
+        
+        <!-- НАВИГАЦИЯ СЛЕНА -->
+        <div class="xf-sidebar">
+            <div class="xf-sidebar-block">
+                <div class="xf-sidebar-title">Навигация</div>
+                <a href="#" class="xf-node-row active" id="n-chat" onclick="switchNode('chat')">💬 Общий чат</a>
+                <a href="#" class="xf-node-row" id="n-gos" onclick="switchNode('gos')">🏢 Гос. Организации</a>
+                <a href="#" class="xf-node-row" id="n-ghetto" onclick="switchNode('ghetto')">🥷 Уличные группировки</a>
+                <a href="#" class="xf-node-row" id="n-complaints" onclick="switchNode('complaints')">⚖️ Жалобы на адм.</a>
+            </div>
+            <button class="xf-btn" style="width:100%; padding:12px;" onclick="openAdminModal()">⚙️ Системная Админка</button>
         </div>
 
-        <div id="chat-box" style="padding: 10px; border: 1px solid #222;">
-            <!-- Сообщения будут появляться здесь -->
+        <!-- КОНТЕНТ СПРАВА -->
+        <div class="xf-main-content" id="xen-content-render">
+            <!-- Сюда инжектится весь форум -->
+        </div>
+
+    </div>
+
+    <!-- МОДAЛКА АДМИНКИ -->
+    <div class="xf-overlay" id="modal-admin">
+        <div class="xf-modal-window">
+            <div style="background:#1c1c28; padding:15px; font-weight:bold; display:flex; justify-content:between;">
+                <span>УПРАВЛЕНИЕ ХАРАКТЕРИСТИКАМИ АККАУНТОВ</span>
+                <span style="cursor:pointer; margin-left:auto;" onclick="closeModal('modal-admin')">&times;</span>
+            </div>
+            <div style="padding:25px;">
+                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px;">ЦЕЛЕВОЙ ПОЛЬЗОВАТЕЛЬ</label>
+                <select class="xf-input" id="adm-user"></select>
+                
+                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px;">ГРУППА ДОСТУПА</label>
+                <select class="xf-input" id="adm-group">
+                    <option value="founder">Основатель (Neon Glow)</option>
+                    <option value="ga">Главный Администратор</option>
+                    <option value="admin">Администратор</option>
+                    <option value="user">Игрок</option>
+                </select>
+
+                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px;">INSTAGRAM ВЕРИФИКАЦИЯ</label>
+                <select class="xf-input" id="adm-ver">
+                    <option value="yes">Выдать синий знак верификации</option>
+                    <option value="no">Отозвать галочку</option>
+                </select>
+
+                <button class="xf-btn" style="width:100%; margin-top:10px;" onclick="saveAdminData()">Применить к базе данных</button>
+            </div>
         </div>
     </div>
 
-    <script>
-        let users = {
-            'Qumestlies_Shawty': { role: 'admin', ver: true },
-            'Sam_Mason': { role: 'user', ver: false }
-        };
+    <!-- КАРТОЧКА ПРОФИЛЯ -->
+    <div class="xf-overlay" id="modal-profile">
+        <div class="xf-modal-window" style="max-width:400px; text-align:center; padding:30px; position:relative;">
+            <span style="position:absolute; top:10px; right:15px; cursor:pointer; font-size:20px;" onclick="closeModal('modal-profile')">&times;</span>
+            <img id="p-ava" style="width:110px; height:110px; object-fit:cover; border:2px solid var(--border-medium); margin-bottom:15px;">
+            <h2 id="p-nick" style="margin:5px 0; font-size:22px;"></h2>
+            <div id="p-banner"></div>
+        </div>
+    </div>
 
-        function applyXenStyle() {
-            let u = document.getElementById('user-select').value;
-            users[u].role = document.getElementById('role-select').value;
-            users[u].ver = document.getElementById('check-ver').checked;
-            renderChat();
-        }
-
-        function renderChat() {
-            let chat = document.getElementById('chat-box');
-            chat.innerHTML = '';
-            for(let name in users) {
-                let u = users[name];
-                let style = u.role === 'admin' ? 'nick-admin' : (u.role === 'ga' ? 'nick-ga' : 'nick-user');
-                let badge = u.ver ? '<span class="badge-verified">✔</span>' : '';
-                chat.innerHTML += `<div style="margin-bottom:10px;">
-                    <span class="${style}">${name}</span> ${badge} — статус: ${u.role}
-                </div>`;
-            }
-        }
-        renderChat();
-    </script>
+    <!-- ПОДКЛЮЧАЕМ ЛОГИЧЕСКИЙ ДВИЖОК -->
+    <script src="engine.js"></script>
 </body>
 </html>
