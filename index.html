@@ -2,46 +2,315 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>ARIES RP | Основатель</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARIES ROLE PLAY | Официальный Форум</title>
     <style>
-        :root { --red: #ff003c; --bg: #050505; }
-        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; }
+        :root { --red: #ff003c; --dark: #0a0a0a; --panel: #141414; --border: #252525; }
+        body { background: var(--dark); color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
         
-        /* Виджет Основателя */
-        .founder-widget { position: fixed; top: 10px; left: 10px; background: #111; padding: 10px; border: 1px solid var(--red); border-radius: 8px; z-index: 100; }
-        .founder-widget img { width: 50px; height: 50px; border: 2px solid var(--red); }
-        .admin-link { display: block; color: var(--red); font-size: 12px; margin-top: 5px; text-decoration: none; font-weight: bold; }
+        /* Шапка сайта */
+        header { background: linear-gradient(180deg, #111 0%, #000 100%); padding: 25px; text-align: center; border-bottom: 3px solid var(--red); box-shadow: 0 4px 20px rgba(255, 0, 60, 0.2); }
+        .logo { max-width: 120px; border-radius: 50%; border: 2px solid var(--red); box-shadow: 0 0 15px var(--red); }
+        h1 { margin: 10px 0 5px; font-size: 26px; text-transform: uppercase; letter-spacing: 2px; }
+        h1 span { color: var(--red); }
 
-        header { text-align: center; padding: 30px; border-bottom: 2px solid var(--red); }
-        h1 { margin: 0; text-transform: uppercase; letter-spacing: 3px; }
+        /* Панель профиля основателя слева вверху */
+        .founder-profile { position: absolute; top: 15px; left: 15px; background: var(--panel); border: 1px solid var(--red); padding: 8px 12px; border-radius: 6px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .founder-avatar { width: 45px; height: 45px; border-radius: 4px; border: 2px solid var(--red); object-fit: cover; }
+        .founder-info { font-size: 12px; }
+        .founder-info .name { font-weight: bold; color: var(--red); display: flex; align-items: center; gap: 3px; }
+
+        /* Ветки форума (Разделы) */
+        .forum-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 900px; margin: 20px auto; padding: 0 15px; }
+        .nav-btn { background: var(--panel); border: 1px solid var(--border); color: #aaa; padding: 12px 20px; font-weight: bold; border-radius: 5px; cursor: pointer; text-transform: uppercase; font-size: 13px; transition: 0.2s; }
+        .nav-btn:hover, .nav-btn.active { border-color: var(--red); color: #fff; background: #1c1c1c; box-shadow: 0 0 10px rgba(255,0,60,0.3); }
+        .nav-btn.active { background: var(--red); border-color: var(--red); }
+
+        /* Главный контейнер */
+        main { max-width: 900px; margin: 0 auto 50px; padding: 0 15px; }
+        .section-box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+        .section-header { border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
+        .section-header h2 { margin: 0; color: var(--red); text-transform: uppercase; font-size: 20px; }
         
-        .giscus-container { max-width: 800px; margin: 20px auto; padding: 20px; }
+        /* Чат / Сообщения */
+        .messages-list { display: flex; flex-direction: column; gap: 15px; max-height: 500px; overflow-y: auto; margin-bottom: 20px; padding-right: 5px; }
+        .msg-card { background: #1a1a1a; border-left: 4px solid #555; padding: 12px; border-radius: 0 6px 6px 0; display: flex; gap: 15px; }
+        .msg-card.admin-post { border-left-color: var(--red); background: #1e1215; }
+        .user-pic { width: 45px; height: 45px; border-radius: 4px; border: 1px solid #444; cursor: pointer; }
+        .msg-body { flex: 1; }
+        .msg-meta { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 5px; color: #888; }
+        .user-badge { background: #333; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; font-weight: bold; }
+        .user-badge.founder-tag { background: var(--red); }
+        .msg-text { font-size: 15px; color: #ddd; line-height: 1.4; }
+
+        /* Поле отправки */
+        .input-area { display: flex; gap: 10px; background: #111; padding: 10px; border-radius: 6px; border: 1px solid var(--border); }
+        .input-area input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; }
+        .send-btn { background: var(--red); color: #fff; border: none; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+
+        /* Модальные окна (Админка и Профили) */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; }
+        .modal-content { background: var(--panel); border: 2px solid var(--red); width: 90%; max-width: 450px; padding: 25px; border-radius: 10px; box-shadow: 0 0 25px rgba(255,0,60,0.4); position: relative; }
+        .close-modal { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #666; }
+        .close-modal:hover { color: #fff; }
+        
+        /* Элементы админки */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 13px; color: #888; margin-bottom: 5px; text-transform: uppercase; }
+        .form-group select, .form-group input { width: 100%; background: #1a1a1a; border: 1px solid var(--border); padding: 10px; color: #fff; border-radius: 4px; box-sizing: border-box; }
+        .admin-panel-btn { background: #222; border: 1px solid #444; color: #fff; width: 100%; padding: 10px; font-weight: bold; margin-top: 15px; border-radius: 5px; cursor: pointer; text-transform: uppercase; font-size: 11px; }
+        .admin-panel-btn:hover { background: #ff003c; border-color: #ff003c; }
     </style>
 </head>
 <body>
 
-    <!-- Ваш личный виджет -->
-    <div class="founder-widget">
-        <img src="https://i.imgur.com/k6pE26s.png" alt="Founder"> <!-- Замените на ссылку своей аватарки -->
-        <div>Qumestlies_Shawty</div>
-        <a href="https://github.com/boipivo-hub/forum-data/issues" class="admin-link">🛠 АДМИН-ПАНЕЛЬ</a>
+    <!-- Профиль основателя слева вверху -->
+    <div class="founder-profile" onclick="openProfile('Qumestlies_Shawty')">
+        <img class="founder-avatar" src="https://i.postimg.cc/mDCHYg8g/aries.png" id="my-avatar" alt="Avatar">
+        <div class="founder-info">
+            <div class="name">Qumestlies_Shawty 👑 ✅</div>
+            <small style="color: #666;">Основатель проекта</small>
+        </div>
     </div>
 
+    <!-- Шапка -->
     <header>
-        <h1>ARIES ROLE PLAY</h1>
+        <img class="logo" src="https://api.screenshotone.com/take?url=https%3A%2F%2Fstorage.googleapis.com%2Fgemkick_corpus_image_attachments%2Fuploaded%3A2412.png-e718fe3d-b21e-411f-a46e-186283b75366&access_key=dummy" alt="ARIES RP LOGO" onerror="this.src='https://i.postimg.cc/mDCHYg8g/aries.png';this.onerror=null;">
+        <h1>Aries <span>Role Play</span></h1>
+        <p style="color: #666; margin: 5px 0 0;">Официальная игровая площадка</p>
     </header>
 
-    <div class="giscus-container">
-        <script src="https://giscus.app/client.js"
-                data-repo="boipivo-hub/forum-data"
-                data-repo-id="R_kgDNOTV98w"
-                data-category="General"
-                data-category-id="DIC_kwDNOTV9884CkWp0"
-                data-mapping="pathname"
-                data-theme="dark_dimmed"
-                crossorigin="anonymous"
-                async>
-        </script>
+    <!-- Навигация по САМП веткам форума -->
+    <div class="forum-nav">
+        <button class="nav-btn active" onclick="switchSection('chat')">💬 Общий чат</button>
+        <button class="nav-btn" onclick="switchSection('gos')">🏢 Гос. структуры</button>
+        <button class="nav-btn" onclick="switchSection('ghetto')">🥷 Гетто / Мафии</button>
+        <button class="nav-btn" onclick="switchSection('complaints')">⚖️ Жалобы</button>
+        <button class="nav-btn" onclick="switchSection('tech')">🛠 Тех. раздел</button>
     </div>
+
+    <main>
+        <div class="section-box">
+            <div class="section-header">
+                <h2 id="section-title">Общий чат форума</h2>
+                <p id="section-desc" style="color: #666; font-size: 13px; margin: 5px 0 0;">Свободное общение игроков проекта Aries RP на любые темы.</p>
+            </div>
+
+            <!-- Список сообщений текущей ветки -->
+            <div class="messages-list" id="messages-container"></div>
+
+            <!-- Форма отправки сообщения -->
+            <div class="input-area">
+                <input type="text" id="message-input" placeholder="Введите ваше сообщение...">
+                <button class="send-btn" onclick="sendMessage()">Отправить</button>
+            </div>
+
+            <!-- Кнопка админки (Видна только Основателю) -->
+            <button class="admin-panel-btn" onclick="openAdminModal()">⚙️ Открыть Админ-Панель Управления</button>
+        </div>
+    </main>
+
+    <!-- МОДАЛЬНОЕ ОКНО: АДМИН-ПАНЕЛЬ -->
+    <div class="modal" id="admin-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('admin-modal')">&times;</span>
+            <h3 style="color: var(--red); margin-top: 0; text-transform: uppercase;">Панель Управления Основателя</h3>
+            
+            <div class="form-group">
+                <label>Выберите игрока для изменения</label>
+                <select id="admin-target-user">
+                    <option value="Sam_Mason">Sam_Mason</option>
+                    <option value="Tony_Stark">Tony_Stark</option>
+                    <option value="Aries_Player">Aries_Player</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Присвоить Тег / Ранг</label>
+                <select id="admin-set-tag">
+                    <option value="Игрок">Игрок</option>
+                    <option value="Администратор">Администратор</option>
+                    <option value="ЗГА">ЗГА</option>
+                    <option value="ГА">ГА</option>
+                    <option value="Модератор">Модератор</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Цвет ника (HEX или название)</label>
+                <select id="admin-set-color">
+                    <option value="#ffffff">Обычный (Белый)</option>
+                    <option value="#ffaa00">Оранжевый (ГА/ЗГА)</option>
+                    <option value="#ff003c">Красный (Админ)</option>
+                    <option value="#00aaff">Синий (Модератор)</option>
+                    <option value="#00ff66">Зеленый (Лидер)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Выдать галочку верификации?</label>
+                <select id="admin-set-badge">
+                    <option value="no">Нет</option>
+                    <option value="yes">Да (Галочка ✅)</option>
+                </select>
+            </div>
+
+            <button class="send-btn" style="width: 100%; margin-top: 10px;" onclick="saveAdminSettings()">Применить настройки</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ПРОФИЛЬ ИГРОКА -->
+    <div class="modal" id="profile-modal">
+        <div class="modal-content" style="text-align: center;">
+            <span class="close-modal" onclick="closeModal('profile-modal')">&times;</span>
+            <img src="" id="prof-img" style="width: 90px; height: 90px; border-radius: 8px; border: 2px solid var(--border); object-fit: cover; margin-bottom: 15px;">
+            <h3 id="prof-name" style="margin: 5px 0; font-size: 22px;"></h3>
+            <p id="prof-tag" style="margin: 5px 0; font-weight: bold;"></p>
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 15px 0;">
+            <div style="text-align: left; font-size: 14px; color: #aaa;">
+                <p>📍 Статус на форуме: <span style="color: #fff;" id="prof-status">Активен</span></p>
+                <p>📅 Дата регистрации: <span style="color: #fff;">15.06.2026</span></p>
+                <p>🛡️ Доступ к админке: <span id="prof-access" style="color: var(--red);">Отсутствует</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // База данных пользователей на форуме
+        let usersDB = {
+            'Qumestlies_Shawty': { tag: 'Основатель', color: '#ff003c', badge: true, avatar: 'https://i.postimg.cc/mDCHYg8g/aries.png', role: 'owner' },
+            'Sam_Mason': { tag: 'Администратор', color: '#ffaa00', badge: true, avatar: 'https://i.postimg.cc/44f88S6n/user1.png', role: 'admin' },
+            'Tony_Stark': { tag: 'Игрок', color: '#ffffff', badge: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png', role: 'user' },
+            'Aries_Player': { tag: 'Игрок', color: '#ffffff', badge: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png', role: 'user' }
+        };
+
+        // База данных сообщений по веткам
+        let forumData = {
+            chat: [
+                { author: 'Sam_Mason', text: 'Приветствуем всех на новом форуме Aries Role Play!' },
+                { author: 'Tony_Stark', text: 'Вау, какой крутой красно-черный стиль, мне нравится!' }
+            ],
+            gos: [
+                { author: 'Sam_Mason', text: 'В данном разделе лидеры публикуют указы гос. структур.' }
+            ],
+            ghetto: [
+                { author: 'Aries_Player', text: 'Когда будут открыты заявки на лидерство Grove Street?' }
+            ],
+            complaints: [],
+            tech: []
+        };
+
+        let activeSection = 'chat';
+
+        const sectionsInfo = {
+            chat: { title: 'Общий чат форума', desc: 'Свободное общение игроков проекта Aries RP на любые темы.' },
+            gos: { title: 'Государственные структуры', desc: 'Официальные темы, приказы министерств, уставы и академии.' },
+            ghetto: { title: 'Гетто / Мафии', desc: 'Обсуждение каптов, стрел, дипломатии и правил банд.' },
+            complaints: { title: 'Раздел жалоб', desc: 'Подача официальных жалоб на игроков, лидеров или администрацию.' },
+            tech: { title: 'Технический раздел', desc: 'Сообщения об ошибках игрового мода, проблемах с донатом или восстановлением аккаунтов.' }
+        };
+
+        // Переключение веток форума
+        function switchSection(sectionName) {
+            activeSection = sectionName;
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.getElementById('section-title').innerText = sectionsInfo[sectionName].title;
+            document.getElementById('section-desc').innerText = sectionsInfo[sectionName].desc;
+            
+            renderMessages();
+        }
+
+        // Показ сообщений на экран
+        function renderMessages() {
+            const container = document.getElementById('messages-container');
+            container.innerHTML = '';
+            
+            if(forumData[activeSection].length === 0) {
+                container.innerHTML = '<p style="color:#444; text-align:center; margin: 20px 0;">В этой ветке еще нет сообщений. Будьте первым!</p>';
+                return;
+            }
+
+            forumData[activeSection].forEach(msg => {
+                const user = usersDB[msg.author] || { tag: 'Игрок', color: '#fff', badge: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
+                const isAdminClass = user.role === 'owner' || user.role === 'admin' ? 'admin-post' : '';
+                const badgeHtml = user.badge ? '✅' : '';
+                const tagClass = user.role === 'owner' ? 'founder-tag' : '';
+
+                container.innerHTML += `
+                    <div class="msg-card ${isAdminClass}">
+                        <img class="user-pic" src="${user.avatar}" onclick="openProfile('${msg.author}')">
+                        <div class="msg-body">
+                            <div class="msg-meta">
+                                <span style="color: ${user.color}; font-weight:bold; cursor:pointer;" onclick="openProfile('${msg.author}')">${msg.author} ${badgeHtml}</span>
+                                <span class="user-badge ${tagClass}">${user.tag}</span>
+                            </div>
+                            <div class="msg-text">${msg.text}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Отправка нового сообщения в текущую ветку
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            if(!input.value.trim()) return;
+
+            // Вы пишете от имени Qumestlies_Shawty (Основатель)
+            forumData[activeSection].push({
+                author: 'Qumestlies_Shawty',
+                text: input.value
+            });
+
+            input.value = '';
+            renderMessages();
+        }
+
+        // Модальные окна
+        function openAdminModal() { document.getElementById('admin-modal').style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // Показ информации об аккаунте
+        function openProfile(username) {
+            const user = usersDB[username];
+            if(!user) return;
+            document.getElementById('prof-img').src = user.avatar;
+            document.getElementById('prof-name').innerText = username + (user.badge ? ' ✅' : '');
+            document.getElementById('prof-name').style.color = user.color;
+            document.getElementById('prof-tag').innerText = `Ранг: ${user.tag}`;
+            document.getElementById('prof-tag').style.color = user.color;
+            document.getElementById('prof-access').innerText = (user.role === 'owner' || user.role === 'admin') ? 'Разрешен' : 'Отсутствует';
+            document.getElementById('profile-modal').style.display = 'flex';
+        }
+
+        // Применение настроек из Админки Основателя
+        function saveAdminSettings() {
+            const target = document.getElementById('admin-target-user').value;
+            const tag = document.getElementById('admin-set-tag').value;
+            const color = document.getElementById('admin-set-color').value;
+            const badge = document.getElementById('admin-set-badge').value === 'yes';
+
+            if(usersDB[target]) {
+                usersDB[target].tag = tag;
+                usersDB[target].color = color;
+                usersDB[target].badge = badge;
+                if(tag !== 'Игрок') {
+                    usersDB[target].role = 'admin';
+                } else {
+                    usersDB[target].role = 'user';
+                }
+            }
+
+            closeModal('admin-modal');
+            renderMessages();
+            alert(`Настройки для игрока ${target} успешно применены!`);
+        }
+
+        // Первая загрузка чата
+        renderMessages();
+    </script>
 </body>
 </html>
