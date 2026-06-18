@@ -1,11 +1,11 @@
 // ==========================================================================
-// ARIES ROLE PLAY - SUPREME FOUNDER ENGINE v6.2
+// ARIES ROLE PLAY - SUPREME FOUNDER SPA ENGINE v6.5
 // ==========================================================================
 
-// --- МОДУЛЬ 1: АВТОРИЗАЦИЯ И СЕССИИ ---
+// --- МОДУЛЬ 1: СИСТЕМА УЧЕТНЫХ ЗАПИСЕЙ ---
 const AuthModule = {
     init() {
-        // АВТО-СБРОС: Если в системе остался старый ник, принудительно очищаем кэш
+        // Если база пуста или в ней нет твоего аккаунта - делаем полный сброс
         let checkDb = localStorage.getItem('user_registry');
         if (!checkDb || !checkDb.includes('Qumestlies_Shawtys')) {
             localStorage.removeItem('user_registry');
@@ -14,7 +14,7 @@ const AuthModule = {
 
         if (!localStorage.getItem('user_registry')) {
             const defaults = {
-                // Твой новый ник - абсолютный владелец
+                // Создаем твой аккаунт Владельца
                 'Qumestlies_Shawtys': { 
                     password: '123', 
                     glow: 'glow-founder', 
@@ -22,16 +22,12 @@ const AuthModule = {
                     banned: false, 
                     avatar: 'https://i.postimg.cc/mDCHYg8g/aries.png' 
                 },
-                'Primer_Игрок': { 
-                    password: '123', 
-                    glow: 'glow-user', 
-                    badge: 'badge-user', 
-                    banned: false, 
-                    avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' 
-                }
+                // Тестовые аккаунты для проверки админки
+                'Tony_Stark': { password: '123', glow: 'glow-user', badge: 'badge-user', banned: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' },
+                'Sam_Mason': { password: '123', glow: 'glow-user', badge: 'badge-user', banned: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' }
             };
             localStorage.setItem('user_registry', JSON.stringify(defaults));
-            // Автоматически логиним тебя под новым ником, чтобы не вводить пароль
+            // Автоматически авторизуем тебя как Создателя
             localStorage.setItem('active_session', 'Qumestlies_Shawtys');
         }
     },
@@ -46,16 +42,12 @@ const AuthModule = {
         
         if(isReg) {
             document.getElementById('auth-title').innerText = "Регистрация";
-            container.innerHTML = `
-                <button class="btn-core" style="width:100%;" onclick="AuthModule.executeRegister()">Создать профиль</button>
-                <p style="font-size:12px; text-align:center; color:#666; margin-top:10px; cursor:pointer;" onclick="AuthModule.open(false)">Войти</p>
-            `;
+            container.innerHTML = `<button class="btn-core" style="width:100%;" onclick="AuthModule.executeRegister()">Зарегистрироваться</button>
+            <p style="font-size:12px; text-align:center; color:#555; margin-top:10px; cursor:pointer;" onclick="AuthModule.open(false)">Уже есть аккаунт? Войти</p>`;
         } else {
-            document.getElementById('auth-title').innerText = "Авторизация";
-            container.innerHTML = `
-                <button class="btn-core" style="width:100%;" onclick="AuthModule.executeLogin()">Войти</button>
-                <p style="font-size:12px; text-align:center; color:#666; margin-top:10px; cursor:pointer;" onclick="AuthModule.open(true)">Регистрация</p>
-            `;
+            document.getElementById('auth-title').innerText = "Вход на форум";
+            container.innerHTML = `<button class="btn-core" style="width:100%;" onclick="AuthModule.executeLogin()">Выполнить вход</button>
+            <p style="font-size:12px; text-align:center; color:#555; margin-top:10px; cursor:pointer;" onclick="AuthModule.open(true)">Нет аккаунта? Создать</p>`;
         }
     },
     close() { document.getElementById('m-auth').style.display = 'none'; },
@@ -63,9 +55,9 @@ const AuthModule = {
     executeRegister() {
         const u = document.getElementById('f-user').value.trim();
         const p = document.getElementById('f-pass').value.trim();
-        if(!u || !p) return alert('Заполните поля!');
+        if(!u || !p) return alert('Заполните все текстовые поля!');
         let db = this.getRegistry();
-        if(db[u]) return alert('Ник занят!');
+        if(db[u]) return alert('Данный никнейм уже зарегистрирован!');
         
         db[u] = { password: p, glow: 'glow-user', badge: 'badge-user', banned: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
         this.saveRegistry(db);
@@ -76,8 +68,8 @@ const AuthModule = {
         const u = document.getElementById('f-user').value.trim();
         const p = document.getElementById('f-pass').value.trim();
         let db = this.getRegistry();
-        if(!db[u] || db[u].password !== p) return alert('Неверные данные!');
-        if(db[u].banned) return alert('Аккаунт заблокирован!');
+        if(!db[u] || db[u].password !== p) return alert('Неверный ник или пароль!');
+        if(db[u].banned) return alert('Этот профиль заблокирован Создателем!');
         
         localStorage.setItem('active_session', u);
         window.location.reload();
@@ -88,29 +80,25 @@ const AuthModule = {
     }
 };
 
-// --- МОДУЛЬ 2: СТРУКТУРА РАЗДЕЛОВ ФОРУМА ---
+// --- МОДУЛЬ 2: ДЕРЕВО КАТЕГОРИЙ И РАЗДЕЛОВ ---
 const ForumNodes = {
     tree: {
-        'comp_adm': { title: '🔨 Жалобы на Администрацию', path: 'Жалобы / Администрация', threads: [] },
-        'comp_gos': { title: '🏢 Жалобы на сотрудников гос. структур', path: 'Жалобы / Гос. структуры', threads: [] },
-        'comp_ghetto': { title: '🥷 Жалобы на членов уличных группировок', path: 'Жалобы / Гетто', threads: [] },
-        'appeal_unban': { title: '🔓 Заявления на амнистию аккаунтов', path: 'Амнистия / Разбан', threads: [] },
-        'org_lspd': { title: '🔵 [Гос] Сhannel LSPD', path: 'Организации / LSPD', threads: [] },
-        'org_fbi': { title: '🕵️‍♂️ [Гос] Federal Bureau of Investigation', path: 'Организации / FBI', threads: [] },
-        'org_grove': { title: '🟢 [Банды] Grove Street Gang', path: 'Организации / Grove', threads: [] },
-        'org_lcn': { title: '💼 [Мафии] La Cosa Nostra', path: 'Организации / LCN', threads: [] },
         'dev_news': { 
             title: '📢 Технические обновления разработчиков', 
             path: 'Официально / Разработка', 
             threads: [
                 { 
                     id: 't-1', 
-                    title: 'Исправление панели управления Создателя', 
+                    title: 'Запуск глобальной панели Создателя проекта', 
                     creator: 'Qumestlies_Shawtys', 
-                    posts: [{ author: 'Qumestlies_Shawtys', text: 'Панель успешно выведена в левый угол под навигационное меню. Все инструменты изменения стилей и просмотра юзеров активны.' }] 
+                    posts: [{ author: 'Qumestlies_Shawtys', text: 'Уважаемые игроки, я успешно вывел полноценную панель управления форумом. Модификации стилей работают автономно!' }] 
                 }
             ]
-        }
+        },
+        'comp_adm': { title: '🔨 Жалобы на Администрацию', path: 'Жалобы / Администрация', threads: [] },
+        'comp_players': { title: '👤 Жалобы на игроков', path: 'Жалобы / Игроки', threads: [] },
+        'org_fbi': { title: '🕵️‍♂️ [Гос] Federal Bureau of Investigation', path: 'Организации / FBI', threads: [] },
+        'org_grove': { title: '🟢 [Гетто] Grove Street Gang', path: 'Организации / Grove', threads: [] }
     },
     init() {
         if(!localStorage.getItem('forum_nodes_data')) {
@@ -129,18 +117,17 @@ const ForumNodes = {
     }
 };
 
-// --- МОДУЛЬ 3: АДМИН-ПАНЕЛЬ СОЗДАТЕЛЯ (ИЗМЕНЕНИЕ НИКОВ, СВЕЧЕНИЙ, ПРОСМОТР ЮЗЕРОВ) ---
+// --- МОДУЛЬ 3: АДМИНИСТРАТИВНЫЙ ИНТЕРФЕЙС И МОДЕРАЦИЯ ---
 const AdminPanel = {
     open() {
         if(App.user !== 'Qumestlies_Shawtys') {
-            return alert('Доступ запрещен! Эта панель создана исключительно для Qumestlies_Shawtys.');
+            return alert('Доступ закрыт. Вы не являетесь Создателем проекта.');
         }
         document.getElementById('m-admin').style.display = 'flex';
         this.loadUsersList();
     },
     close() { document.getElementById('m-admin').style.display = 'none'; },
     
-    // Загружаем список ВСЕХ зарегистрированных на форуме аккаунтов
     loadUsersList() {
         const sel = document.getElementById('adm-target-user');
         if (!sel) return;
@@ -152,25 +139,21 @@ const AdminPanel = {
         }
         this.loadTargetUserData();
     },
-    
-    // Автоматически подставляет настройки выбранного в списке юзера
     loadTargetUserData() {
         const target = document.getElementById('adm-target-user').value;
         if(!target) return;
         const db = AuthModule.getRegistry();
-        const user = db[target];
+        const u = db[target];
         
-        document.getElementById('adm-set-glow').value = user.glow || 'glow-user';
-        document.getElementById('adm-set-badge').value = user.badge || 'badge-user';
-        document.getElementById('adm-set-ban').value = user.banned ? 'yes' : 'no';
+        document.getElementById('adm-set-glow').value = u.glow || 'glow-user';
+        document.getElementById('adm-set-badge').value = u.badge || 'badge-user';
+        document.getElementById('adm-set-ban').value = u.banned ? 'yes' : 'no';
     },
-    
     save() {
         const target = document.getElementById('adm-target-user').value;
         let db = AuthModule.getRegistry();
         if(!db[target]) return;
         
-        // Сохраняем новые цвета, переливашки и баннеры
         db[target].glow = document.getElementById('adm-set-glow').value;
         db[target].badge = document.getElementById('adm-set-badge').value;
         
@@ -178,7 +161,7 @@ const AdminPanel = {
         db[target].banned = isBan;
         
         if(isBan) {
-            if(target === 'Qumestlies_Shawtys') return alert('Нельзя забанить самого себя!');
+            if(target === 'Qumestlies_Shawtys') return alert('Вы не можете заблокировать собственный аккаунт!');
             db[target].glow = 'glow-banned';
             db[target].badge = 'badge-banned';
         }
@@ -189,40 +172,7 @@ const AdminPanel = {
     }
 };
 
-// --- МОДУЛЬ 4: НАСТРОЙКА ЛИЧНОГО ПРОФИЛЯ ---
-const ProfileCore = {
-    open() { 
-        document.getElementById('m-profile').style.display = 'flex'; 
-        document.getElementById('my-profile-avatar-view').src = AuthModule.getRegistry()[App.user].avatar || 'https://i.postimg.cc/9Q2g9g6y/user2.png'; 
-    },
-    close() { document.getElementById('m-profile').style.display = 'none'; },
-    upload(event) {
-        const file = event.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) { document.getElementById('my-profile-avatar-view').src = e.target.result; };
-        reader.readAsDataURL(file);
-    },
-    saveData() {
-        const newNick = document.getElementById('new-profile-nick').value.trim();
-        const base64Img = document.getElementById('my-profile-avatar-view').src;
-        let db = AuthModule.getRegistry();
-        
-        if(newNick && newNick !== App.user) {
-            if(db[newNick]) return alert('Этот ник уже занят!');
-            db[newNick] = db[App.user];
-            delete db[App.user];
-            App.user = newNick;
-            localStorage.setItem('active_session', newNick);
-        }
-        
-        db[App.user].avatar = base64Img;
-        AuthModule.saveRegistry(db);
-        this.close(); window.location.reload();
-    }
-};
-
-// --- МОДУЛЬ 5: ДИСПЕТЧЕР ИНТЕРФЕЙСА (SPA) ---
+// --- МОДУЛЬ 4: СУПЕРВИЗОР ИНТЕРФЕЙСА (SPA ЯДРО) ---
 const App = {
     user: null,
     activeNodeKey: 'dev_news',
@@ -235,10 +185,9 @@ const App = {
         
         this.renderAuthBar();
         ForumNodes.renderMenu();
+        this.checkAdminButton(); // Программно генерируем кнопку управления
         this.route(this.activeNodeKey);
-        this.checkAdminButton();
         
-        // Слушатель для админки, чтобы данные менялись при выборе другого игрока в списке
         const sel = document.getElementById('adm-target-user');
         if(sel) { sel.onchange = () => AdminPanel.loadTargetUserData(); }
     },
@@ -250,25 +199,30 @@ const App = {
             bar.innerHTML = `
                 <div style="display:flex; align-items:center;">
                     <img class="avatar-mini" src="${uData.avatar}"> 
-                    <span class="${uData.glow}" style="cursor:pointer; margin-left:8px; font-weight:bold;" onclick="ProfileCore.open()">
-                        ${this.user}
-                    </span>
-                    <button class="btn-core" style="padding:6px 12px; font-size:10px; background:#222; margin-left:15px;" onclick="AuthModule.logout()">Выйти</button>
+                    <span class="${uData.glow}" style="margin-left:10px; font-weight:bold; font-size:14px;">${this.user}</span>
+                    <button class="btn-core" style="padding:6px 12px; font-size:11px; background:#1b1b2a; border:1px solid #2c2c42; margin-left:15px;" onclick="AuthModule.logout()">Выйти</button>
                 </div>
             `;
         } else {
-            bar.innerHTML = `<button class="btn-core" style="padding:8px 16px; font-size:11px;" onclick="AuthModule.open(false)">Авторизация</button>`;
+            bar.innerHTML = `<button class="btn-core" onclick="AuthModule.open(false)">Авторизоваться</button>`;
         }
     },
     checkAdminButton() {
-        const btn = document.getElementById('ui-adm-btn');
-        if(!btn) return;
-        
-        // Кнопка СТРОГО привязана к твоему нику Qumestlies_Shawtys
-        if(this.user === 'Qumestlies_Shawtys') {
-            btn.style.display = 'block'; // Показываем админку слева в углу
-        } else {
-            btn.style.display = 'none';
+        // Если залогинен Создатель — создаем кнопку в левом меню на лету
+        if (this.user === 'Qumestlies_Shawtys') {
+            const navMenu = document.getElementById('nodes-navigation-list');
+            if (navMenu && !document.getElementById('ui-adm-btn')) {
+                const btn = document.createElement('button');
+                btn.id = 'ui-adm-btn';
+                btn.className = 'btn-core';
+                btn.style.width = '100%';
+                btn.style.marginTop = '20px';
+                btn.style.background = 'linear-gradient(135deg, #ff0055, #8a2387)';
+                btn.style.boxShadow = '0 0 15px rgba(255, 0, 85, 0.3)';
+                btn.innerHTML = '🛡️ Панель Создателя';
+                btn.onclick = () => AdminPanel.open();
+                navMenu.appendChild(btn);
+            }
         }
     },
     route(nodeKey) {
@@ -288,20 +242,20 @@ const App = {
         if(this.activeThreadId) { this.renderThread(view, node); return; }
         
         let html = `
-            <div style="font-size:11px; color:#555; text-transform:uppercase; margin-bottom:5px;">${node.path}</div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; border-bottom:1px solid #1e1e30; padding-bottom:15px;">
+            <div style="font-size:11px; color:#555; text-transform:uppercase; margin-bottom:5px; font-weight:bold;">${node.path}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; border-bottom:1px solid var(--border-color); padding-bottom:15px;">
                 <h2 style="margin:0; font-size:22px; font-weight:800; color:#fff;">${node.title}</h2>
-                <button class="btn-core" onclick="App.openCreateThreadForm()">+ Создать тему</button>
+                <button class="btn-core" onclick="App.openCreateThreadForm()">+ Создать новую тему</button>
             </div>
         `;
         if(!node.threads || node.threads.length === 0) {
-            html += `<p style="color:#444; text-align:center; padding:40px 0;">В этом разделе обсуждений пока нет.</p>`;
+            html += `<p style="color:#444; text-align:center; padding:40px 0;">Обсуждения в данном блоке отсутствуют.</p>`;
         } else {
             node.threads.forEach(t => {
                 html += `
-                    <div style="background:#09090f; padding:15px; border:1px solid #1c1c2b; border-radius:4px; margin-bottom:10px; cursor:pointer;" onclick="App.openThread('${t.id}')">
-                        <div style="font-weight:bold; font-size:15px; color:#fff;">${t.title}</div>
-                        <div style="font-size:11px; color:#555; margin-top:5px;">Автор: ${t.creator} | Сообщений: ${t.posts.length}</div>
+                    <div style="background:#09090f; padding:18px; border:1px solid var(--border-color); border-radius:5px; margin-bottom:12px; cursor:pointer;" onclick="App.openThread('${t.id}')">
+                        <div style="font-weight:bold; font-size:16px; color:#fff;">${t.title}</div>
+                        <div style="font-size:11px; color:#444; margin-top:6px;">Автор публикации: <span style="color:#aaa;">${t.creator}</span> | Количество ответов: ${t.posts.length - 1}</div>
                     </div>
                 `;
             });
@@ -312,28 +266,28 @@ const App = {
     renderThread(view, node) {
         const thread = node.threads.find(t => t.id === this.activeThreadId);
         if(!thread) return;
-        let html = `<button class="btn-core" style="background:#222; margin-bottom:20px; padding:6px 12px; font-size:11px;" onclick="App.route('${this.activeNodeKey}')">↩ Назад</button>
+        let html = `<button class="btn-core" style="background:#1c1c30; margin-bottom:20px; padding:6px 14px; font-size:11px;" onclick="App.route('${this.activeNodeKey}')">↩ Вернуться назад</button>
                     <h2 style="color:#fff; margin-bottom:25px; font-size:20px; font-weight:800;">${thread.title}</h2>`;
         
         const userDb = AuthModule.getRegistry();
         thread.posts.forEach(p => {
             const u = userDb[p.author] || { glow: 'glow-user', badge: 'badge-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
             html += `
-                <div style="display:grid; grid-template-columns:190px 1fr; background:#08080d; border:1px solid #1a1a2a; border-radius:4px; margin-bottom:15px; overflow:hidden;">
-                    <div style="background:#0c0c14; padding:20px; text-align:center; border-right:1px solid #1a1a2a;">
+                <div style="display:grid; grid-template-columns:190px 1fr; background:#08080d; border:1px solid var(--border-color); border-radius:5px; margin-bottom:15px; overflow:hidden;">
+                    <div style="background:#0b0b12; padding:20px; text-align:center; border-right:1px solid var(--border-color);">
                         <img class="avatar-round" src="${u.avatar}">
-                        <div style="margin-top:10px;"><span class="${u.glow}">${p.author}</span></div>
+                        <div style="margin-top:12px;"><span class="${u.glow}" style="font-size:14px;">${p.author}</span></div>
                         <div class="badge-role ${u.badge}">${u.badge.replace('badge-', '').toUpperCase()}</div>
                     </div>
-                    <div style="padding:20px; white-space:pre-wrap; color:#dedee6; font-size:14px;">${p.text}</div>
+                    <div style="padding:25px; white-space:pre-wrap; color:#cdcdff; font-size:14px; line-height:1.6;">${p.text}</div>
                 </div>
             `;
         });
         if(this.user) {
             html += `
-                <div style="margin-top:25px;">
-                    <textarea class="input-field" id="post-reply-text" rows="4" placeholder="Введите ответ..."></textarea>
-                    <button class="btn-core" onclick="App.sendReply()">Отправить сообщение</button>
+                <div style="margin-top:25px; background:#08080d; padding:20px; border-radius:5px; border:1px solid var(--border-color);">
+                    <textarea class="input-field" id="post-reply-text" rows="4" placeholder="Напишите ответ в тему..."></textarea>
+                    <button class="btn-core" onclick="App.sendReply()">Отправить ответ</button>
                 </div>
             `;
         }
@@ -342,26 +296,27 @@ const App = {
     sendReply() {
         const text = document.getElementById('post-reply-text').value.trim();
         if(!text) return;
-        const tree = ForumNodes.tree;
-        const thread = tree[this.activeNodeKey].threads.find(t => t.id === this.activeThreadId);
+        const thread = ForumNodes.tree[this.activeNodeKey].threads.find(t => t.id === this.activeThreadId);
         thread.posts.push({ author: this.user, text: text });
         ForumNodes.save(); this.render();
     },
     openCreateThreadForm() {
-        if(!this.user) return alert('Нужна авторизация!');
+        if(!this.user) return alert('Авторизуйтесь на портале!');
         const view = document.getElementById('render-forum-core');
         view.innerHTML = `
-            <h2 style="color:#fff; font-weight:800;">Новая тема</h2>
-            <input class="input-field" id="new-t-title" placeholder="Заголовок темы">
-            <textarea class="input-field" id="new-t-text" rows="6" placeholder="Текст сообщения..."></textarea>
-            <button class="btn-core" onclick="App.submitThread()">Опубликовать</button>
-            <button class="btn-core" style="background:#222;" onclick="App.render()">Отмена</button>
+            <h2 style="color:#fff; font-weight:800; margin-bottom:20px;">Создание новой темы</h2>
+            <input class="input-field" id="new-t-title" placeholder="Введите заголовок темы">
+            <textarea class="input-field" id="new-t-text" rows="6" placeholder="Введите текст Вашего сообщения..."></textarea>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-core" onclick="App.submitThread()">Опубликовать тему</button>
+                <button class="btn-core" style="background:#222;" onclick="App.render()">Отмена</button>
+            </div>
         `;
     },
     submitThread() {
         const title = document.getElementById('new-t-title').value.trim();
         const text = document.getElementById('new-t-text').value.trim();
-        if(!title || !text) return;
+        if(!title || !text) return alert('Заполните пустые формы!');
         const id = 'thread-' + Date.now();
         ForumNodes.tree[this.activeNodeKey].threads.push({
             id: id, title: title, creator: this.user, posts: [{ author: this.user, text: text }]
@@ -370,5 +325,4 @@ const App = {
     }
 };
 
-// Запуск системы
 window.onload = () => { App.init(); };
