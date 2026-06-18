@@ -2,108 +2,212 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>ARIES ROLE PLAY | Профессиональный Веб-Портал</title>
-    <link rel="stylesheet" href="global.css">
-    <link rel="stylesheet" href="xf-glows.css">
+    <title>Aries Role Play — Панель Создателя</title>
+    <style>
+        :root {
+            --bg-main: #06060c;
+            --bg-card: #0c0c14;
+            --border-color: #1c1c30;
+            --accent: #ff0055;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-main);
+            color: #dedee6;
+        }
+        header {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            color: #fff;
+        }
+        .logo span { color: var(--accent); }
+        
+        .forum-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 30px;
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .sidebar {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            height: fit-content;
+        }
+        .sidebar-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #555;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .nav-link {
+            display: block;
+            color: #aaa;
+            text-decoration: none;
+            padding: 10px 12px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .nav-link:hover, .nav-link.active {
+            background: #141424;
+            color: #fff;
+        }
+        .main-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 30px;
+            min-height: 500px;
+        }
+        
+        /* Кнопки */
+        .btn-core {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+        .btn-core:hover { opacity: 0.9; transform: translateY(-1px); }
+        
+        /* Поля ввода */
+        .input-field {
+            width: 100%;
+            background: #11111e;
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 4px;
+            color: #fff;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+            font-family: inherit;
+        }
+        
+        /* Аватарки */
+        .avatar-mini { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
+        .avatar-round { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #1c1c30; }
+
+        /* ЭФФЕКТЫ НИКНЕЙМОВ (GLOW) */
+        @keyframes rgb-burn {
+            0% { color: #ff0055; text-shadow: 0 0 10px rgba(255,0,85,0.6); }
+            33% { color: #9900ff; text-shadow: 0 0 10px rgba(153,0,255,0.6); }
+            66% { color: #00f0ff; text-shadow: 0 0 10px rgba(0,240,255,0.6); }
+            100% { color: #ff0055; text-shadow: 0 0 10px rgba(255,0,85,0.6); }
+        }
+        .glow-founder {
+            animation: rgb-burn 4s infinite linear;
+            font-weight: bold;
+        }
+        .glow-admin { color: #ff3333; text-shadow: 0 0 8px rgba(255,51,51,0.5); font-weight: bold; }
+        .glow-user { color: #dedee6; }
+        .glow-banned { color: #444 !important; text-decoration: line-through; text-shadow: none !important; }
+
+        /* РОЛИ И ПЛАШКИ (BADGES) */
+        .badge-role {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 900;
+            padding: 4px 10px;
+            border-radius: 3px;
+            margin-top: 8px;
+            letter-spacing: 1px;
+        }
+        .badge-founder { background: linear-gradient(135deg, #ff0055, #9900ff); color: #fff; box-shadow: 0 0 10px rgba(255,0,85,0.4); }
+        .badge-admin { background: #ff3333; color: #fff; }
+        .badge-user { background: #222235; color: #aaa; }
+        .badge-banned { background: #111; color: #555; }
+    </style>
 </head>
 <body>
 
-    <div style="background:#030305; padding:15px 40px; display:flex; justify-content:between; border-bottom:1px solid #1e1e30; align-items:center;">
-        <div style="font-weight:800; font-size:18px; text-transform:uppercase; letter-spacing:1px;">
-            Aries <span style="color:var(--brand-red)">Portal</span>
-        </div>
+    <!-- Шапка сайта -->
+    <header>
+        <div class="logo">ARIES<span>ROLEPLAY</span></div>
         <div id="runtime-auth-zone"></div>
-    </div>
+    </header>
 
-    <div class="forum-layout">
-        <div>
-            <div class="sidebar-block" id="nodes-navigation-list">
-                </div>
-            <button class="btn-core" id="ui-adm-btn" style="width:100%; display:none; background:#111; border:1px solid #ff003c;" onclick="AdminPanel.open()">
-                🛡️ Панель Управления
-            </button>
+    <!-- Основной контейнер форума -->
+    <div class="forum-container">
+        <!-- Левый блок навигации -->
+        <div class="sidebar" id="nodes-navigation-list">
+            <!-- Сюда JS загрузит разделы -->
         </div>
 
-        <div class="content-area" id="render-forum-core"></div>
-    </div>
-
-    <div class="overlay" id="m-auth">
-        <div class="modal-frame">
-            <div style="background:#171728; padding:15px; font-weight:bold; display:flex; justify-content:space-between;">
-                <span id="auth-title">Вход в систему</span>
-                <span style="cursor:pointer;" onclick="AuthModule.close()">&times;</span>
-            </div>
-            <div style="padding:25px;">
-                <button class="btn-core" style="width:100%; background:#fff; color:#111; margin-bottom:15px; display:flex; align-items:center; justify-content:center; gap:10px;" onclick="AuthModule.triggerGoogleLogin()">
-                    <img src="https://i.postimg.cc/mDCHYg8g/aries.png" style="width:18px; border-radius:50%;"> Войти через Google Account
-                </button>
-                <div style="text-align:center; margin-bottom:15px; font-size:11px; color:#555;">ИЛИ С ПОМОЩЬЮ НИКНЕЙМА</div>
-                
-                <input class="input-field" id="f-user" placeholder="Игровой Ник (Name_Surname)">
-                <input class="input-field" type="password" id="f-pass" placeholder="Пароль">
-                <div id="auth-btn-container"></div>
-            </div>
+        <!-- Центральный блок (Контент) -->
+        <div class="main-content" id="render-forum-core">
+            <!-- Сюда JS загрузит темы и сообщения -->
         </div>
     </div>
 
-    <div class="overlay" id="m-admin">
-        <div class="modal-frame" style="max-width:550px;">
-            <div style="background:#171728; padding:15px; font-weight:bold; display:flex; justify-content:space-between;">
-                <span>УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ И МОДИФИКАЦИЯМИ</span>
-                <span style="cursor:pointer;" onclick="AdminPanel.close()">&times;</span>
-            </div>
-            <div style="padding:25px;">
-                <label style="font-size:11px; color:#666;">ВЫБЕРИТЕ ЮЗЕРА</label>
-                <select class="input-field" id="adm-target-user"></select>
-                
-                <label style="font-size:11px; color:#666;">ЦВЕТ НИКА / СВЕЧЕНИЕ</label>
-                <select class="input-field" id="adm-set-glow">
-                    <option value="glow-user">Обычный (Игрок)</option>
-                    <option value="glow-founder">Основатель (Neon Glow Red)</option>
-                    <option value="glow-spec">Спец. Администратор (Orange Glow)</option>
-                    <option value="glow-curator">Куратор (Cyan Glow)</option>
-                    <option value="glow-admin">Администратор (Red)</option>
-                    <option value="glow-leader">Лидер фракции (Green)</option>
-                </select>
+    <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ -->
+    <div id="m-auth" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9998;">
+        <div style="background:var(--bg-card); border:1px solid var(--border-color); padding:30px; border-radius:6px; width:340px;">
+            <h3 id="auth-title" style="margin-top:0; color:#fff; font-weight:800;">Вход в систему</h3>
+            <input type="text" id="f-user" class="input-field" placeholder="Введите Ваш никнейм">
+            <input type="password" id="f-pass" class="input-field" placeholder="Введите пароль">
+            <div id="auth-btn-container"></div>
+            <button class="btn-core" style="background:#222; width:100%; margin-top:8px;" onclick="AuthModule.close()">Отмена</button>
+        </div>
+    </div>
 
-                <label style="font-size:11px; color:#666;">ОФИЦИАЛЬНЫЙ ТЕГ-БАННЕР</label>
-                <select class="input-field" id="adm-set-badge">
-                    <option value="badge-user">Пользователь</option>
-                    <option value="badge-founder">Руководство / Создатель</option>
-                    <option value="badge-spec">Спец. Администратор</option>
-                    <option value="badge-curator">Куратор Форума</option>
-                    <option value="badge-admin">Администрация</option>
-                </select>
+    <!-- СУПЕР ПАНЕЛЬ УПРАВЛЕНИЯ (АДМИНКА) -->
+    <div id="m-admin" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
+        <div style="background:#09090f; border:1px solid var(--accent); padding:30px; border-radius:6px; width:380px; box-shadow: 0 0 25px rgba(255,0,85,0.2);">
+            <h3 style="margin-top:0; color:var(--accent); font-weight:800; text-transform:uppercase; font-size:16px; letter-spacing:0.5px;">🛡️ Панель Управления Создателя</h3>
+            
+            <label style="font-size:12px; color:#aaa; display:block; margin-bottom:5px;">Зарегистрированные аккаунты форума:</label>
+            <select id="adm-target-user" class="input-field" style="cursor:pointer;"></select>
+            
+            <label style="font-size:12px; color:#aaa; display:block; margin-bottom:5px;">Цвет и свечение ника (Glow):</label>
+            <select id="adm-set-glow" class="input-field">
+                <option value="glow-founder">🔥 Переливание Создателя (RGB Неон)</option>
+                <option value="glow-admin">🚨 Администратор (Красный неон)</option>
+                <option value="glow-user">👤 Обычный игрок (Стандартный)</option>
+            </select>
 
-                <label style="font-size:11px; color:#666;">СТАТУС БЛОКИРОВКИ АККАУНТА</label>
-                <select class="input-field" id="adm-set-ban">
-                    <option value="no">Аккаунт активен</option>
-                    <option value="yes">Заблокировать на форуме (BANNED)</option>
-                </select>
+            <label style="font-size:12px; color:#aaa; display:block; margin-bottom:5px;">Роль / Тег под ником (Badge):</label>
+            <select id="adm-set-badge" class="input-field">
+                <option value="badge-founder">FOUNDER</option>
+                <option value="badge-admin">ADMIN</option>
+                <option value="badge-user">USER</option>
+            </select>
 
-                <button class="btn-core" style="width:100%;" onclick="AdminPanel.save()">Применить параметры</button>
+            <label style="font-size:12px; color:#aaa; display:block; margin-bottom:5px;">Статус блокировки на форуме:</label>
+            <select id="adm-set-ban" class="input-field">
+                <option value="no">Активен (Доступ разрешен)</option>
+                <option value="yes">Забанить аккаунт (Блокировка)</option>
+            </select>
+
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn-core" onclick="AdminPanel.save()" style="flex:1;">Применить настройки</button>
+                <button class="btn-core" onclick="AdminPanel.close()" style="background:#222; width:90px;">Закрыть</button>
             </div>
         </div>
     </div>
 
-    <div class="overlay" id="m-profile">
-        <div class="modal-frame" style="max-width:400px; text-align:center; padding:30px;">
-            <div style="text-align:right;"><span style="cursor:pointer; font-size:20px;" onclick="ProfileCore.close()">&times;</span></div>
-            <div style="position:relative; width:110px; height:110px; margin:0 auto 15px;">
-                <img id="my-profile-avatar-view" class="avatar-round" src="">
-                <label for="file-avatar" style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.8); font-size:9px; padding:4px; cursor:pointer;">GIF / JPG</label>
-                <input type="file" id="file-avatar" accept="image/*" style="display:none;" onchange="ProfileCore.upload(event)">
-            </div>
-            <h3 style="margin:5px 0;">Смена никнейма</h3>
-            <input class="input-field" id="new-profile-nick" placeholder="Новый ник">
-            <button class="btn-core" style="width:100%;" onclick="ProfileCore.saveData()">Обновить данные</button>
-        </div>
-    </div>
-
-    <script src="auth-module.js"></script>
-    <script src="forum-nodes.js"></script>
-    <script src="profile-core.js"></script>
-    <script src="admin-panel.js"></script>
-    <script src="app.js"></script>
+    <!-- ПОДКЛЮЧЕНИЕ СЦЕНАРИЯ -->
+    <script src="engine.js"></script>
 </body>
 </html>
