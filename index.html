@@ -2,135 +2,108 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARIES RP | Исполнительный Веб-Портал</title>
-    <link rel="stylesheet" href="style.css">
+    <title>ARIES ROLE PLAY | Профессиональный Веб-Портал</title>
+    <link rel="stylesheet" href="global.css">
+    <link rel="stylesheet" href="xf-glows.css">
 </head>
 <body>
 
-    <!-- ВЕРХНЯЯ СЛУЖЕБНАЯ СТРОКА СЕССИИ -->
-    <div class="xf-top-bar">
-        <div>Ядро Форума: <span style="color:#6f6f7f;">XenForo Native Web SPA Engine v6.0</span></div>
-        <div id="auth-top-block">
-            <!-- Динамическое наполнение через JS Core -->
+    <div style="background:#030305; padding:15px 40px; display:flex; justify-content:between; border-bottom:1px solid #1e1e30; align-items:center;">
+        <div style="font-weight:800; font-size:18px; text-transform:uppercase; letter-spacing:1px;">
+            Aries <span style="color:var(--brand-red)">Portal</span>
         </div>
+        <div id="runtime-auth-zone"></div>
     </div>
 
-    <!-- ФОРУМНАЯ ШАПКА (HEADER) -->
-    <div class="xf-header">
-        <img class="xf-logo" src="https://i.postimg.cc/mDCHYg8g/aries.png" alt="Aries RP Logo">
-        <h1 style="margin:12px 0 0; text-transform:uppercase; letter-spacing:3px; font-weight:800; font-size:26px;">
-            Aries <span style="color:var(--xf-red)">Role Play</span>
-        </h1>
-    </div>
-
-    <!-- ГЛАВНЫЙ ИНТЕРФЕЙСНЫЙ БЛОК -->
-    <div class="xf-page-container">
-        
-        <!--ЛЕВАЯ ПАНЕЛЬ СЕТКИ -->
-        <div class="xf-sidebar">
-            <div class="xf-sidebar-block">
-                <div class="xf-sidebar-title">Навигация по разделам</div>
-                <a href="#" class="xf-node-row active" id="n-chat" onclick="switchNode('chat')">💬 Общий чат игроков</a>
-                <a href="#" class="xf-node-row" id="n-gos" onclick="switchNode('gos')">🏢 Государственные структуры</a>
-                <a href="#" class="xf-node-row" id="n-ghetto" onclick="switchNode('ghetto')">🥷 Уличные группировки (Ghetto)</a>
-                <a href="#" class="xf-node-row" id="n-complaints" onclick="switchNode('complaints')">⚖️ Жалобы на администрацию</a>
-            </div>
-            
-            <button class="xf-btn" id="admin-panel-btn" style="width:100%; padding:14px; display:none;" onclick="openAdminModal()">
-                ⚙️ Системный Центр Управления
+    <div class="forum-layout">
+        <div>
+            <div class="sidebar-block" id="nodes-navigation-list">
+                </div>
+            <button class="btn-core" id="ui-adm-btn" style="width:100%; display:none; background:#111; border:1px solid #ff003c;" onclick="AdminPanel.open()">
+                🛡️ Панель Управления
             </button>
         </div>
 
-        <!-- ПРАВАЯ ЧАСТЬ - КОНТЕНТНЫЙ ДВИЖОК РЕНДЕРИНГА -->
-        <div class="xf-main-content" id="xen-content-render">
-            <!-- Сюда встраивается разметка JavaScript ядра -->
-        </div>
-
+        <div class="content-area" id="render-forum-core"></div>
     </div>
 
-    <!-- МЕНЮ: АВТОРИЗАЦИЯ И РЕГИСТРАЦИЯ -->
-    <div class="xf-overlay" id="modal-auth">
-        <div class="xf-modal-window">
-            <div class="xf-modal-header">
-                <span id="auth-modal-title">Вход в аккаунт</span>
-                <span class="xf-modal-close" onclick="closeModal('modal-auth')">&times;</span>
+    <div class="overlay" id="m-auth">
+        <div class="modal-frame">
+            <div style="background:#171728; padding:15px; font-weight:bold; display:flex; justify-content:space-between;">
+                <span id="auth-title">Вход в систему</span>
+                <span style="cursor:pointer;" onclick="AuthModule.close()">&times;</span>
             </div>
-            <div class="xf-modal-body">
-                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px; text-transform:uppercase;">Игровой Никнейм</label>
-                <input class="xf-input" id="auth-username" placeholder="Пример: Name_Surname" autocomplete="off">
-                
-                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px; text-transform:uppercase;">Пароль доступа</label>
-                <input class="xf-input" type="password" id="auth-password" placeholder="••••••••">
-                
-                <div id="auth-action-box" style="margin-top:10px;">
-                    <!-- Динамические кнопки переключения -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- МЕНЮ: СИСТЕМНАЯ АДМИНКА -->
-    <div class="xf-overlay" id="modal-admin">
-        <div class="xf-modal-window" style="max-width:520px;">
-            <div class="xf-modal-header">
-                <span>МОДИФИКАЦИЯ БАЗЫ ДАННЫХ ПОЛЬЗОВАТЕЛЕЙ</span>
-                <span class="xf-modal-close" onclick="closeModal('modal-admin')">&times;</span>
-            </div>
-            <div class="xf-modal-body">
-                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px;">ВЫБЕРИТЕ УЧЕТНУЮ ЗАПИСЬ</label>
-                <select class="xf-input" id="adm-user"></select>
-                
-                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px;">ГРУППА ПОЛЬЗОВАТЕЛЯ (ТЕГИ И СВЕЧЕНИЕ)</label>
-                <select class="xf-input" id="adm-group">
-                    <option value="founder">Founder (Основатель)</option>
-                    <option value="ga">Main Administrator (ГА)</option>
-                    <option value="admin">Administrator (Администратор)</option>
-                    <option value="user">Registered User (Игрок)</option>
-                </select>
-
-                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px;">СИСТЕМА СИНЕЙ ВЕРИФИКАЦИИ INSTAGRAM</label>
-                <select class="xf-input" id="adm-ver">
-                    <option value="yes">Активировать статус верификации</option>
-                    <option value="no">Деактивировать статус верификации</option>
-                </select>
-
-                <button class="xf-btn" style="width:100%; margin-top:10px;" onclick="saveAdminData()">
-                    Перезаписать данные в localStorage
+            <div style="padding:25px;">
+                <button class="btn-core" style="width:100%; background:#fff; color:#111; margin-bottom:15px; display:flex; align-items:center; justify-content:center; gap:10px;" onclick="AuthModule.triggerGoogleLogin()">
+                    <img src="https://i.postimg.cc/mDCHYg8g/aries.png" style="width:18px; border-radius:50%;"> Войти через Google Account
                 </button>
+                <div style="text-align:center; margin-bottom:15px; font-size:11px; color:#555;">ИЛИ С ПОМОЩЬЮ НИКНЕЙМА</div>
+                
+                <input class="input-field" id="f-user" placeholder="Игровой Ник (Name_Surname)">
+                <input class="input-field" type="password" id="f-pass" placeholder="Пароль">
+                <div id="auth-btn-container"></div>
             </div>
         </div>
     </div>
 
-    <!-- МЕНЮ: ЛИЧНЫЙ КАБИНЕТ (ПРОФИЛЬ И ЗАГРУЗКА АВАТАРОК) -->
-    <div class="xf-overlay" id="modal-profile">
-        <div class="xf-modal-window" style="max-width:420px;">
-            <div class="xf-modal-header">
-                <span>Профиль пользователя</span>
-                <span class="xf-modal-close" onclick="closeModal('modal-profile')">&times;</span>
+    <div class="overlay" id="m-admin">
+        <div class="modal-frame" style="max-width:550px;">
+            <div style="background:#171728; padding:15px; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ И МОДИФИКАЦИЯМИ</span>
+                <span style="cursor:pointer;" onclick="AdminPanel.close()">&times;</span>
             </div>
-            <div class="xf-modal-body" style="text-align:center;">
+            <div style="padding:25px;">
+                <label style="font-size:11px; color:#666;">ВЫБЕРИТЕ ЮЗЕРА</label>
+                <select class="input-field" id="adm-target-user"></select>
                 
-                <div style="position:relative; width:120px; height:120px; margin:0 auto 20px;">
-                    <img id="p-ava" src="" style="width:120px; height:120px; object-fit:cover; border:3px solid var(--border-medium);" alt="Avatar">
-                    <label for="avatar-uploader" id="p-upload-label" style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.8); font-size:10px; padding:5px; cursor:pointer; color:#fff; font-weight:bold; text-transform:uppercase; display:none;">
-                        Загрузить аватар
-                    </label>
-                    <input type="file" id="avatar-uploader" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)">
-                </div>
-                
-                <h2 id="p-nick" style="margin:5px 0; font-size:24px; font-weight:700;"></h2>
-                <div id="p-banner" style="margin-bottom:20px;"></div>
-                
-                <div style="background:var(--bg-canvas); padding:15px; border-radius:4px; text-align:left; border:1px solid var(--border-weak);">
-                    <div style="font-size:12px; color:#6f6f7f;">Статус подключения: <span style="color:#00ff66;">Защищено сессией</span></div>
-                    <div style="font-size:12px; color:#6f6f7f; margin-top:4px;">Хранилище данных: <span style="color:var(--instagram-blue);">HTML5 LocalStorage Cluster</span></div>
-                </div>
+                <label style="font-size:11px; color:#666;">ЦВЕТ НИКА / СВЕЧЕНИЕ</label>
+                <select class="input-field" id="adm-set-glow">
+                    <option value="glow-user">Обычный (Игрок)</option>
+                    <option value="glow-founder">Основатель (Neon Glow Red)</option>
+                    <option value="glow-spec">Спец. Администратор (Orange Glow)</option>
+                    <option value="glow-curator">Куратор (Cyan Glow)</option>
+                    <option value="glow-admin">Администратор (Red)</option>
+                    <option value="glow-leader">Лидер фракции (Green)</option>
+                </select>
+
+                <label style="font-size:11px; color:#666;">ОФИЦИАЛЬНЫЙ ТЕГ-БАННЕР</label>
+                <select class="input-field" id="adm-set-badge">
+                    <option value="badge-user">Пользователь</option>
+                    <option value="badge-founder">Руководство / Создатель</option>
+                    <option value="badge-spec">Спец. Администратор</option>
+                    <option value="badge-curator">Куратор Форума</option>
+                    <option value="badge-admin">Администрация</option>
+                </select>
+
+                <label style="font-size:11px; color:#666;">СТАТУС БЛОКИРОВКИ АККАУНТА</label>
+                <select class="input-field" id="adm-set-ban">
+                    <option value="no">Аккаунт активен</option>
+                    <option value="yes">Заблокировать на форуме (BANNED)</option>
+                </select>
+
+                <button class="btn-core" style="width:100%;" onclick="AdminPanel.save()">Применить параметры</button>
             </div>
         </div>
     </div>
 
-    <!-- ЛОГИЧЕСКИЙ СТРУКТУРНЫЙ КОД ДВИЖКА -->
-    <script src="engine.js"></script>
+    <div class="overlay" id="m-profile">
+        <div class="modal-frame" style="max-width:400px; text-align:center; padding:30px;">
+            <div style="text-align:right;"><span style="cursor:pointer; font-size:20px;" onclick="ProfileCore.close()">&times;</span></div>
+            <div style="position:relative; width:110px; height:110px; margin:0 auto 15px;">
+                <img id="my-profile-avatar-view" class="avatar-round" src="">
+                <label for="file-avatar" style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.8); font-size:9px; padding:4px; cursor:pointer;">GIF / JPG</label>
+                <input type="file" id="file-avatar" accept="image/*" style="display:none;" onchange="ProfileCore.upload(event)">
+            </div>
+            <h3 style="margin:5px 0;">Смена никнейма</h3>
+            <input class="input-field" id="new-profile-nick" placeholder="Новый ник">
+            <button class="btn-core" style="width:100%;" onclick="ProfileCore.saveData()">Обновить данные</button>
+        </div>
+    </div>
+
+    <script src="auth-module.js"></script>
+    <script src="forum-nodes.js"></script>
+    <script src="profile-core.js"></script>
+    <script src="admin-panel.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
