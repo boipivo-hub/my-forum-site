@@ -1,28 +1,38 @@
 // ==========================================================================
-// ARIES ROLE PLAY - CORE SPA ENGINE (FOUNDER EDITION)
+// ARIES ROLE PLAY - SUPREME FOUNDER ENGINE v6.2
 // ==========================================================================
 
-// --- МОДУЛЬ 1: АВТОРИЗАЦИЯ И СЕССИИ (СТРОГО ДЛЯ Qumestlies_Shawtys) ---
+// --- МОДУЛЬ 1: АВТОРИЗАЦИЯ И СЕССИИ ---
 const AuthModule = {
     init() {
-        // Принудительно чистим реестр при первом запуске с этим скриптом, чтобы выдать тебе права
+        // АВТО-СБРОС: Если в системе остался старый ник, принудительно очищаем кэш
         let checkDb = localStorage.getItem('user_registry');
         if (!checkDb || !checkDb.includes('Qumestlies_Shawtys')) {
             localStorage.removeItem('user_registry');
+            localStorage.removeItem('active_session');
         }
 
         if (!localStorage.getItem('user_registry')) {
             const defaults = {
-                // Твой ник зашит намертво как единственный создатель проекта
+                // Твой новый ник - абсолютный владелец
                 'Qumestlies_Shawtys': { 
                     password: '123', 
                     glow: 'glow-founder', 
                     badge: 'badge-founder', 
                     banned: false, 
                     avatar: 'https://i.postimg.cc/mDCHYg8g/aries.png' 
+                },
+                'Primer_Игрок': { 
+                    password: '123', 
+                    glow: 'glow-user', 
+                    badge: 'badge-user', 
+                    banned: false, 
+                    avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' 
                 }
             };
             localStorage.setItem('user_registry', JSON.stringify(defaults));
+            // Автоматически логиним тебя под новым ником, чтобы не вводить пароль
+            localStorage.setItem('active_session', 'Qumestlies_Shawtys');
         }
     },
     getRegistry() { return JSON.parse(localStorage.getItem('user_registry') || '{}'); },
@@ -35,56 +45,42 @@ const AuthModule = {
         const container = document.getElementById('auth-btn-container');
         
         if(isReg) {
-            document.getElementById('auth-title').innerText = "Регистрация нового аккаунта";
+            document.getElementById('auth-title').innerText = "Регистрация";
             container.innerHTML = `
-                <button class="btn-core" style="width:100%;" onclick="AuthModule.executeRegister()">Создать аккаунт</button>
-                <p style="font-size:12px; text-align:center; color:#666; margin-top:10px; cursor:pointer;" onclick="AuthModule.open(false)">Уже есть профиль? Войти</p>
+                <button class="btn-core" style="width:100%;" onclick="AuthModule.executeRegister()">Создать профиль</button>
+                <p style="font-size:12px; text-align:center; color:#666; margin-top:10px; cursor:pointer;" onclick="AuthModule.open(false)">Войти</p>
             `;
         } else {
-            document.getElementById('auth-title').innerText = "Вход на веб-портал";
+            document.getElementById('auth-title').innerText = "Авторизация";
             container.innerHTML = `
-                <button class="btn-core" style="width:100%;" onclick="AuthModule.executeLogin()">Войти в аккаунт</button>
-                <p style="font-size:12px; text-align:center; color:#666; margin-top:10px; cursor:pointer;" onclick="AuthModule.open(true)">Нет аккаунта? Создать</p>
+                <button class="btn-core" style="width:100%;" onclick="AuthModule.executeLogin()">Войти</button>
+                <p style="font-size:12px; text-align:center; color:#666; margin-top:10px; cursor:pointer;" onclick="AuthModule.open(true)">Регистрация</p>
             `;
         }
     },
     close() { document.getElementById('m-auth').style.display = 'none'; },
     
-    triggerGoogleLogin() {
-        const googleNicks = ['Google_User_Aries', 'Player_Aries_RP', 'Samp_Gamer'];
-        const randomNick = googleNicks[Math.floor(Math.random() * googleNicks.length)];
-        
-        let db = this.getRegistry();
-        if(!db[randomNick]) {
-            db[randomNick] = { password: 'google_secure_oauth', glow: 'glow-user', badge: 'badge-user', banned: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
-            this.saveRegistry(db);
-        }
-        
-        localStorage.setItem('active_session', randomNick);
-        this.close();
-        window.location.reload();
-    },
     executeRegister() {
         const u = document.getElementById('f-user').value.trim();
         const p = document.getElementById('f-pass').value.trim();
-        if(!u || !p) return alert('Заполните все поля!');
+        if(!u || !p) return alert('Заполните поля!');
         let db = this.getRegistry();
-        if(db[u]) return alert('Этот никнейм уже занят!');
+        if(db[u]) return alert('Ник занят!');
         
         db[u] = { password: p, glow: 'glow-user', badge: 'badge-user', banned: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
         this.saveRegistry(db);
         localStorage.setItem('active_session', u);
-        this.close(); window.location.reload();
+        window.location.reload();
     },
     executeLogin() {
         const u = document.getElementById('f-user').value.trim();
         const p = document.getElementById('f-pass').value.trim();
         let db = this.getRegistry();
-        if(!db[u] || db[u].password !== p) return alert('Неверный ник или пароль!');
-        if(db[u].banned) return alert('Ваш аккаунт заблокирован на форуме!');
+        if(!db[u] || db[u].password !== p) return alert('Неверные данные!');
+        if(db[u].banned) return alert('Аккаунт заблокирован!');
         
         localStorage.setItem('active_session', u);
-        this.close(); window.location.reload();
+        window.location.reload();
     },
     logout() {
         localStorage.removeItem('active_session');
@@ -92,44 +88,29 @@ const AuthModule = {
     }
 };
 
-// --- МОДУЛЬ 2: ДЕРЕВО ОРГАНИЗАЦИЙ, ФРАКЦИЙ И ЖАЛОБ ---
+// --- МОДУЛЬ 2: СТРУКТУРА РАЗДЕЛОВ ФОРУМА ---
 const ForumNodes = {
     tree: {
-        // РАЗДЕЛ ЖАЛОБ
         'comp_adm': { title: '🔨 Жалобы на Администрацию', path: 'Жалобы / Администрация', threads: [] },
         'comp_gos': { title: '🏢 Жалобы на сотрудников гос. структур', path: 'Жалобы / Гос. структуры', threads: [] },
         'comp_ghetto': { title: '🥷 Жалобы на членов уличных группировок', path: 'Жалобы / Гетто', threads: [] },
-        'comp_players': { title: '👤 Жалобы на игроков не сост. в организациях', path: 'Жалобы / Игроки', threads: [] },
-        
-        // ВОССТАНОВЛЕНИЯ И АМНИСТИИ
-        'appeal_unban': { title: '🔓 Заявления на амнистию игровых аккаунтов', path: 'Амнистия / Разбан', threads: [] },
-        'appeal_restore': { title: '🔄 Заявления на восстановление в должностях', path: 'Амнистия / Восстановления', threads: [] },
-        
-        // ГОСУДАРСТВЕННЫЕ И СИЛОВЫЕ СТРУКТУРЫ
-        'org_lspd': { title: '🔵 [Гос] Сhannel LSPD (Полиция Лос-Сантос)', path: 'Организации / Государственные / LSPD', threads: [] },
-        'org_fbi': { title: '🕵️‍♂️ [Гос] Federal Bureau of Investigation (ФБР)', path: 'Организации / Государственные / FBI', threads: [] },
-        'org_army': { title: '🪖 [Гос] Army Area 51 (Армия Нац. Гвардии)', path: 'Организации / Государственные / Army', threads: [] },
-        
-        // НЕЛЕГАЛЬНЫЕ СТРУКТУРЫ (ГЕТТО И МАФИИ)
-        'org_grove': { title: '🟢 [Банды] Grove Street Gang', path: 'Организации / Нелегальные / Гетто / Grove', threads: [] },
-        'org_ballas': { title: '🟣 [Банды] East Side Ballas Gang', path: 'Организации / Нелегальные / Гетто / Ballas', threads: [] },
-        'org_lcn': { title: '💼 [Мафии] La Cosa Nostra', path: 'Организации / Нелегальные / Мафии / LCN', threads: [] },
-        'org_yakuza': { title: '⚔️ [Мафии] Yakuza Syndicate', path: 'Организации / Нелегальные / Мафии / Yakuza', threads: [] },
-        
-        // НОВОСТИ И ОБНОВЛЕНИЯ ОТ ТЕБЯ
+        'appeal_unban': { title: '🔓 Заявления на амнистию аккаунтов', path: 'Амнистия / Разбан', threads: [] },
+        'org_lspd': { title: '🔵 [Гос] Сhannel LSPD', path: 'Организации / LSPD', threads: [] },
+        'org_fbi': { title: '🕵️‍♂️ [Гос] Federal Bureau of Investigation', path: 'Организации / FBI', threads: [] },
+        'org_grove': { title: '🟢 [Банды] Grove Street Gang', path: 'Организации / Grove', threads: [] },
+        'org_lcn': { title: '💼 [Мафии] La Cosa Nostra', path: 'Организации / LCN', threads: [] },
         'dev_news': { 
             title: '📢 Технические обновления разработчиков', 
             path: 'Официально / Разработка', 
             threads: [
                 { 
                     id: 't-1', 
-                    title: 'Глобальный патч форумного ядра Aries SPA до версии 6.0', 
+                    title: 'Исправление панели управления Создателя', 
                     creator: 'Qumestlies_Shawtys', 
-                    posts: [{ author: 'Qumestlies_Shawtys', text: 'Уважаемые пользователи, мы развернули быстрое модульное SPA-ядро. Баги исправлены, профили синхронизированы.' }] 
+                    posts: [{ author: 'Qumestlies_Shawtys', text: 'Панель успешно выведена в левый угол под навигационное меню. Все инструменты изменения стилей и просмотра юзеров активны.' }] 
                 }
             ]
-        },
-        'market_place': { title: '💰 Торговая площадка (Покупка/Продажа имущества)', path: 'Игровой процесс / Торговля', threads: [] }
+        }
     },
     init() {
         if(!localStorage.getItem('forum_nodes_data')) {
@@ -148,20 +129,78 @@ const ForumNodes = {
     }
 };
 
-// --- МОДУЛЬ 3: НАСТРОЙКА ПРОФИЛЕЙ И GIF-АВАТАРКИ ---
+// --- МОДУЛЬ 3: АДМИН-ПАНЕЛЬ СОЗДАТЕЛЯ (ИЗМЕНЕНИЕ НИКОВ, СВЕЧЕНИЙ, ПРОСМОТР ЮЗЕРОВ) ---
+const AdminPanel = {
+    open() {
+        if(App.user !== 'Qumestlies_Shawtys') {
+            return alert('Доступ запрещен! Эта панель создана исключительно для Qumestlies_Shawtys.');
+        }
+        document.getElementById('m-admin').style.display = 'flex';
+        this.loadUsersList();
+    },
+    close() { document.getElementById('m-admin').style.display = 'none'; },
+    
+    // Загружаем список ВСЕХ зарегистрированных на форуме аккаунтов
+    loadUsersList() {
+        const sel = document.getElementById('adm-target-user');
+        if (!sel) return;
+        sel.innerHTML = '';
+        const db = AuthModule.getRegistry();
+        
+        for(let name in db) {
+            sel.innerHTML += `<option value="${name}">${name}</option>`;
+        }
+        this.loadTargetUserData();
+    },
+    
+    // Автоматически подставляет настройки выбранного в списке юзера
+    loadTargetUserData() {
+        const target = document.getElementById('adm-target-user').value;
+        if(!target) return;
+        const db = AuthModule.getRegistry();
+        const user = db[target];
+        
+        document.getElementById('adm-set-glow').value = user.glow || 'glow-user';
+        document.getElementById('adm-set-badge').value = user.badge || 'badge-user';
+        document.getElementById('adm-set-ban').value = user.banned ? 'yes' : 'no';
+    },
+    
+    save() {
+        const target = document.getElementById('adm-target-user').value;
+        let db = AuthModule.getRegistry();
+        if(!db[target]) return;
+        
+        // Сохраняем новые цвета, переливашки и баннеры
+        db[target].glow = document.getElementById('adm-set-glow').value;
+        db[target].badge = document.getElementById('adm-set-badge').value;
+        
+        const isBan = document.getElementById('adm-set-ban').value === 'yes';
+        db[target].banned = isBan;
+        
+        if(isBan) {
+            if(target === 'Qumestlies_Shawtys') return alert('Нельзя забанить самого себя!');
+            db[target].glow = 'glow-banned';
+            db[target].badge = 'badge-banned';
+        }
+        
+        AuthModule.saveRegistry(db);
+        this.close(); 
+        window.location.reload();
+    }
+};
+
+// --- МОДУЛЬ 4: НАСТРОЙКА ЛИЧНОГО ПРОФИЛЯ ---
 const ProfileCore = {
     open() { 
         document.getElementById('m-profile').style.display = 'flex'; 
-        document.getElementById('my-profile-avatar-view').src = AuthModule.getRegistry()[App.user].avatar; 
+        document.getElementById('my-profile-avatar-view').src = AuthModule.getRegistry()[App.user].avatar || 'https://i.postimg.cc/9Q2g9g6y/user2.png'; 
     },
     close() { document.getElementById('m-profile').style.display = 'none'; },
     upload(event) {
         const file = event.target.files[0];
         if(!file) return;
         const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('my-profile-avatar-view').src = e.target.result;
-        };
+        reader.onload = function(e) { document.getElementById('my-profile-avatar-view').src = e.target.result; };
         reader.readAsDataURL(file);
     },
     saveData() {
@@ -183,55 +222,25 @@ const ProfileCore = {
     }
 };
 
-// --- МОДУЛЬ 4: ПАНЕЛЬ УПРАВЛЕНИЯ МОДЕРАЦИЕЙ (АДМИНКА) ---
-const AdminPanel = {
-    open() {
-        // Доступ открывается ТОЛЬКО твоему нику
-        if(App.user !== 'Qumestlies_Shawtys') {
-            return alert('Ошибка доступа: данная консоль доступна только Создателю проекта.');
-        }
-        document.getElementById('m-admin').style.display = 'flex';
-        const sel = document.getElementById('adm-target-user');
-        if (!sel) return;
-        sel.innerHTML = '';
-        const db = AuthModule.getRegistry();
-        for(let name in db) { sel.innerHTML += `<option value="${name}">${name}</option>`; }
-    },
-    close() { document.getElementById('m-admin').style.display = 'none'; },
-    save() {
-        const target = document.getElementById('adm-target-user').value;
-        let db = AuthModule.getRegistry();
-        
-        db[target].glow = document.getElementById('adm-set-glow').value;
-        db[target].badge = document.getElementById('adm-set-badge').value;
-        
-        const isBan = document.getElementById('adm-set-ban').value === 'yes';
-        db[target].banned = isBan;
-        
-        if(isBan) {
-            if(target === 'Qumestlies_Shawtys') return alert('Вы не можете заблокировать создателя!');
-            db[target].glow = 'glow-banned';
-            db[target].badge = 'badge-banned';
-        }
-        
-        AuthModule.saveRegistry(db);
-        this.close(); window.location.reload();
-    }
-};
-
-// --- МОДУЛЬ 5: ГЛАВНЫЙ СУПЕР-КООРДИНАТОР SPA-ИНТЕРФЕЙСА ---
+// --- МОДУЛЬ 5: ДИСПЕТЧЕР ИНТЕРФЕЙСА (SPA) ---
 const App = {
-    user: localStorage.getItem('active_session') || null,
+    user: null,
     activeNodeKey: 'dev_news',
     activeThreadId: null,
     
     init() {
         AuthModule.init();
         ForumNodes.init();
+        this.user = localStorage.getItem('active_session');
+        
         this.renderAuthBar();
         ForumNodes.renderMenu();
         this.route(this.activeNodeKey);
         this.checkAdminButton();
+        
+        // Слушатель для админки, чтобы данные менялись при выборе другого игрока в списке
+        const sel = document.getElementById('adm-target-user');
+        if(sel) { sel.onchange = () => AdminPanel.loadTargetUserData(); }
     },
     renderAuthBar() {
         const bar = document.getElementById('runtime-auth-zone');
@@ -254,9 +263,10 @@ const App = {
     checkAdminButton() {
         const btn = document.getElementById('ui-adm-btn');
         if(!btn) return;
-        // Кнопка отображается ТОЛЬКО если ник сессии равен твоему
+        
+        // Кнопка СТРОГО привязана к твоему нику Qumestlies_Shawtys
         if(this.user === 'Qumestlies_Shawtys') {
-            btn.style.display = 'block';
+            btn.style.display = 'block'; // Показываем админку слева в углу
         } else {
             btn.style.display = 'none';
         }
@@ -278,20 +288,20 @@ const App = {
         if(this.activeThreadId) { this.renderThread(view, node); return; }
         
         let html = `
-            <div style="font-size:11px; color:#555; text-transform:uppercase; margin-bottom:5px; letter-spacing:0.5px;">${node.path}</div>
+            <div style="font-size:11px; color:#555; text-transform:uppercase; margin-bottom:5px;">${node.path}</div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; border-bottom:1px solid #1e1e30; padding-bottom:15px;">
                 <h2 style="margin:0; font-size:22px; font-weight:800; color:#fff;">${node.title}</h2>
                 <button class="btn-core" onclick="App.openCreateThreadForm()">+ Создать тему</button>
             </div>
         `;
         if(!node.threads || node.threads.length === 0) {
-            html += `<p style="color:#444; text-align:center; padding:5px 0 40px 0;">В этом разделе обсуждений пока нет.</p>`;
+            html += `<p style="color:#444; text-align:center; padding:40px 0;">В этом разделе обсуждений пока нет.</p>`;
         } else {
             node.threads.forEach(t => {
                 html += `
                     <div style="background:#09090f; padding:15px; border:1px solid #1c1c2b; border-radius:4px; margin-bottom:10px; cursor:pointer;" onclick="App.openThread('${t.id}')">
                         <div style="font-weight:bold; font-size:15px; color:#fff;">${t.title}</div>
-                        <div style="font-size:11px; color:#555; margin-top:5px;">Автор: ${t.creator} | Ответов: ${t.posts.length - 1}</div>
+                        <div style="font-size:11px; color:#555; margin-top:5px;">Автор: ${t.creator} | Сообщений: ${t.posts.length}</div>
                     </div>
                 `;
             });
@@ -315,14 +325,14 @@ const App = {
                         <div style="margin-top:10px;"><span class="${u.glow}">${p.author}</span></div>
                         <div class="badge-role ${u.badge}">${u.badge.replace('badge-', '').toUpperCase()}</div>
                     </div>
-                    <div style="padding:20px; white-space:pre-wrap; color:#dedee6; font-size:14px; line-height:1.5;">${p.text}</div>
+                    <div style="padding:20px; white-space:pre-wrap; color:#dedee6; font-size:14px;">${p.text}</div>
                 </div>
             `;
         });
         if(this.user) {
             html += `
-                <div style="margin-top:25px; background:#08080d; padding:20px; border-radius:4px; border:1px solid #1a1a2a;">
-                    <textarea class="input-field" id="post-reply-text" rows="4" placeholder="Введите ваш ответ..."></textarea>
+                <div style="margin-top:25px;">
+                    <textarea class="input-field" id="post-reply-text" rows="4" placeholder="Введите ответ..."></textarea>
                     <button class="btn-core" onclick="App.sendReply()">Отправить сообщение</button>
                 </div>
             `;
@@ -332,28 +342,26 @@ const App = {
     sendReply() {
         const text = document.getElementById('post-reply-text').value.trim();
         if(!text) return;
-        const tree = this.getTree ? this.getTree() : ForumNodes.tree;
+        const tree = ForumNodes.tree;
         const thread = tree[this.activeNodeKey].threads.find(t => t.id === this.activeThreadId);
         thread.posts.push({ author: this.user, text: text });
         ForumNodes.save(); this.render();
     },
     openCreateThreadForm() {
-        if(!this.user) return alert('Только для авторизованных пользователей!');
+        if(!this.user) return alert('Нужна авторизация!');
         const view = document.getElementById('render-forum-core');
         view.innerHTML = `
-            <h2 style="color:#fff; font-weight:800;">Создание новой темы</h2>
+            <h2 style="color:#fff; font-weight:800;">Новая тема</h2>
             <input class="input-field" id="new-t-title" placeholder="Заголовок темы">
             <textarea class="input-field" id="new-t-text" rows="6" placeholder="Текст сообщения..."></textarea>
-            <div style="display:flex; gap:10px;">
-                <button class="btn-core" onclick="App.submitThread()">Опубликовать</button>
-                <button class="btn-core" style="background:#222;" onclick="App.render()">Отмена</button>
-            </div>
+            <button class="btn-core" onclick="App.submitThread()">Опубликовать</button>
+            <button class="btn-core" style="background:#222;" onclick="App.render()">Отмена</button>
         `;
     },
     submitThread() {
         const title = document.getElementById('new-t-title').value.trim();
         const text = document.getElementById('new-t-text').value.trim();
-        if(!title || !text) return alert('Заполните все поля!');
+        if(!title || !text) return;
         const id = 'thread-' + Date.now();
         ForumNodes.tree[this.activeNodeKey].threads.push({
             id: id, title: title, creator: this.user, posts: [{ author: this.user, text: text }]
@@ -362,5 +370,5 @@ const App = {
     }
 };
 
-// Автоматический глобальный старт SPA
+// Запуск системы
 window.onload = () => { App.init(); };
