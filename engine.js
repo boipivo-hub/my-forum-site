@@ -1,479 +1,269 @@
 // ==========================================================================
-// XENFORO PLATFORM SPA ENGINE v6.0.0 (MONOLITHIC RUNTIME)
+// CORE FORUM ENGINE - SYSTEM DISPATCHER & CORE SPA
 // ==========================================================================
 
-/**
- * Инициализация глобального реестра аккаунтов.
- * Выполняется один раз при первичном запуске сайта.
- */
-function initializeDatabase() {
-    if (!localStorage.getItem('forum_users_db')) {
-        const initialUsers = {
-            'Qumestlies_Shawty': { 
-                password: '123', 
-                group: 'founder', 
-                verified: true, 
-                avatar: 'https://i.postimg.cc/mDCHYg8g/aries.png' 
-            },
-            'Sam_Mason': { 
-                password: '123', 
-                group: 'ga', 
-                verified: true, 
-                avatar: 'https://i.postimg.cc/44f88S6n/user1.png' 
-            },
-            'Aries_Player': { 
-                password: '123', 
-                group: 'user', 
-                verified: false, 
-                avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' 
-            }
-        };
-        localStorage.setItem('forum_users_db', JSON.stringify(initialUsers));
-    }
+const App = {
+    user: localStorage.getItem('active_session') || null,
+    activeNodeKey: 'dev_news',
+    activeThreadId: null,
 
-    if (!localStorage.getItem('forum_content_db')) {
-        const initialContent = {
-            chat: {
-                title: 'Общий чат игроков',
-                threads: [
-                    {
-                        id: 'th-default-1',
-                        title: 'Официальный запуск нового веб-портала Aries RP',
-                        creator: 'Qumestlies_Shawty',
-                        posts: [
-                            { 
-                                author: 'Qumestlies_Shawty', 
-                                text: 'Приветствуем всех игроков! Мы полностью обновили движок форума. Теперь база данных работает автономно в вашем браузере, аватарки загружаются напрямую с компьютера, а верификация полностью соответствует оригинальным алгоритмам XenForo.' 
-                            },
-                            { 
-                                author: 'Sam_Mason', 
-                                text: 'Прекрасная работа. Проверил систему изменения профилей — всё работает моментально и без задержек!' 
-                            }
-                        ]
-                    }
-                ]
-            },
-            gos: { title: 'Государственные структуры', threads: [] },
-            ghetto: { title: 'Уличные группировки (Ghetto)', threads: [] },
-            complaints: { title: 'Жалобы на администрацию', threads: [] }
-        };
-        localStorage.setItem('forum_content_db', JSON.stringify(initialContent));
-    }
-}
-
-// Запуск инициализации данных
-initializeDatabase();
-
-// Глобальные переменные рантайма
-let forumUsers = JSON.parse(localStorage.getItem('forum_users_db'));
-let forumData = JSON.parse(localStorage.getItem('forum_content_db'));
-let activeNode = 'chat';
-let activeThread = null;
-let currentUser = localStorage.getItem('forum_session_user') || null;
-let isRegisterMode = false;
-
-// Сохранение изменений рантайма в локальное хранилище браузера
-function synchronizationStorage() {
-    localStorage.setItem('forum_users_db', JSON.stringify(forumUsers));
-    localStorage.setItem('forum_content_db', JSON.stringify(forumData));
-}
-
-/**
- * Аутентификация и контроль сессий
- */
-function updateAuthStatusBar() {
-    const block = document.getElementById('auth-top-block');
-    if (currentUser) {
-        const user = forumUsers[currentUser] || { group: 'user' };
-        let styleClass = 'xf-glow-user';
-        
-        if (user.group === 'founder') styleClass = 'xf-glow-founder';
-        else if (user.group === 'ga') styleClass = 'xf-glow-ga';
-        else if (user.group === 'admin') styleClass = 'xf-glow-admin';
-
-        block.innerHTML = `
-            Добро пожаловать, <span class="${styleClass}" style="cursor:pointer; font-weight:700;" onclick="openUserProfile('${currentUser}')">${currentUser}</span>
-            <span style="color:#2a2a42; margin:0 10px;">|</span>
-            <a href="#" onclick="processLogout(event)" style="color:var(--xf-red); text-decoration:none; font-weight:600;">Выйти</a>
-        `;
-    } else {
-        block.innerHTML = `
-            <button class="xf-btn" style="padding:6px 14px; font-size:11px;" onclick="openAuthModal(false)">Войти</button>
-            <button class="xf-btn" style="padding:6px 14px; font-size:11px; background:#1b1b2a; border:1px solid #2a2a42; margin-left:6px;" onclick="openAuthModal(true)">Регистрация</button>
-        `;
-    }
-    evaluateAdminPrivileges();
-}
-
-function openAuthModal(regMode) {
-    isRegisterMode = regMode;
-    document.getElementById('auth-username').value = '';
-    document.getElementById('auth-password').value = '';
-    renderAuthFormActions();
-    document.getElementById('modal-auth').style.display = 'flex';
-}
-
-function renderAuthFormActions() {
-    const title = document.getElementById('auth-modal-title');
-    const container = document.getElementById('auth-action-box');
-    
-    if (isRegisterMode) {
-        title.innerText = "Создание учетной записи";
-        container.innerHTML = `
-            <button class="xf-btn" style="width:100%; padding:14px;" onclick="processRegister()">Зарегистрировать аккаунт</button>
-            <p style="font-size:12px; text-align:center; color:#8f8f9f; margin-top:15px; cursor:pointer; margin-bottom:0;" onclick="changeAuthMode(false)">Уже зарегистрированы? Авторизоваться</p>
-        `;
-    } else {
-        title.innerText = "Авторизация на портале";
-        container.innerHTML = `
-            <button class="xf-btn" style="width:100%; padding:14px;" onclick="processLogin()">Выполнить вход</button>
-            <p style="font-size:12px; text-align:center; color:#8f8f9f; margin-top:15px; cursor:pointer; margin-bottom:0;" onclick="changeAuthMode(true)">Новый пользователь? Создать аккаунт</p>
-        `;
-    }
-}
-
-function changeAuthMode(mode) {
-    isRegisterMode = mode;
-    renderAuthFormActions();
-}
-
-function processRegister() {
-    const username = document.getElementById('auth-username').value.trim();
-    const password = document.getElementById('auth-password').value.trim();
-
-    if (!username || !password) return alert('Ошибка: Все поля ввода обязательны к заполнению.');
-    if (username.length < 3) return alert('Ошибка: Никнейм не может быть короче 3-х символов.');
-    if (forumUsers[username]) return alert('Ошибка: Пользователь с таким никнеймом уже зарегистрирован.');
-
-    forumUsers[username] = {
-        password: password,
-        group: 'user',
-        verified: false,
-        avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png'
-    };
-    
-    synchronizationStorage();
-    currentUser = username;
-    localStorage.setItem('forum_session_user', currentUser);
-    
-    closeModal('modal-auth');
-    updateAuthStatusBar();
-    renderContentArea();
-}
-
-function processLogin() {
-    const username = document.getElementById('auth-username').value.trim();
-    const password = document.getElementById('auth-password').value.trim();
-
-    if (!username || !password) return alert('Ошибка: Введите регистрационные данные.');
-    
-    const targetUser = forumUsers[username];
-    if (!targetUser || targetUser.password !== password) {
-        return alert('Ошибка: Неверное имя пользователя или секретный пароль.');
-    }
-
-    currentUser = username;
-    localStorage.setItem('forum_session_user', currentUser);
-    
-    closeModal('modal-auth');
-    updateAuthStatusBar();
-    renderContentArea();
-}
-
-function processLogout(event) {
-    event.preventDefault();
-    currentUser = null;
-    localStorage.removeItem('forum_session_user');
-    updateAuthStatusBar();
-    renderContentArea();
-}
-
-function evaluateAdminPrivileges() {
-    const btn = document.getElementById('admin-panel-btn');
-    if (!currentUser) {
-        btn.style.display = 'none';
-        return;
-    }
-    const user = forumUsers[currentUser];
-    if (user && (user.group === 'founder' || user.group === 'ga' || user.group === 'admin')) {
-        btn.style.display = 'block';
-    } else {
-        btn.style.display = 'none';
-    }
-}
-
-/**
- * Системный конвертер файлов и менеджер аватарок
- */
-function handleAvatarUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    if (file.size > 3145728) return alert('Ошибка: Максимальный размер аватара не должен превышать 3 МБ.');
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const base64Content = e.target.result;
-        if (forumUsers[currentUser]) {
-            forumUsers[currentUser].avatar = base64Content;
-            synchronizationStorage();
-            document.getElementById('p-ava').src = base64Content;
-            renderContentArea();
+    init() {
+        // Проверяем и разворачиваем дерево разделов при первом запуске
+        if (!localStorage.getItem('forum_nodes_data')) {
+            const initialTree = {
+                // Раздел 1: Жалобы
+                'comp_adm': { title: '🔨 Жалобы на администрацию сервера', path: 'Жалобы / Администрация', threads: [] },
+                'comp_gos': { title: '🚓 Жалобы на сотрудников гос. структур', path: 'Жалобы / Государственные организации', threads: [] },
+                'comp_ghetto': { title: '🥷 Жалобы на членов уличных группировок (Гетто)', path: 'Жалобы / Банды', threads: [] },
+                'comp_players': { title: '👤 Жалобы на игроков не состоящих в организациях', path: 'Жалобы / Игроки', threads: [] },
+                
+                // Раздел 2: Восстановления / Амнистии
+                'appeal_unban': { title: '🔓 Заявления на амнистию (Разбан аккаунтов)', path: 'Амнистии и Восстановления', threads: [] },
+                'appeal_restore': { title: '🔄 Заявления на восстановление в должностях/рангах', path: 'Амнистии и Восстановления', threads: [] },
+                
+                // Раздел 3: Организации -> Государственные
+                'gos_lspd': { title: '🔵 [Гос] Сhannel LSPD (Полиция г. Лос-Сантос)', path: 'Организации / Государственные фракции / LSPD', threads: [] },
+                'gos_fbi': { title: '🕵️‍♂️ [Гос] Federal Bureau of Investigation (ФБР)', path: 'Организации / Государственные фракции / FBI', threads: [] },
+                'gos_army': { title: '🪖 [Гос] Army Area 51 (Сухопутные войска)', path: 'Организации / Государственные фракции / Армия', threads: [] },
+                
+                // Раздел 3: Организации -> Банды / Мафии
+                'ghetto_grove': { title: '🟢 [Банды] Grove Street Gang', path: 'Организации / Нелегальные структуры / Гетто / Grove Street', threads: [] },
+                'ghetto_ballas': { title: '🟣 [Банды] East Side Ballas Gang', path: 'Организации / Нелегальные структуры / Гетто / Ballas', threads: [] },
+                'mafia_lcn': { title: '💼 [Мафии] La Cosa Nostra', path: 'Организации / Нелегальные структуры / Мафии / LCN', threads: [] },
+                'mafia_yakuza': { title: '⚔️ [Мафии] Yakuza Syndicate', path: 'Организации / Нелегальные структуры / Мафии / Yakuza', threads: [] },
+                
+                // Кастомные разделы от разработчика
+                'dev_news': { 
+                    title: '📢 Технические обновления и патчноуты разработчиков', 
+                    path: 'Официальный раздел / Новости', 
+                    threads: [
+                        { 
+                            id: 't-welcome', 
+                            title: 'Добро пожаловать на обновленный веб-портал Aries Portal v6.0', 
+                            creator: 'Qumestlies_Shawty', 
+                            posts: [{ author: 'Qumestlies_Shawty', text: 'Приветствуем! Форум переведен на компонентную SPA-архитектуру по технологиям топовых игровых проектов. Пользуйтесь!' }] 
+                        }
+                    ] 
+                },
+                'market_estate': { title: '🏠 [Торговля] Продажа и покупка недвижимости (Дома/Бизнесы)', path: 'Игровой процесс / Рынок', threads: [] },
+                'market_cars': { title: '🚗 [Торговля] Продажа и покупка транспортных средств', path: 'Игровой процесс / Рынок', threads: [] }
+            };
+            localStorage.setItem('forum_nodes_data', JSON.stringify(initialTree));
         }
-    };
-    reader.readAsDataURL(file);
-}
 
-/**
- * Движок рендеринга контента (SPA Router / Renderer)
- */
-function switchNode(nodeKey) {
-    if (!forumData[nodeKey]) return;
-    activeNode = nodeKey;
-    activeThread = null;
-    
-    document.querySelectorAll('.xf-node-row').forEach(element => {
-        element.classList.remove('active');
-    });
-    document.getElementById(`n-${nodeKey}`).classList.add('active');
-    renderContentArea();
-}
+        this.renderAuthBar();
+        this.renderMenu();
+        this.route(this.activeNodeKey);
+        this.checkAdminPrivileges();
+    },
 
-function renderContentArea() {
-    const runtimeContainer = document.getElementById('xen-content-render');
-    const targetNode = forumData[activeNode];
-    
-    if (activeThread) {
-        renderThreadContext(runtimeContainer);
-        return;
-    }
+    getTree() {
+        return JSON.parse(localStorage.getItem('forum_nodes_data'));
+    },
 
-    let nodeHeaderHTML = `
-        <div style="display:flex; justify-content:space-between; margin-bottom:25px; align-items:center;">
-            <h2 style="margin:0; text-transform:uppercase; font-size:20px; letter-spacing:0.5px; font-weight:800;">
-                ${targetNode.title}
-            </h2>
-            <button class="xf-btn" onclick="openThreadCreationForm()">+ Создать новую тему</button>
-        </div>
-    `;
+    saveTree(data) {
+        localStorage.setItem('forum_nodes_data', JSON.stringify(data));
+    },
 
-    if (targetNode.threads.length === 0) {
-        nodeHeaderHTML += `
-            <div style="text-align:center; padding:60px 20px; color:#555566; background:var(--bg-canvas); border:1px dashed var(--border-weak); border-radius:4px;">
-                <p style="margin:0; font-size:15px; font-weight:500;">В данном разделе обсуждения отсутствуют</p>
-                <p style="margin:5px 0 0 0; font-size:12px;">Станьте первым, кто создаст тему в этом узле!</p>
+    renderMenu() {
+        const nav = document.getElementById('nodes-navigation-list');
+        if (!nav) return;
+        
+        const tree = this.getTree();
+        nav.innerHTML = `<div class="sidebar-title">Навигация портала</div>`;
+        
+        for (let key in tree) {
+            nav.innerHTML += `<a href="#" class="nav-link" id="node-${key}" onclick="App.route('${key}')">${tree[key].title}</a>`;
+        }
+    },
+
+    renderAuthBar() {
+        const bar = document.getElementById('runtime-auth-zone');
+        if (!bar) return;
+
+        if (this.user) {
+            const db = AuthModule.getRegistry();
+            const uData = db[this.user] || { glow: 'glow-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
+            bar.innerHTML = `
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <img class="avatar-mini" src="${uData.avatar}"> 
+                    <span class="${uData.glow}" style="cursor:pointer; font-weight:700; font-size:15px;" onclick="ProfileCore.open()">
+                        ${this.user}
+                    </span>
+                    <button class="btn-core" style="padding:8px 16px; font-size:10px; background:#1c1c2b;" onclick="AuthModule.logout()">Выйти</button>
+                </div>
+            `;
+        } else {
+            bar.innerHTML = `
+                <button class="btn-core" style="padding:10px 20px; font-size:11px;" onclick="AuthModule.open(false)">Войти / Регистрация</button>
+            `;
+        }
+    },
+
+    checkAdminPrivileges() {
+        const btn = document.getElementById('ui-adm-btn');
+        if (!btn) return;
+        
+        if (!this.user) {
+            btn.style.display = 'none';
+            return;
+        }
+        
+        const u = AuthModule.getRegistry()[this.user];
+        if (u && (u.glow === 'glow-founder' || u.glow === 'glow-spec' || u.glow === 'glow-admin')) {
+            btn.style.display = 'block';
+        } else {
+            btn.style.display = 'none';
+        }
+    },
+
+    route(nodeKey) {
+        this.activeNodeKey = nodeKey;
+        this.activeThreadId = null;
+        
+        document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+        const activeLink = document.getElementById(`node-${nodeKey}`);
+        if (activeLink) activeLink.classList.add('active');
+        
+        this.render();
+    },
+
+    render() {
+        const view = document.getElementById('render-forum-core');
+        if (!view) return;
+
+        const tree = this.getTree();
+        const node = tree[this.activeNodeKey];
+        if (!node) return;
+
+        if (this.activeThreadId) {
+            this.renderThread(view, node);
+            return;
+        }
+
+        let html = `
+            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; letter-spacing:0.5px;">${node.path}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; border-bottom:1px solid var(--border-color); padding-bottom:15px;">
+                <h2 style="margin:0; font-size:24px; font-weight:800; color:#fff;">${node.title}</h2>
+                <button class="btn-core" onclick="App.openCreateThreadForm()">+ Создать тему</button>
             </div>
         `;
-    } else {
-        targetNode.threads.forEach(thread => {
-            nodeHeaderHTML += `
-                <div class="xf-thread-row" onclick="loadThreadContext('${thread.id}')">
-                    <div>
-                        <div style="font-weight:700; color:#ffffff; font-size:15px; line-height:1.4;">${thread.title}</div>
-                        <div style="font-size:12px; color:#6f6f7f; margin-top:6px; display:flex; align-items:center;">
-                            Автор темы: <span style="color:#a5a5b5; margin-left:4px; font-weight:600;">${thread.creator}</span>
-                            <span style="margin:0 8px;">•</span>
-                            Сообщений: ${thread.posts.length}
-                        </div>
+
+        if (!node.threads || node.threads.length === 0) {
+            html += `
+                <div style="text-align:center; padding:60px 20px; color:var(--text-muted);">
+                    <div style="font-size:40px; margin-bottom:10px;">📂</div>
+                     В данном подразделе ещё нет тем для обсуждения. Будьте первым!
+                </div>`;
+        } else {
+            node.threads.forEach(t => {
+                html += `
+                    <div style="background:#09090f; padding:18px 24px; border:1px solid var(--border-color); border-radius:4px; margin-bottom:12px; cursor:pointer; transition:0.15s;" onmouseover="this.style.borderColor='#31314d'" onmouseout="this.style.borderColor='var(--border-color)'" onclick="App.openThread('${t.id}')">
+                        <div style="font-weight:700; font-size:16px; color:#fff; margin-bottom:6px;">${t.title}</div>
+                        <div style="font-size:12px; color:var(--text-muted);">Автор публикации: <span style="color:#8e8eaf;">${t.creator}</span> | Сообщений: ${t.posts.length}</div>
                     </div>
-                    <div style="font-size:20px; color:var(--border-strong);">➔</div>
+                `;
+            });
+        }
+        view.innerHTML = html;
+    },
+
+    openThread(id) { 
+        this.activeThreadId = id; 
+        this.render(); 
+    },
+
+    renderThread(view, node) {
+        const thread = node.threads.find(t => t.id === this.activeThreadId);
+        if (!thread) {
+            this.activeThreadId = null;
+            this.render();
+            return;
+        }
+
+        let html = `
+            <button class="btn-core" style="background:#1c1c2b; margin-bottom:25px; padding:8px 16px; font-size:11px;" onclick="App.route('${this.activeNodeKey}')">↩ Вернуться назад</button>
+            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">${node.path}</div>
+            <h2 style="color:#fff; margin:0 0 30px 0; font-size:22px; font-weight:800; border-bottom:1px solid var(--border-color); padding-bottom:15px;">${thread.title}</h2>
+        `;
+
+        const userDb = AuthModule.getRegistry();
+        thread.posts.forEach(p => {
+            const u = userDb[p.author] || { glow: 'glow-user', badge: 'badge-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
+            html += `
+                <div style="display:grid; grid-template-columns:210px 1fr; background:#08080d; border:1px solid var(--border-color); border-radius:4px; margin-bottom:16px; overflow:hidden;">
+                    <div style="background:#0c0c14; padding:25px 15px; text-align:center; border-right:1px solid var(--border-color);">
+                        <img class="avatar-round" src="${u.avatar}" style="width:80px; height:80px;">
+                        <div style="margin-top:12px; font-size:15px;"><span class="${u.glow}">${p.author}</span></div>
+                        <div class="badge-role ${u.badge}">${u.badge.replace('badge-', '').toUpperCase()}</div>
+                    </div>
+                    <div style="padding:25px; white-space:pre-wrap; font-size:15px; line-height:1.6; color:#d2d2de;">${p.text}</div>
                 </div>
             `;
         });
-    }
-    runtimeContainer.innerHTML = nodeHeaderHTML;
-}
 
-function loadThreadContext(id) {
-    activeThread = id;
-    renderContentArea();
-}
-
-function renderThreadContext(container) {
-    const thread = forumData[activeNode].threads.find(t => t.id === activeThread);
-    if (!thread) {
-        activeThread = null;
-        renderContentArea();
-        return;
-    }
-
-    let threadHTML = `
-        <button class="xf-btn" style="background:#1b1b2a; border:1px solid var(--border-medium); margin-bottom:20px;" onclick="exitThreadContext()">
-            ↩ Возврат в раздел
-        </button>
-        <h2 style="margin:0 0 25px 0; font-size:22px; font-weight:800; color:#ffffff; border-bottom:1px solid var(--border-weak); padding-bottom:15px;">
-            ${thread.title}
-        </h2>
-    `;
-
-    thread.posts.forEach(post => {
-        const userMeta = forumUsers[post.author] || { group: 'user', verified: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
-        
-        let groupClass = 'xf-glow-user';
-        let bannerClass = 'xf-banner-user';
-        let bannerTitle = 'Пользователь';
-
-        if (userMeta.group === 'founder') {
-            groupClass = 'xf-glow-founder'; bannerClass = 'xf-banner-founder'; bannerTitle = 'Основатель';
-        } else if (userMeta.group === 'ga') {
-            groupClass = 'xf-glow-ga'; bannerClass = 'xf-banner-ga'; bannerTitle = 'Гл. Администратор';
-        } else if (userMeta.group === 'admin') {
-            groupClass = 'xf-glow-admin'; bannerClass = 'xf-banner-admin'; bannerTitle = 'Администратор';
+        if (this.user) {
+            html += `
+                <div style="margin-top:30px; background: #08080d; padding: 20px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    <div style="font-size:13px; font-weight:bold; margin-bottom:10px; color:#fff;">Быстрый ответ в тему:</div>
+                    <textarea class="input-field" id="post-reply-text" rows="5" placeholder="Напишите ваше сообщение..." style="margin-bottom:15px;"></textarea>
+                    <button class="btn-core" onclick="App.sendReply()">Отправить ответ</button>
+                </div>
+            `;
+        } else {
+            html += `<p style="text-align:center; color:var(--text-muted); margin-top:25px; font-size:14px;">Вы должны <a href="#" style="color:var(--brand-red); font-weight:bold;" onclick="AuthModule.open(false)">войти</a>, чтобы оставлять сообщения.</p>`;
         }
+        view.innerHTML = html;
+    },
 
-        const verificationBadge = userMeta.verified ? `<span class="instagram-verified-badge"></span>` : '';
-
-        threadHTML += `
-            <div class="xf-post-block">
-                <div class="xf-post-userzone">
-                    <img class="xf-post-avatar" src="${userMeta.avatar}" onclick="openUserProfile('${post.author}')">
-                    <div style="margin-top:10px; font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        <span class="${groupClass}">${post.author}</span>${verificationBadge}
-                    </div>
-                    <div class="xf-user-banner ${bannerClass}">${bannerTitle}</div>
-                </div>
-                <div class="xf-post-main">
-                    <div style="white-space:pre-wrap; word-break:break-word;">${post.text}</div>
-                </div>
-            </div>
-        `;
-    });
-
-    if (currentUser) {
-        threadHTML += `
-            <div style="margin-top:30px; background:var(--bg-canvas); padding:20px; border-radius:4px; border:1px solid var(--border-weak);">
-                <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:8px; text-transform:uppercase; font-weight:700;">Быстрый ответ от имени ${currentUser}</label>
-                <textarea class="xf-input" id="thread-reply-textarea" rows="5" placeholder="Введите текст вашего сообщения..."></textarea>
-                <button class="xf-btn" onclick="submitPostReply()">Опубликовать ответ</button>
-            </div>
-        `;
-    } else {
-        threadHTML += `
-            <div style="text-align:center; padding:20px; color:#6f6f7f; margin-top:25px; background:#0e0e16; border-radius:4px; border:1px solid var(--border-weak);">
-                Чтобы принять участие в обсуждении, вам необходимо <a href="#" style="color:var(--xf-red); font-weight:700;" onclick="openAuthModal(false)">Авторизоваться</a> или <a href="#" style="color:#fff; font-weight:700;" onclick="openAuthModal(true)">Зарегистрироваться</a>
-            </div>
-        `;
-    }
-
-    container.innerHTML = threadHTML;
-}
-
-function exitThreadContext() {
-    activeThread = null;
-    renderContentArea();
-}
-
-function submitPostReply() {
-    const text = document.getElementById('thread-reply-textarea').value.trim();
-    if (!text) return alert('Ошибка: Нельзя отправить пустое сообщение.');
-
-    const thread = forumData[activeNode].threads.find(t => t.id === activeThread);
-    thread.posts.push({
-        author: currentUser,
-        text: text
-    });
-
-    synchronizationStorage();
-    renderContentArea();
-}
-
-function openThreadCreationForm() {
-    if (!currentUser) return alert('Ошибка: Создавать новые обсуждения могут только авторизованные пользователи.');
-    
-    const container = document.getElementById('xen-content-render');
-    container.innerHTML = `
-        <h2 style="margin:0 0 20px 0; text-transform:uppercase; font-size:20px; font-weight:800;">Создание новой темы в разделе</h2>
-        <div style="background:var(--bg-canvas); padding:25px; border-radius:4px; border:1px solid var(--border-weak);">
-            <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px; text-transform:uppercase;">Название темы обсуждения</label>
-            <input class="xf-input" id="new-thread-title" placeholder="Кратко сформулируйте суть темы">
-            
-            <label style="font-size:11px; color:#8f8f9f; display:block; margin-bottom:5px; text-transform:uppercase;">Содержимое первого сообщения</label>
-            <textarea class="xf-input" id="new-thread-text" rows="8" placeholder="Опишите проблему или предложение детально..."></textarea>
-            
-            <div style="margin-top:10px;">
-                <button class="xf-btn" onclick="submitNewThread()">Опубликовать тему</button>
-                <button class="xf-btn" style="background:#1b1b2a; border:1px solid var(--border-medium);" onclick="exitThreadContext()">Отмена</button>
-            </div>
-        </div>
-    `;
-}
-
-function submitNewThread() {
-    const title = document.getElementById('new-thread-title').value.trim();
-    const text = document.getElementById('new-thread-text').value.trim();
-
-    if (!title || !text) return alert('Ошибка: Заполните заголовок и текст публикации.');
-
-    const generatedID = 'th-' + Date.now();
-    forumData[activeNode].threads.push({
-        id: generatedID,
-        title: title,
-        creator: currentUser,
-        posts: [{ author: currentUser, text: text }]
-    });
-
-    synchronizationStorage();
-    activeThread = generatedID;
-    renderContentArea();
-}
-
-/**
- * Профили и Модальное управление инфраструктурой
- */
-function openUserProfile(name) {
-    const user = forumUsers[name];
-    if (!user) return;
-
-    document.getElementById('p-ava').src = user.avatar;
-    document.getElementById('p-nick').innerText = name;
-    document.getElementById('p-banner').innerText = user.group.toUpperCase();
-
-    const bannerElement = document.getElementById('p-banner');
-    bannerElement.className = 'xf-user-banner';
-    if (user.group === 'founder') bannerElement.classList.add('xf-banner-founder');
-    else if (user.group === 'ga') bannerElement.classList.add('xf-banner-ga');
-    else if (user.group === 'admin') bannerElement.classList.add('xf-banner-admin');
-    else bannerElement.classList.add('xf-banner-user');
-
-    const labelUploader = document.getElementById('p-upload-label');
-    if (name === currentUser) {
-        labelUploader.style.display = 'block';
-    } else {
-        labelUploader.style.display = 'none';
-    }
-
-    document.getElementById('modal-profile').style.display = 'flex';
-}
-
-function openAdminModal() {
-    const selector = document.getElementById('adm-user');
-    selector.innerHTML = '';
-    
-    for (let username in forumUsers) {
-        selector.innerHTML += `<option value="${username}">${username}</option>`;
-    }
-    document.getElementById('modal-admin').style.display = 'flex';
-}
-
-function saveAdminData() {
-    const selectedUser = document.getElementById('adm-user').value;
-    const selectedGroup = document.getElementById('adm-group').value;
-    const isVerified = document.getElementById('adm-ver').value === 'yes';
-
-    if (forumUsers[selectedUser]) {
-        forumUsers[selectedUser].group = selectedGroup;
-        forumUsers[selectedUser].verified = isVerified;
+    sendReply() {
+        const text = document.getElementById('post-reply-text').value.trim();
+        if (!text) return alert('Сообщение не может быть пустым!');
         
-        synchronizationStorage();
-        closeModal('modal-admin');
-        updateAuthStatusBar();
-        renderContentArea();
+        const tree = this.getTree();
+        const thread = tree[this.activeNodeKey].threads.find(t => t.id === this.activeThreadId);
+        
+        thread.posts.push({ author: this.user, text: text });
+        this.saveTree(tree);
+        this.render();
+    },
+
+    openCreateThreadForm() {
+        if (!this.user) return alert('Только авторизованные пользователи могут открывать обсуждения!');
+        const view = document.getElementById('render-forum-core');
+        
+        view.innerHTML = `
+            <h2 style="color:#fff; font-weight:800; font-size:22px; margin-bottom:25px;">Создание новой темы</h2>
+            <label style="font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Название обсуждения</label>
+            <input class="input-field" id="new-t-title" placeholder="Введите понятный заголовок темы">
+            
+            <label style="font-size:12px; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Суть темы / Текст публикации</label>
+            <textarea class="input-field" id="new-t-text" rows="8" placeholder="Опишите ваше предложение, жалобу или заявление подробно..."></textarea>
+            
+            <div style="display:flex; gap:10px;">
+                <button class="btn-core" onclick="App.submitThread()">Опубликовать на форуме</button>
+                <button class="btn-core" style="background:#1c1c2b;" onclick="App.render()">Отмена</button>
+            </div>
+        `;
+    },
+
+    submitThread() {
+        const title = document.getElementById('new-t-title').value.trim();
+        const text = document.getElementById('new-t-text').value.trim();
+        if (!title || !text) return alert('Все поля обязательны к заполнению!');
+
+        const tree = this.getTree();
+        const id = 'thread-' + Date.now();
+        
+        tree[this.activeNodeKey].threads.push({
+            id: id,
+            title: title,
+            creator: this.user,
+            posts: [{ author: this.user, text: text }]
+        });
+        
+        this.saveTree(tree);
+        this.activeThreadId = id;
+        this.render();
     }
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-}
-
-// Первичный запуск системных процессов
-updateAuthStatusBar();
-renderContentArea();
+};
