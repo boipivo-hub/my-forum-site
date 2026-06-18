@@ -1,12 +1,12 @@
 // ==========================================================================
-// ARIES ROLE PLAY - SUPREME FOUNDER SPA ENGINE v6.5
+// ARIES ROLE PLAY - SUPREME FOUNDER SPA ENGINE v6.7
 // ==========================================================================
 
 // --- МОДУЛЬ 1: СИСТЕМА УЧЕТНЫХ ЗАПИСЕЙ ---
 const AuthModule = {
     init() {
-        // Если база пуста или в ней нет твоего аккаунта - делаем полный сброс
         let checkDb = localStorage.getItem('user_registry');
+        // Если база пуста или твой ник исчез — делаем сброс для выдачи прав
         if (!checkDb || !checkDb.includes('Qumestlies_Shawtys')) {
             localStorage.removeItem('user_registry');
             localStorage.removeItem('active_session');
@@ -14,7 +14,6 @@ const AuthModule = {
 
         if (!localStorage.getItem('user_registry')) {
             const defaults = {
-                // Создаем твой аккаунт Владельца
                 'Qumestlies_Shawtys': { 
                     password: '123', 
                     glow: 'glow-founder', 
@@ -22,12 +21,9 @@ const AuthModule = {
                     banned: false, 
                     avatar: 'https://i.postimg.cc/mDCHYg8g/aries.png' 
                 },
-                // Тестовые аккаунты для проверки админки
-                'Tony_Stark': { password: '123', glow: 'glow-user', badge: 'badge-user', banned: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' },
-                'Sam_Mason': { password: '123', glow: 'glow-user', badge: 'badge-user', banned: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' }
+                'Tony_Stark': { password: '123', glow: 'glow-user', badge: 'badge-user', banned: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' }
             };
             localStorage.setItem('user_registry', JSON.stringify(defaults));
-            // Автоматически авторизуем тебя как Создателя
             localStorage.setItem('active_session', 'Qumestlies_Shawtys');
         }
     },
@@ -80,7 +76,7 @@ const AuthModule = {
     }
 };
 
-// --- МОДУЛЬ 2: ДЕРЕВО КАТЕГОРИЙ И РАЗДЕЛОВ ---
+// --- МОДУЛЬ 2: КАТЕГОРИИ ФОРУМА ---
 const ForumNodes = {
     tree: {
         'dev_news': { 
@@ -89,14 +85,13 @@ const ForumNodes = {
             threads: [
                 { 
                     id: 't-1', 
-                    title: 'Запуск глобальной панели Создателя проекта', 
+                    title: 'Обновление профилей: Поддержка GIF-аватарок активна', 
                     creator: 'Qumestlies_Shawtys', 
-                    posts: [{ author: 'Qumestlies_Shawtys', text: 'Уважаемые игроки, я успешно вывел полноценную панель управления форумом. Модификации стилей работают автономно!' }] 
+                    posts: [{ author: 'Qumestlies_Shawtys', text: 'Кликните на свой ник или аватарку в правом верхнем углу, чтобы открыть редактор личного профиля.' }] 
                 }
             ]
         },
         'comp_adm': { title: '🔨 Жалобы на Администрацию', path: 'Жалобы / Администрация', threads: [] },
-        'comp_players': { title: '👤 Жалобы на игроков', path: 'Жалобы / Игроки', threads: [] },
         'org_fbi': { title: '🕵️‍♂️ [Гос] Federal Bureau of Investigation', path: 'Организации / FBI', threads: [] },
         'org_grove': { title: '🟢 [Гетто] Grove Street Gang', path: 'Организации / Grove', threads: [] }
     },
@@ -117,7 +112,60 @@ const ForumNodes = {
     }
 };
 
-// --- МОДУЛЬ 3: АДМИНИСТРАТИВНЫЙ ИНТЕРФЕЙС И МОДЕРАЦИЯ ---
+// --- МОДУЛЬ 3: УПРАВЛЕНИЕ ЛИЧНЫМ ПРОФИЛЕМ (НИК И GIF СМЕНА) ---
+const ProfileCore = {
+    open() { 
+        const db = AuthModule.getRegistry();
+        if(!db[App.user]) return;
+        
+        document.getElementById('m-profile').style.display = 'flex'; 
+        document.getElementById('new-profile-nick').value = App.user;
+        document.getElementById('my-profile-avatar-view').src = db[App.user].avatar || 'https://i.postimg.cc/9Q2g9g6y/user2.png'; 
+    },
+    close() { document.getElementById('m-profile').style.display = 'none'; },
+    upload(event) {
+        const file = event.target.files[0];
+        if(!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) { 
+            // Сохраняем картинку/анимированный GIF в формате Base64
+            document.getElementById('my-profile-avatar-view').src = e.target.result; 
+        };
+        reader.readAsDataURL(file);
+    },
+    saveData() {
+        const newNick = document.getElementById('new-profile-nick').value.trim();
+        const base64Img = document.getElementById('my-profile-avatar-view').src;
+        let db = AuthModule.getRegistry();
+        
+        if(!newNick) return alert('Никнейм не может быть пустым!');
+        
+        // Если меняется ник
+        if(newNick !== App.user) {
+            if(db[newNick]) return alert('Этот никнейм уже кем-то занят!');
+            
+            // Переносим все данные аккаунта на новый никнейм
+            db[newNick] = db[App.user];
+            delete db[App.user];
+            
+            // Если создатель переименовал себя, защищаем сессию, обновляя код проверки везде
+            if(App.user === 'Qumestlies_Shawtys') {
+                return alert('Критическое предупреждение: Переименование системного аккаунта Создателя заблокировано во избежание потери прав доступа.');
+            }
+            
+            App.user = newNick;
+            localStorage.setItem('active_session', newNick);
+        }
+        
+        db[App.user].avatar = base64Img;
+        AuthModule.saveRegistry(db);
+        this.close(); 
+        window.location.reload();
+    }
+};
+
+// --- МОДУЛЬ 4: АДМИН-ПАНЕЛЬ СОЗДАТЕЛЯ ---
 const AdminPanel = {
     open() {
         if(App.user !== 'Qumestlies_Shawtys') {
@@ -172,7 +220,7 @@ const AdminPanel = {
     }
 };
 
-// --- МОДУЛЬ 4: СУПЕРВИЗОР ИНТЕРФЕЙСА (SPA ЯДРО) ---
+// --- МОДУЛЬ 5: ДИСПЕТЧЕР ИНТЕРФЕЙСА (SPA ЯДРО) ---
 const App = {
     user: null,
     activeNodeKey: 'dev_news',
@@ -185,7 +233,7 @@ const App = {
         
         this.renderAuthBar();
         ForumNodes.renderMenu();
-        this.checkAdminButton(); // Программно генерируем кнопку управления
+        this.checkAdminButton();
         this.route(this.activeNodeKey);
         
         const sel = document.getElementById('adm-target-user');
@@ -198,8 +246,8 @@ const App = {
             const uData = AuthModule.getRegistry()[this.user] || { glow: 'glow-user', badge: 'badge-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
             bar.innerHTML = `
                 <div style="display:flex; align-items:center;">
-                    <img class="avatar-mini" src="${uData.avatar}"> 
-                    <span class="${uData.glow}" style="margin-left:10px; font-weight:bold; font-size:14px;">${this.user}</span>
+                    <img class="avatar-mini" src="${uData.avatar}" onclick="ProfileCore.open()"> 
+                    <span class="${uData.glow}" style="margin-left:10px; font-weight:bold; font-size:14px; cursor:pointer;" onclick="ProfileCore.open()">${this.user}</span>
                     <button class="btn-core" style="padding:6px 12px; font-size:11px; background:#1b1b2a; border:1px solid #2c2c42; margin-left:15px;" onclick="AuthModule.logout()">Выйти</button>
                 </div>
             `;
@@ -208,7 +256,6 @@ const App = {
         }
     },
     checkAdminButton() {
-        // Если залогинен Создатель — создаем кнопку в левом меню на лету
         if (this.user === 'Qumestlies_Shawtys') {
             const navMenu = document.getElementById('nodes-navigation-list');
             if (navMenu && !document.getElementById('ui-adm-btn')) {
