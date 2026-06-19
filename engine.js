@@ -1,5 +1,5 @@
 // ==========================================================================
-// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v9.0 (STABLE NODE ENGINE)
+// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v9.5 (VERIFICATION UPDATE)
 // ==========================================================================
 
 const firebaseConfig = {
@@ -12,19 +12,18 @@ let GlobalUsers = {};
 let GlobalNodes = {};
 let isFirstLoad = true;
 
-// Слушаем изменения в облаке в реальном времени
 dbRef.on('value', (snapshot) => {
     const data = snapshot.val() || {};
     
     GlobalUsers = data.users || {};
     GlobalNodes = data.nodes || {};
     
-    // Начальная структура, если база пустая
     if (!data.users || !data.users['Qumestlies_Shawtys']) {
         GlobalUsers['Qumestlies_Shawtys'] = {
             password: 'sxdqamigosxdqs',
             glow: 'glow-founder',
             badge: 'badge-founder',
+            verify: 'v-blue-fill',
             banned: false,
             avatar: 'https://i.postimg.cc/mDCHYg8g/aries.png'
         };
@@ -43,7 +42,6 @@ dbRef.on('value', (snapshot) => {
         dbRef.set({ users: GlobalUsers, nodes: GlobalNodes });
     }
     
-    // Восстановление сессии при самом первом открытии сайта
     if (isFirstLoad) {
         const savedSession = localStorage.getItem('active_session');
         if (savedSession && GlobalUsers[savedSession] && !GlobalUsers[savedSession].banned) {
@@ -85,7 +83,7 @@ const AuthModule = {
         if(GlobalUsers[u]) return alert('Этот никнейм занят!');
         
         firebase.database().ref('users/' + u).set({
-            password: p, glow: 'glow-user', badge: 'badge-user', banned: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png'
+            password: p, glow: 'glow-user', badge: 'badge-user', verify: 'none', banned: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png'
         }).then(() => {
             localStorage.setItem('active_session', u);
             App.user = u;
@@ -173,6 +171,7 @@ const AdminPanel = {
         const u = GlobalUsers[target];
         document.getElementById('adm-set-glow').value = u.glow || 'glow-user';
         document.getElementById('adm-set-badge').value = u.badge || 'badge-user';
+        document.getElementById('adm-set-verify').value = u.verify || 'none';
         document.getElementById('adm-set-ban').value = u.banned ? 'yes' : 'no';
     },
     save() {
@@ -181,22 +180,24 @@ const AdminPanel = {
         
         let glowValue = document.getElementById('adm-set-glow').value;
         let badgeValue = document.getElementById('adm-set-badge').value;
+        let verifyValue = document.getElementById('adm-set-verify').value;
         const isBan = document.getElementById('adm-set-ban').value === 'yes';
         
         if(isBan) {
             if(target === 'Qumestlies_Shawtys') return alert('Себя банить нельзя!');
             glowValue = 'glow-banned';
             badgeValue = 'badge-banned';
+            verifyValue = 'none';
         }
         
         firebase.database().ref('users/' + target).update({
-            glow: glowValue, badge: badgeValue, banned: isBan
+            glow: glowValue, badge: badgeValue, verify: verifyValue, banned: isBan
         });
         this.close();
     }
 };
 
-// --- МОДУЛЬ СОЗДАНИЯ РАЗДЕЛОВ НА ЛЕТУ ---
+// --- МОДУЛЬ СОЗДАНИЯ РАЗДЕЛОВ ---
 const NodeManager = {
     open() {
         if(App.user !== 'Qumestlies_Shawtys') return alert('Доступно только Создателю!');
@@ -208,7 +209,6 @@ const NodeManager = {
         const path = document.getElementById('node-new-path').value.trim();
         if(!title || !path) return alert('Заполните все поля!');
         
-        // Генерируем уникальный ключ для нового раздела базы данных
         const nodeKey = 'node_' + Date.now();
         
         firebase.database().ref('nodes/' + nodeKey).set({
@@ -218,7 +218,7 @@ const NodeManager = {
             document.getElementById('node-new-title').value = '';
             document.getElementById('node-new-path').value = '';
             this.close();
-            App.route(nodeKey); // Сразу переходим в созданный раздел
+            App.route(nodeKey);
         });
     }
 };
@@ -244,10 +244,15 @@ const App = {
         if(!bar) return;
         if(this.user && GlobalUsers[this.user]) {
             const uData = GlobalUsers[this.user];
+            // Рендер галочки в шапке профиля, если она выдана
+            let vHtml = '';
+            if(uData.verify && uData.verify !== 'none') {
+                vHtml = `<span class="verified-badge ${uData.verify}"></span>`;
+            }
             bar.innerHTML = `
                 <div style="display:flex; align-items:center;">
                     <img class="avatar-mini" src="${uData.avatar}" onclick="ProfileCore.open()"> 
-                    <span class="${uData.glow}" style="margin-left:10px; font-weight:bold; font-size:14px; cursor:pointer;" onclick="ProfileCore.open()">${this.user}</span>
+                    <span class="${uDataData = uData.glow}" style="margin-left:10px; font-weight:bold; font-size:14px; cursor:pointer;" onclick="ProfileCore.open()">${this.user}${vHtml}</span>
                     <button class="btn-core" style="padding:6px 12px; font-size:11px; background:#1b1b2a; border:1px solid #2c2c42; margin-left:15px;" onclick="AuthModule.logout()">Выйти</button>
                 </div>
             `;
@@ -342,12 +347,19 @@ const App = {
         if(thread.posts) {
             const postsArray = Array.isArray(thread.posts) ? thread.posts : Object.values(thread.posts);
             postsArray.forEach(p => {
-                const u = GlobalUsers[p.author] || { glow: 'glow-user', badge: 'badge-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
+                const u = GlobalUsers[p.author] || { glow: 'glow-user', badge: 'badge-user', verify: 'none', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
+                
+                // Рендерим выбранную галочку возле ника в посте
+                let vHtml = '';
+                if(u.verify && u.verify !== 'none') {
+                    vHtml = `<span class="verified-badge ${u.verify}"></span>`;
+                }
+
                 html += `
                     <div class="post-row">
                         <div class="post-author-zone">
                             <img class="avatar-round" src="${u.avatar}">
-                            <div style="margin-top:12px;"><span class="${u.glow}" style="font-size:14px;">${p.author}</span></div>
+                            <div style="margin-top:12px;"><span class="${u.glow}" style="font-size:14px;">${p.author}${vHtml}</span></div>
                             <div class="badge-role ${u.badge}">${u.badge.replace('badge-', '').toUpperCase()}</div>
                         </div>
                         <div class="post-text-zone">${p.text}</div>
