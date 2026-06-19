@@ -260,7 +260,7 @@ const App = {
         
         let html = `
             <div style="font-size:11px; color:#555; text-transform:uppercase; margin-bottom:5px; font-weight:bold;">${node.path}</div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; border-bottom:1px solid var(--border-color); padding-bottom:15px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; border-bottom:1px solid var(--border-color); padding-bottom:15px; flex-wrap:wrap; gap:10px;">
                 <h2 style="margin:0; font-size:22px; font-weight:800; color:#fff;">${node.title}</h2>
                 <button class="btn-core" onclick="App.openCreateThreadForm()">+ Создать тему</button>
             </div>
@@ -292,13 +292,13 @@ const App = {
             thread.posts.forEach(p => {
                 const u = GlobalUsers[p.author] || { glow: 'glow-user', badge: 'badge-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
                 html += `
-                    <div style="display:grid; grid-template-columns:190px 1fr; background:#08080d; border:1px solid var(--border-color); border-radius:5px; margin-bottom:15px; overflow:hidden;">
-                        <div style="background:#0b0b12; padding:20px; text-align:center; border-right:1px solid var(--border-color);">
+                    <div class="post-row">
+                        <div class="post-author-zone">
                             <img class="avatar-round" src="${u.avatar}">
                             <div style="margin-top:12px;"><span class="${u.glow}" style="font-size:14px;">${p.author}</span></div>
                             <div class="badge-role ${u.badge}">${u.badge.replace('badge-', '').toUpperCase()}</div>
                         </div>
-                        <div style="padding:25px; white-space:pre-wrap; color:#cdcdff; font-size:14px; line-height:1.6;">${p.text}</div>
+                        <div class="post-text-zone">${p.text}</div>
                     </div>
                 `;
             });
