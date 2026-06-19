@@ -100,7 +100,7 @@
             .post-row { grid-template-columns: 1fr; }
             .post-author-zone { border-right: none; border-bottom: 1px solid var(--border-color); padding: 15px; display: flex; flex-direction: column; align-items: center; }
             .post-text-zone { padding: 15px; }
-            #m-auth > div, #m-profile > div, #m-admin > div { width: 90% !important; box-sizing: border-box; padding: 20px !important; }
+            #m-auth > div, #m-profile > div, #m-admin > div, #m-create-node > div { width: 90% !important; box-sizing: border-box; padding: 20px !important; }
         }
     </style>
 </head>
@@ -170,6 +170,20 @@
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button class="btn-core" onclick="AdminPanel.save()" style="flex:1;">Применить настройки</button>
                 <button class="btn-core" onclick="AdminPanel.close()" style="background:#222; width:90px;">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="m-create-node" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
+        <div style="background:var(--bg-card); border:1px solid var(--border-color); padding:30px; border-radius:6px; width:360px;">
+            <h3 style="margin-top:0; color:#fff; font-weight:800;">📦 Создание нового раздела</h3>
+            <label style="font-size:12px; color:#555; display:block; margin-bottom:5px;">Название (с иконкой):</label>
+            <input type="text" id="node-new-title" class="input-field" placeholder="Например: 🟢 [Гетто] Los Santos Vagos">
+            <label style="font-size:12px; color:#555; display:block; margin-bottom:5px;">Путь / Подкатегория:</label>
+            <input type="text" id="node-new-path" class="input-field" placeholder="Например: Организации / Гетто">
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn-core" onclick="NodeManager.submit()" style="flex:1;">Создать раздел</button>
+                <button class="btn-core" onclick="NodeManager.close()" style="background:#222; width:80px;">Отмена</button>
             </div>
         </div>
     </div>
