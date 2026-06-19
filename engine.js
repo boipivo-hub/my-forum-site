@@ -1,27 +1,25 @@
 // ==========================================================================
-// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v8.0 (FIREBASE INTEGRATION)
+// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v8.5 (STABLE SYNC)
 // ==========================================================================
 
-// Инициализация Firebase с твоей базой данных
 const firebaseConfig = {
     databaseURL: "https://aries-forum-default-rtdb.europe-west1.firebasedatabase.app/" 
 };
 firebase.initializeApp(firebaseConfig);
 const dbRef = firebase.database().ref();
 
-// Глобальное оперативное состояние клиента
 let GlobalUsers = {};
 let GlobalNodes = {};
+let isFirstLoad = true;
 
 // Слушаем изменения в облаке в реальном времени
 dbRef.on('value', (snapshot) => {
     const data = snapshot.val() || {};
     
-    // Синхронизируем локальные объекты с сервером
     GlobalUsers = data.users || {};
     GlobalNodes = data.nodes || {};
     
-    // Если облако пустое (первый запуск), создаем начальную структуру
+    // Начальная структура, если база пустая
     if (!data.users || !data.users['Qumestlies_Shawtys']) {
         GlobalUsers['Qumestlies_Shawtys'] = {
             password: 'sxdqamigosxdqs',
@@ -45,7 +43,18 @@ dbRef.on('value', (snapshot) => {
         dbRef.set({ users: GlobalUsers, nodes: GlobalNodes });
     }
     
-    // Обновляем отображение у всех игроков на экране автоматически
+    // Восстановление сессии при самом первом открытии сайта
+    if (isFirstLoad) {
+        const savedSession = localStorage.getItem('active_session');
+        if (savedSession && GlobalUsers[savedSession] && !GlobalUsers[savedSession].banned) {
+            App.user = savedSession;
+        } else {
+            localStorage.removeItem('active_session');
+            App.user = null;
+        }
+        isFirstLoad = false;
+    }
+
     App.syncUI();
 });
 
@@ -81,7 +90,6 @@ const AuthModule = {
             localStorage.setItem('active_session', u);
             App.user = u;
             this.close();
-            window.location.reload();
         });
     },
     executeLogin() {
@@ -94,15 +102,16 @@ const AuthModule = {
         localStorage.setItem('active_session', u);
         App.user = u;
         this.close();
-        window.location.reload();
+        App.syncUI();
     },
     logout() {
         localStorage.removeItem('active_session');
-        window.location.reload();
+        App.user = null;
+        App.syncUI();
     }
 };
 
-// --- МОДУЛЬ 3: ПРОФИЛЬ ПРОЕКТА ---
+// --- МОДУЛЬ 3: ПРОФИЛЬ ---
 const ProfileCore = {
     open() { 
         if(!GlobalUsers[App.user]) return;
@@ -130,15 +139,17 @@ const ProfileCore = {
             let backup = GlobalUsers[App.user];
             backup.avatar = base64Img;
             
-            firebase.database().ref('users/' + newNick).set(backup);
-            firebase.database().ref('users/' + App.user).remove();
-            
-            App.user = newNick;
-            localStorage.setItem('active_session', newNick);
+            firebase.database().ref('users/' + newNick).set(backup).then(() => {
+                firebase.database().ref('users/' + App.user).remove();
+                App.user = newNick;
+                localStorage.setItem('active_session', newNick);
+                this.close();
+            });
         } else {
-            firebase.database().ref('users/' + App.user + '/avatar').set(base64Img);
+            firebase.database().ref('users/' + App.user + '/avatar').set(base64Img).then(() => {
+                this.close();
+            });
         }
-        this.close();
     }
 };
 
@@ -192,7 +203,6 @@ const App = {
     activeThreadId: null,
     
     init() {
-        this.user = localStorage.getItem('active_session');
         const sel = document.getElementById('adm-target-user');
         if(sel) { sel.onchange = () => AdminPanel.loadTargetUserData(); }
     },
@@ -228,8 +238,9 @@ const App = {
         }
     },
     checkAdminButton() {
+        const existingBtn = document.getElementById('ui-adm-btn');
         if (this.user === 'Qumestlies_Shawtys') {
-            if (!document.getElementById('ui-adm-btn')) {
+            if (!existingBtn) {
                 const navMenu = document.getElementById('nodes-navigation-list');
                 if (navMenu) {
                     const btn = document.createElement('button');
@@ -241,7 +252,6 @@ const App = {
                 }
             }
         } else {
-            const existingBtn = document.getElementById('ui-adm-btn');
             if (existingBtn) existingBtn.remove();
         }
     },
@@ -289,7 +299,9 @@ const App = {
                     <h2 style="color:#fff; margin-bottom:25px; font-size:20px; font-weight:800;">${thread.title}</h2>`;
         
         if(thread.posts) {
-            thread.posts.forEach(p => {
+            // Переводим объект постов в массив, если он пришел структурированным
+            const postsArray = Array.isArray(thread.posts) ? thread.posts : Object.values(thread.posts);
+            postsArray.forEach(p => {
                 const u = GlobalUsers[p.author] || { glow: 'glow-user', badge: 'badge-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
                 html += `
                     <div class="post-row">
@@ -318,11 +330,12 @@ const App = {
         const text = document.getElementById('post-reply-text').value.trim();
         if(!text) return;
         
-        let thread = GlobalNodes[this.activeNodeKey].threads[this.activeThreadId];
-        if(!thread.posts) thread.posts = [];
-        thread.posts.push({ author: this.user, text: text });
-        
-        firebase.database().ref('nodes/' + this.activeNodeKey + '/threads/' + this.activeThreadId + '/posts').set(thread.posts);
+        const newPost = { author: this.user, text: text };
+        // Используем push для безопасного бесконфликтного добавления ответов в ветку
+        firebase.database().ref('nodes/' + this.activeNodeKey + '/threads/' + this.activeThreadId + '/posts').push(newPost)
+        .then(() => {
+            document.getElementById('post-reply-text').value = '';
+        });
     },
     openCreateThreadForm() {
         if(!this.user) return alert('Авторизуйтесь на портале!');
@@ -344,11 +357,17 @@ const App = {
         
         const id = 'thread-' + Date.now();
         const newThread = {
-            id: id, title: title, creator: this.user, posts: [{ author: this.user, text: text }]
+            id: id,
+            title: title,
+            creator: this.user,
+            posts: {
+                "first": { author: this.user, text: text }
+            }
         };
         
         firebase.database().ref('nodes/' + this.activeNodeKey + '/threads/' + id).set(newThread).then(() => {
             this.activeThreadId = id;
+            this.render();
         });
     }
 };
