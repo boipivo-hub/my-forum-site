@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aries Role Play — Панель Создателя</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -30,6 +31,7 @@
         .logo { font-size: 20px; font-weight: 900; letter-spacing: 1px; color: #fff; }
         .logo span { color: var(--accent); }
         
+        /* Базовая сетка форума (для ПК) */
         .forum-container {
             display: grid;
             grid-template-columns: 280px 1fr;
@@ -44,6 +46,30 @@
         .nav-link:hover, .nav-link.active { background: #141424; color: #fff; }
         .main-content { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 30px; min-height: 500px; }
         
+        /* Сетка постов внутри темы (для ПК) */
+        .post-row {
+            display: grid;
+            grid-template-columns: 190px 1fr;
+            background: #08080d;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        .post-author-zone {
+            background: #0b0b12;
+            padding: 20px;
+            text-align: center;
+            border-right: 1px solid var(--border-color);
+        }
+        .post-text-zone {
+            padding: 25px;
+            white-space: pre-wrap;
+            color: #cdcdff;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
         .btn-core { background: var(--accent); color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 13px; transition: 0.2s; }
         .btn-core:hover { opacity: 0.9; transform: translateY(-1px); }
         
@@ -68,6 +94,48 @@
         .badge-admin { background: #ff3333; color: #fff; }
         .badge-user { background: #222235; color: #aaa; }
         .badge-banned { background: #111; color: #555; }
+
+        /* ========================================== */
+        /* УМНАЯ АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ ТЕЛЕФОНОВ */
+        /* ========================================== */
+        @media (max-width: 850px) {
+            header {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            .forum-container {
+                grid-template-columns: 1fr; /* Меню встает над контентом */
+                gap: 20px;
+                margin: 15px auto;
+                padding: 0 10px;
+            }
+            .main-content {
+                padding: 20px 15px;
+            }
+            /* Посты на телефоне перестраиваются в один блок сверху вниз */
+            .post-row {
+                grid-template-columns: 1fr;
+            }
+            .post-author-zone {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                padding: 15px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            .post-text-zone {
+                padding: 15px;
+            }
+            /* Модальные окна на весь экран смартфона */
+            #m-auth > div, #m-profile > div, #m-admin > div {
+                width: 90% !important;
+                box-sizing: border-box;
+                padding: 20px !important;
+            }
+        }
     </style>
 </head>
 <body>
