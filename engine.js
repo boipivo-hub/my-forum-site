@@ -1,5 +1,5 @@
 // ==========================================================================
-// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v8.5 (STABLE SYNC)
+// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v9.0 (STABLE NODE ENGINE)
 // ==========================================================================
 
 const firebaseConfig = {
@@ -33,12 +33,12 @@ dbRef.on('value', (snapshot) => {
                 title: '📢 Технические обновления разработчиков', 
                 path: 'Официально / Разработка', 
                 threads: {
-                    't-1': { id: 't-1', title: 'Форум успешно переведен на глобальную базу данных!', creator: 'Qumestlies_Shawtys', posts: [{ author: 'Qumestlies_Shawtys', text: 'Теперь все пользователи видят действия друг друга в реальном времени.' }] }
+                    't-1': { id: 't-1', title: 'Форум успешно переведен на глобальную базу данных!', creator: 'Qumestlies_Shawtys', posts: { "first": { author: 'Qumestlies_Shawtys', text: 'Теперь все пользователи видят действия друг друга в реальном времени.' } } }
                 }
             },
-            'comp_adm': { title: '🔨 Жалобы на Администрацию', path: 'Жалобы / Администрация', threads: {} },
-            'org_fbi': { title: '🕵️‍♂️ [Гос] Federal Bureau of Investigation', path: 'Организации / FBI', threads: {} },
-            'org_grove': { title: '🟢 [Гетто] Grove Street Gang', path: 'Организации / Grove', threads: {} }
+            'comp_adm': { title: '🔨 Жалобы на Администрацию', path: 'Жалобы / Администрация' },
+            'org_fbi': { title: '🕵️‍♂️ [Гос] Federal Bureau of Investigation', path: 'Организации / FBI' },
+            'org_grove': { title: '🟢 [Гетто] Grove Street Gang', path: 'Организации / Grove' }
         };
         dbRef.set({ users: GlobalUsers, nodes: GlobalNodes });
     }
@@ -196,6 +196,33 @@ const AdminPanel = {
     }
 };
 
+// --- МОДУЛЬ СОЗДАНИЯ РАЗДЕЛОВ НА ЛЕТУ ---
+const NodeManager = {
+    open() {
+        if(App.user !== 'Qumestlies_Shawtys') return alert('Доступно только Создателю!');
+        document.getElementById('m-create-node').style.display = 'flex';
+    },
+    close() { document.getElementById('m-create-node').style.display = 'none'; },
+    submit() {
+        const title = document.getElementById('node-new-title').value.trim();
+        const path = document.getElementById('node-new-path').value.trim();
+        if(!title || !path) return alert('Заполните все поля!');
+        
+        // Генерируем уникальный ключ для нового раздела базы данных
+        const nodeKey = 'node_' + Date.now();
+        
+        firebase.database().ref('nodes/' + nodeKey).set({
+            title: title,
+            path: path
+        }).then(() => {
+            document.getElementById('node-new-title').value = '';
+            document.getElementById('node-new-path').value = '';
+            this.close();
+            App.route(nodeKey); // Сразу переходим в созданный раздел
+        });
+    }
+};
+
 // --- МОДУЛЬ 5: ДИСПЕТЧЕР ИНТЕРФЕЙСА ---
 const App = {
     user: null,
@@ -209,7 +236,7 @@ const App = {
     syncUI() {
         this.renderAuthBar();
         this.renderMenu();
-        this.checkAdminButton();
+        this.checkAdminButtons();
         this.render();
     },
     renderAuthBar() {
@@ -237,12 +264,14 @@ const App = {
             nav.innerHTML += `<a href="#" class="nav-link ${activeClass}" onclick="App.route('${key}')">${GlobalNodes[key].title}</a>`;
         }
     },
-    checkAdminButton() {
-        const existingBtn = document.getElementById('ui-adm-btn');
+    checkAdminButtons() {
+        const existingAdmBtn = document.getElementById('ui-adm-btn');
+        const existingNodeBtn = document.getElementById('ui-node-btn');
+        
         if (this.user === 'Qumestlies_Shawtys') {
-            if (!existingBtn) {
-                const navMenu = document.getElementById('nodes-navigation-list');
-                if (navMenu) {
+            const navMenu = document.getElementById('nodes-navigation-list');
+            if (navMenu) {
+                if (!existingAdmBtn) {
                     const btn = document.createElement('button');
                     btn.id = 'ui-adm-btn'; btn.className = 'btn-core'; btn.style.width = '100%'; btn.style.marginTop = '20px';
                     btn.style.background = 'linear-gradient(135deg, #ff0055, #8a2387)';
@@ -250,9 +279,18 @@ const App = {
                     btn.onclick = () => AdminPanel.open();
                     navMenu.appendChild(btn);
                 }
+                if (!existingNodeBtn) {
+                    const btnNode = document.createElement('button');
+                    btnNode.id = 'ui-node-btn'; btnNode.className = 'btn-core'; btnNode.style.width = '100%'; btnNode.style.marginTop = '8px';
+                    btnNode.style.background = '#1c1c30'; btnNode.style.border = '1px solid #2c2c42';
+                    btnNode.innerHTML = '➕ Создать раздел';
+                    btnNode.onclick = () => NodeManager.open();
+                    navMenu.appendChild(btnNode);
+                }
             }
         } else {
-            if (existingBtn) existingBtn.remove();
+            if (existingAdmBtn) existingAdmBtn.remove();
+            if (existingNodeBtn) existingNodeBtn.remove();
         }
     },
     route(nodeKey) {
@@ -264,7 +302,10 @@ const App = {
         const view = document.getElementById('render-forum-core');
         if (!view) return;
         const node = GlobalNodes[this.activeNodeKey];
-        if(!node) return;
+        if(!node) {
+            view.innerHTML = `<p style="color:#444; text-align:center; padding:40px 0;">Раздел не найден или был удален.</p>`;
+            return;
+        }
         
         if(this.activeThreadId) { this.renderThread(view, node); return; }
         
@@ -299,7 +340,6 @@ const App = {
                     <h2 style="color:#fff; margin-bottom:25px; font-size:20px; font-weight:800;">${thread.title}</h2>`;
         
         if(thread.posts) {
-            // Переводим объект постов в массив, если он пришел структурированным
             const postsArray = Array.isArray(thread.posts) ? thread.posts : Object.values(thread.posts);
             postsArray.forEach(p => {
                 const u = GlobalUsers[p.author] || { glow: 'glow-user', badge: 'badge-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
@@ -331,7 +371,6 @@ const App = {
         if(!text) return;
         
         const newPost = { author: this.user, text: text };
-        // Используем push для безопасного бесконфликтного добавления ответов в ветку
         firebase.database().ref('nodes/' + this.activeNodeKey + '/threads/' + this.activeThreadId + '/posts').push(newPost)
         .then(() => {
             document.getElementById('post-reply-text').value = '';
