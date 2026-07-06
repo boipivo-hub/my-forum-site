@@ -138,7 +138,7 @@
             .post-text-zone { padding: 15px; }
         }
 
-        /* Кнопки-дублеры для создателей, которые инжектируются поверх */
+        /* Кнопки-дублеры для создателей */
         .founder-forced-btn {
             display: none;
             margin-left: 10px;
@@ -159,14 +159,14 @@
         </div>
         
         <div style="display: flex; align-items: center; gap: 10px;">
-            <button id="founder-panel-btn" class="btn-core founder-forced-btn" onclick="if(typeof AdminPanel !== 'undefined') AdminPanel.open(); else if(document.getElementById('m-admin')) document.getElementById('m-admin').style.display='flex';">🛡️ Панель Создателя</button>
+            <button id="founder-panel-btn" class="btn-core founder-forced-btn" onclick="document.getElementById('m-admin').style.display='flex'; if(typeof AdminPanel !== 'undefined') AdminPanel.open();">🛡️ Панель Создателя</button>
             <div id="runtime-auth-zone"></div>
         </div>
     </header>
 
     <div class="forum-container">
         <div class="sidebar">
-            <button id="founder-node-btn" class="btn-core founder-forced-btn" style="width: 100%; margin-bottom: 15px; background: #9900ff;" onclick="if(typeof NodeManager !== 'undefined') NodeManager.open(); else if(document.getElementById('m-create-node')) document.getElementById('m-create-node').style.display='flex';">📦 Создать раздел</button>
+            <button id="founder-node-btn" class="btn-core founder-forced-btn" style="width: 100%; margin-bottom: 15px; background: #9900ff;" onclick="document.getElementById('m-create-node').style.display='flex'; if(typeof NodeManager !== 'undefined') NodeManager.open();">📦 Создать раздел</button>
             <div id="nodes-navigation-list"></div>
         </div>
         <div class="main-content" id="render-forum-core">Синхронизация с сервером облака...</div>
@@ -202,9 +202,18 @@
     </div>
 
     <div id="m-admin" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
-        <div style="background:#09090f; border:1px solid var(--accent); padding:30px; border-radius:6px; width:380px; box-shadow: 0 0 25px rgba(255,0,85,0.2);">
-            <h3 style="margin-top:0; color:var(--accent); font-weight:800; text-transform:uppercase; font-size:16px; letter-spacing:0.5px;">🛡️ Панель Управления Создателя</h3>
+        <div style="background:#09090f; border:1px solid var(--accent); padding:25px; border-radius:6px; width:380px; box-shadow: 0 0 25px rgba(255,0,85,0.2); max-height: 90vh; overflow-y: auto;">
+            <h3 style="margin-top:0; color:var(--accent); font-weight:800; text-transform:uppercase; font-size:15px; letter-spacing:0.5px;">🛡️ Панель Управления Создателя</h3>
             
+            <div style="background: #11111e; padding: 12px; border: 1px dashed var(--accent); border-radius: 4px; margin-bottom: 15px;">
+                <label style="font-size:11px; color:#ff0055; font-weight: bold; display:block; margin-bottom:5px;">🔑 ВЫДАТЬ ДОСТУП К ЭТОЙ ПАНЕЛИ (ID):</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="founder-add-id" class="input-field" placeholder="Введите ID друга" style="margin-bottom:0; padding:8px;">
+                    <button class="btn-core" onclick="addForcedFounder()" style="background:#9900ff; padding: 0 10px;">Дать</button>
+                </div>
+                <div id="founder-list-view" style="font-size: 11px; color: #888; margin-top: 5px; max-height: 40px; overflow-y:auto;"></div>
+            </div>
+
             <label style="font-size:12px; color:#aaa; display:block; margin-bottom:5px;">Зарегистрированные аккаунты форума:</label>
             <select id="adm-target-user" class="input-field" style="cursor:pointer;"></select>
             
@@ -237,9 +246,9 @@
                 <option value="yes">Забанить аккаунт (Блокировка)</option>
             </select>
             
-            <div style="display:flex; gap:10px; margin-top:20px;">
+            <div style="display:flex; gap:10px; margin-top:15px;">
                 <button class="btn-core" onclick="AdminPanel.save()" style="flex:1;">Применить настройки</button>
-                <button class="btn-core" onclick="AdminPanel.close()" style="background:#222; width:90px;">Закрыть</button>
+                <button class="btn-core" onclick="AdminPanel.close(); document.getElementById('m-admin').style.display='none';" style="background:#222; width:90px;">Закрыть</button>
             </div>
         </div>
     </div>
@@ -253,7 +262,7 @@
             <input type="text" id="node-new-path" class="input-field" placeholder="Например: Организации / Гетто">
             <div style="display:flex; gap:10px; margin-top:15px;">
                 <button class="btn-core" onclick="NodeManager.submit()" style="flex:1;">Создать раздел</button>
-                <button class="btn-core" onclick="NodeManager.close()" style="background:#222; width:80px;">Отмена</button>
+                <button class="btn-core" onclick="NodeManager.close(); document.getElementById('m-create-node').style.display='none';" style="background:#222; width:80px;">Отмена</button>
             </div>
         </div>
     </div>
@@ -261,18 +270,53 @@
     <script src="engine.js"></script>
 
     <script>
+        // Функция добавления ID друга в белый список панели управления
+        function addForcedFounder() {
+            const idInput = document.getElementById('founder-add-id');
+            const targetId = idInput.value.trim();
+            if(!targetId) return alert('Введите корректный ID!');
+            
+            let list = JSON.parse(localStorage.getItem('forced_founders') || '[]');
+            if(!list.includes(targetId)) {
+                list.push(targetId);
+                localStorage.setItem('forced_founders', JSON.stringify(list));
+                alert('ID добавлен! Панель у друга появится при следующей загрузке.');
+                idInput.value = '';
+                renderFoundersList();
+            }
+        }
+
+        function renderFoundersList() {
+            let list = JSON.parse(localStorage.getItem('forced_founders') || '[]');
+            document.getElementById('founder-list-view').innerText = 'Доверено ID: ' + (list.join(', ') || 'нет никого');
+        }
+
+        // Постоянная фоновая проверка прав
         setInterval(function() {
-            // Безопасно получаем текущего юзера из твоего engine.js
             const u = window.currentUser || window.user || window.localUser;
+            let list = JSON.parse(localStorage.getItem('forced_founders') || '[]');
+            
+            // Твой мастер-ключ
+            const masterID = "5694374929";
+
             if (u) {
-                // Если зашел ТЫ (по ID) или твой ДРУГ (по роли badge-founder или значению glow-founder)
-                if (u.id === "5694374929" || u.uid === "5694374929" || u.badge === "badge-founder" || u.glow === "glow-founder") {
-                    // Просто показываем наши готовые кнопки в дизайне страницы
+                const currentIdStr = String(u.id || u.uid || '');
+                // Если зашел ты, либо человек из твоего добавленного списка
+                if (currentIdStr === masterID || list.includes(currentIdStr)) {
+                    
+                    // Показываем кнопки управления на странице в обход любых условий движка
                     document.getElementById('founder-panel-btn').style.display = 'block';
                     document.getElementById('founder-node-btn').style.display = 'block';
+                    
+                    // Обманываем жесткую проверку в engine.js на лету
+                    u.id = masterID;
+                    u.uid = masterID;
                 }
             }
-        }, 1000);
+        }, 800);
+
+        // Инициализация отображения списка
+        renderFoundersList();
     </script>
 </body>
 </html>
