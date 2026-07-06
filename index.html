@@ -94,7 +94,7 @@
         .avatar-mini { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); cursor: pointer; }
         .avatar-round { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #1c1c30; }
 
-        /* ИДЕАЛЬНО КРУГЛЫЕ ГАЛОЧКИ */
+        /* ИДЕАЛЬНО КРУГЛЫЕ ГАЛОЧКИ БЕЗ ИСКАЖЕНИЙ ФОРМЫ И СРЕЗОВ */
         .verified-badge {
             display: inline-block;
             width: 13px;
@@ -137,35 +137,17 @@
             .post-author-zone { border-right: none; border-bottom: 1px solid var(--border-color); padding: 15px; display: flex; flex-direction: column; align-items: center; }
             .post-text-zone { padding: 15px; }
         }
-
-        .founder-forced-btn {
-            display: none;
-            margin-left: 10px;
-        }
-
-        /* ОТЛАДОЧНОЕ ОКНО */
-        #debug-box {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.85);
-            border: 1px solid var(--accent);
-            padding: 12px;
-            border-radius: 5px;
-            font-size: 12px;
-            z-index: 99999;
-            color: #fff;
-            max-width: 300px;
-            font-family: monospace;
-        }
     </style>
 </head>
 <body>
 
     <header>
         <div class="logo-wrapper">
-            <svg class="logo-triangle" viewBox="0 0 100 100">
-                <polygon points="50,15 90,85 10,85" fill="#ff0055"/>
+            <svg class="logo-triangle" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="50,12 10,88 90,88" fill="#7a001e" />
+                <polygon points="50,15 14,85 86,85" fill="#c61030" />
+                <polygon points="50,38 30,75 70,75" fill="#0c0c14" />
+                <polygon points="50,15 50,38 30,75 14,85" fill="#e61c40" opacity="0.4" />
             </svg>
             <div class="logo">ARIES<span>ROLEPLAY</span></div>
         </div>
@@ -173,54 +155,43 @@
     </header>
 
     <div class="forum-container">
-        <div class="sidebar">
-            <div id="nodes-navigation-list"></div>
-            <button id="founder-panel-btn" class="btn-core founder-forced-btn" style="width: 100%; margin-top: 15px; background: linear-gradient(135deg, #ff0055, #9900ff);" onclick="AdminPanel.open()">🛡️ Админ-Панель</button>
-            <button id="founder-node-btn" class="btn-core founder-forced-btn" style="width: 100%; margin-top: 8px; background: #141424; border: 1px solid var(--border-color);" onclick="NodeManager.open()">📦 Создать раздел</button>
-        </div>
-        <div class="main-content" id="render-forum-core">
-            Загрузка форумных разделов движка...
-        </div>
+        <div class="sidebar" id="nodes-navigation-list"></div>
+        <div class="main-content" id="render-forum-core">Синхронизация с сервером облака...</div>
     </div>
 
-    <div id="m-auth" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:9999;">
+    <div id="m-auth" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9998;">
         <div style="background:var(--bg-card); border:1px solid var(--border-color); padding:30px; border-radius:6px; width:340px;">
-            <h3 style="margin-top:0; text-align:center; color:#fff;">Вход / Регистрация</h3>
-            <input type="text" id="auth-username" class="input-field" placeholder="Игровой никнейм">
-            <input type="password" id="auth-password" class="input-field" placeholder="Пароль аккаунта">
-            <div style="display:flex; gap:10px;">
-                <button class="btn-core" onclick="App.login()" style="flex:1;">Войти</button>
-                <button class="btn-core" onclick="App.register()" style="flex:1; background:#222;">Создать</button>
-            </div>
+            <h3 id="auth-title" style="margin-top:0; color:#fff; font-weight:800;">Вход в систему</h3>
+            <input type="text" id="f-user" class="input-field" placeholder="Введите Ваш никнейм">
+            <input type="password" id="f-pass" class="input-field" placeholder="Введите пароль">
+            <div id="auth-btn-container"></div>
+            <button class="btn-core" style="background:#222; width:100%; margin-top:8px;" onclick="AuthModule.close()">Отмена</button>
         </div>
     </div>
 
-    <div id="m-profile" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:9999;">
-        <div style="background:var(--bg-card); border:1px solid var(--border-color); padding:30px; border-radius:6px; width:360px; text-align:center;">
-            <h3 style="margin-top:0; color:#fff;">Личный Кабинет</h3>
-            <img id="my-profile-avatar-view" src="" class="avatar-round" style="margin-bottom:15px;">
-            <input type="text" id="new-profile-nick" class="input-field" readonly style="opacity:0.6;">
-            <input type="text" id="new-profile-avatar-url" class="input-field" placeholder="URL нового аватара">
-            <div style="display:flex; gap:10px;">
-                <button class="btn-core" onclick="ProfileCore.saveData()" style="flex:1;">Сохранить</button>
-                <button class="btn-core" onclick="ProfileCore.close()" style="flex:1; background:#222;">Закрыть</button>
+    <div id="m-profile" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9998;">
+        <div style="background:var(--bg-card); border:1px solid var(--border-color); padding:30px; border-radius:6px; width:350px; text-align:center;">
+            <h3 style="margin-top:0; color:#fff; font-weight:800;">Настройки профиля</h3>
+            <div style="margin-bottom:20px;">
+                <img id="my-profile-avatar-view" class="avatar-round" src="" style="margin-bottom:10px; display:inline-block;"><br>
+                <label class="btn-core" style="background:#1c1c30; font-size:11px; padding:6px 12px;">
+                    Выбрать аватарку/GIF
+                    <input type="file" id="profile-file-input" accept="image/*" style="display:none;" onchange="ProfileCore.upload(event)">
+                </label>
+            </div>
+            <label style="font-size:12px; color:#555; text-align:left; display:block; margin-bottom:5px;">Изменить игровой никнейм:</label>
+            <input type="text" id="new-profile-nick" class="input-field" placeholder="Новый никнейм">
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn-core" onclick="ProfileCore.saveData()" style="flex:1;">Сохранить изменения</button>
+                <button class="btn-core" onclick="ProfileCore.close()" style="background:#222; width:80px;">Закрыть</button>
             </div>
         </div>
     </div>
 
     <div id="m-admin" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
-        <div style="background:#09090f; border:1px solid var(--accent); padding:25px; border-radius:6px; width:380px; box-shadow: 0 0 25px rgba(255,0,85,0.2); max-height: 90vh; overflow-y: auto;">
-            <h3 style="margin-top:0; color:var(--accent); font-weight:800; text-transform:uppercase; font-size:15px; letter-spacing:0.5px;">🛡️ Панель Управления Создателя</h3>
+        <div style="background:#09090f; border:1px solid var(--accent); padding:30px; border-radius:6px; width:380px; box-shadow: 0 0 25px rgba(255,0,85,0.2);">
+            <h3 style="margin-top:0; color:var(--accent); font-weight:800; text-transform:uppercase; font-size:16px; letter-spacing:0.5px;">🛡️ Панель Управления Создателя</h3>
             
-            <div style="background: #11111e; padding: 12px; border: 1px dashed var(--accent); border-radius: 4px; margin-bottom: 15px;">
-                <label style="font-size:11px; color:#ff0055; font-weight: bold; display:block; margin-bottom:5px;">👑 ДАТЬ ДОСТУП ПО НИКНЕЙМУ:</label>
-                <div style="display: flex; gap: 5px;">
-                    <input type="text" id="founder-add-nick" class="input-field" placeholder="Введите точный НИК друга" style="margin-bottom:0; padding:8px;">
-                    <button class="btn-core" onclick="addFounderByNick()" style="background:#9900ff; padding: 0 10px;">Дать</button>
-                </div>
-                <div id="founder-list-view" style="font-size: 11px; color: #888; margin-top: 5px; max-height: 40px; overflow-y:auto;"></div>
-            </div>
-
             <label style="font-size:12px; color:#aaa; display:block; margin-bottom:5px;">Зарегистрированные аккаунты форума:</label>
             <select id="adm-target-user" class="input-field" style="cursor:pointer;"></select>
             
@@ -253,9 +224,9 @@
                 <option value="yes">Забанить аккаунт (Блокировка)</option>
             </select>
             
-            <div style="display:flex; gap:10px; margin-top:15px;">
+            <div style="display:flex; gap:10px; margin-top:20px;">
                 <button class="btn-core" onclick="AdminPanel.save()" style="flex:1;">Применить настройки</button>
-                <button class="btn-core" onclick="AdminPanel.close(); document.getElementById('m-admin').style.display='none';" style="background:#222; width:90px;">Закрыть</button>
+                <button class="btn-core" onclick="AdminPanel.close()" style="background:#222; width:90px;">Закрыть</button>
             </div>
         </div>
     </div>
@@ -269,74 +240,34 @@
             <input type="text" id="node-new-path" class="input-field" placeholder="Например: Организации / Гетто">
             <div style="display:flex; gap:10px; margin-top:15px;">
                 <button class="btn-core" onclick="NodeManager.submit()" style="flex:1;">Создать раздел</button>
-                <button class="btn-core" onclick="NodeManager.close(); document.getElementById('m-create-node').style.display='none';" style="background:#222; width:80px;">Отмена</button>
+                <button class="btn-core" onclick="NodeManager.close()" style="background:#222; width:80px;">Отмена</button>
             </div>
         </div>
     </div>
 
-    <div id="debug-box">Инициализация дебаг-панели...</div>
-
     <script src="engine.js"></script>
 
     <script>
-        function addFounderByNick() {
-            const nickInput = document.getElementById('founder-add-nick');
-            const targetNick = nickInput.value.trim();
-            if(!targetNick) return alert('Введите никнейм!');
-            
-            let list = JSON.parse(localStorage.getItem('forced_nicks') || '[]');
-            if(!list.includes(targetNick)) {
-                list.push(targetNick);
-                localStorage.setItem('forced_nicks', JSON.stringify(list));
-                alert('Ник ' + targetNick + ' добавлен! Пусть друг полностью обновит страницу.');
-                nickInput.value = '';
-                renderNicksList();
-            }
-        }
-
-        function renderNicksList() {
-            let list = JSON.parse(localStorage.getItem('forced_nicks') || '[]');
-            const block = document.getElementById('founder-list-view');
-            if(block) block.innerText = 'В списке: ' + (list.join(', ') || 'пусто');
-        }
-
-        // Постоянный цикл проверки прав и отладки
-        setInterval(function() {
-            const u = window.currentUser || window.user || (typeof App !== 'undefined' ? App.user : null);
-            let list = JSON.parse(localStorage.getItem('forced_nicks') || '[]');
-            const masterID = "5694374929";
-            const debugBox = document.getElementById('debug-box');
-
-            if (!debugBox) return;
-
-            if (!u) {
-                debugBox.innerHTML = "🔴 Пользователь не найден в системе (войдите в аккаунт на сайте!)";
-                return;
-            }
-
-            // Корректная обработка структуры данных
-            const detectedNick = String(typeof u === 'object' ? (u.username || u.name || u.nick || u.login || '') : u).trim();
-            const currentIdStr = String(u.id || u.uid || '');
-
-            debugBox.innerHTML = `🟢 Авторизован:<br>ID: ${currentIdStr || 'Не указан'}<br>Ник на сайте: "${detectedNick}"<br>Ищет в списке: [${list.join(', ')}]`;
-
-            // Твоя жесткая привязка Master ID или ника из списка forced_nicks
-            if (currentIdStr === masterID || detectedNick === 'Qumestlies_Shawtys' || (detectedNick && list.includes(detectedNick))) {
-                const pBtn = document.getElementById('founder-panel-btn');
-                const nBtn = document.getElementById('founder-node-btn');
-                if(pBtn) pBtn.style.display = 'block';
-                if(nBtn) nBtn.style.display = 'block';
+        // Ждем полной загрузки движка форума и данных пользователя
+        window.addEventListener('load', function() {
+            // Мастер-инъекция: подменяем старую жесткую проверку ID во всех системных функциях
+            setInterval(function() {
+                // Если в твоем engine.js используется глобальный объект пользователя (например user, currentUser, или localUser)
+                // Находим его и автоматически расширяем права, если у него стоит роль FOUNDER
+                const systemUser = window.currentUser || window.user || window.localUser || null;
                 
-                if(typeof u === 'object') {
-                    u.id = masterID;
-                    u.uid = masterID;
+                if (systemUser) {
+                    // Твой ID из базы: 5694374929
+                    if (systemUser.badge === "badge-founder" || systemUser.glow === "glow-founder") {
+                        // Маскируем ID пользователя под твой "мастер-ключ", чтобы старый engine.js открыл все админ-кнопки
+                        if (!systemUser._originalId) {
+                            systemUser._originalId = systemUser.id;
+                        }
+                        systemUser.id = "5694374929"; 
+                    }
                 }
-                
-                debugBox.innerHTML += "<br><span style='color:#00ffff;'>🔥 ПРАВА СОЗДАТЕЛЯ АКТИВИРОВАНЫ!</span>";
-            }
-        }, 500);
-
-        renderNicksList();
+            }, 500); // Проверка каждые полсекунды, работает плавно, ничего не зависает
+        });
     </script>
 </body>
 </html>
