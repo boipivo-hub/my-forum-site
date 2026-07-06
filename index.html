@@ -137,42 +137,15 @@
             .post-author-zone { border-right: none; border-bottom: 1px solid var(--border-color); padding: 15px; display: flex; flex-direction: column; align-items: center; }
             .post-text-zone { padding: 15px; }
         }
+
+        /* Кнопки-дублеры для создателей, которые инжектируются поверх */
+        .founder-forced-btn {
+            display: none;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
-
-    <script>
-        // Перехватываем инициализацию базы, чтобы подменить ID до того, как загрузится engine.js
-        const originalVal = Object.getOwnPropertyDescriptor(IDBRequest || {}, 'result'); 
-        
-        // Магия перехвата объектов: следим за появлением данных пользователя на лету
-        Object.defineProperty(Object.prototype, 'badge', {
-            get: function() { return this._badge; },
-            set: function(val) {
-                this._badge = val;
-                // Если у любого профиля роль FOUNDER — принудительно даём права создателя
-                if (val === 'badge-founder' && (this.id || this.uid)) {
-                    this.id = "5694374929"; 
-                    this.uid = "5694374929";
-                }
-            },
-            configurable: true,
-            enumerable: true
-        });
-
-        Object.defineProperty(Object.prototype, 'glow', {
-            get: function() { return this._glow; },
-            set: function(val) {
-                this._glow = val;
-                if (val === 'glow-founder' && (this.id || this.uid)) {
-                    this.id = "5694374929";
-                    this.uid = "5694374929";
-                }
-            },
-            configurable: true,
-            enumerable: true
-        });
-    </script>
 
     <header>
         <div class="logo-wrapper">
@@ -184,11 +157,18 @@
             </svg>
             <div class="logo">ARIES<span>ROLEPLAY</span></div>
         </div>
-        <div id="runtime-auth-zone"></div>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button id="founder-panel-btn" class="btn-core founder-forced-btn" onclick="if(typeof AdminPanel !== 'undefined') AdminPanel.open(); else if(document.getElementById('m-admin')) document.getElementById('m-admin').style.display='flex';">🛡️ Панель Создателя</button>
+            <div id="runtime-auth-zone"></div>
+        </div>
     </header>
 
     <div class="forum-container">
-        <div class="sidebar" id="nodes-navigation-list"></div>
+        <div class="sidebar">
+            <button id="founder-node-btn" class="btn-core founder-forced-btn" style="width: 100%; margin-bottom: 15px; background: #9900ff;" onclick="if(typeof NodeManager !== 'undefined') NodeManager.open(); else if(document.getElementById('m-create-node')) document.getElementById('m-create-node').style.display='flex';">📦 Создать раздел</button>
+            <div id="nodes-navigation-list"></div>
+        </div>
         <div class="main-content" id="render-forum-core">Синхронизация с сервером облака...</div>
     </div>
 
@@ -281,20 +261,18 @@
     <script src="engine.js"></script>
 
     <script>
-        window.addEventListener('load', function() {
-            setInterval(function() {
-                const u = window.currentUser || window.user || window.localUser;
-                if (u && (u._badge === 'badge-founder' || u._glow === 'glow-founder')) {
-                    u.id = "5694374929";
-                    u.uid = "5694374929";
-                    // Ищем скрытые кнопки админки, если вдруг движок зарендерил их невидимыми
-                    const adminBtn = document.querySelector('[onclick*="AdminPanel.open"]') || document.getElementById('admin-btn');
-                    if (adminBtn && adminBtn.style.display === 'none') {
-                        adminBtn.style.display = 'block';
-                    }
+        setInterval(function() {
+            // Безопасно получаем текущего юзера из твоего engine.js
+            const u = window.currentUser || window.user || window.localUser;
+            if (u) {
+                // Если зашел ТЫ (по ID) или твой ДРУГ (по роли badge-founder или значению glow-founder)
+                if (u.id === "5694374929" || u.uid === "5694374929" || u.badge === "badge-founder" || u.glow === "glow-founder") {
+                    // Просто показываем наши готовые кнопки в дизайне страницы
+                    document.getElementById('founder-panel-btn').style.display = 'block';
+                    document.getElementById('founder-node-btn').style.display = 'block';
                 }
-            }, 300);
-        });
+            }
+        }, 1000);
     </script>
 </body>
 </html>
