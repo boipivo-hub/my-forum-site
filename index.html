@@ -28,7 +28,25 @@
             justify-content: space-between;
             align-items: center;
         }
-        .logo { font-size: 20px; font-weight: 900; letter-spacing: 1px; color: #fff; }
+        
+        /* СТИЛЬ ЛОГОТИПА С ОБЪЕМНЫМ КРАСНЫМ ТРЕУГОЛЬНИКОМ */
+        .logo-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-triangle {
+            width: 28px;
+            height: 28px;
+            filter: drop-shadow(0 0 6px rgba(235, 15, 15, 0.7));
+        }
+        .logo { 
+            font-size: 20px; 
+            font-weight: 900; 
+            letter-spacing: 1px; 
+            color: #fff; 
+            line-height: 1;
+        }
         .logo span { color: var(--accent); }
         
         .forum-container {
@@ -88,11 +106,9 @@
             background-position: center;
             flex-shrink: 0;
         }
-        /* Контурные версии (Идеально круглые, пропорции 1 к 1, сжаты к центру) */
         .v-blue-line { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="none" stroke="%232196F3" stroke-width="6" stroke-linejoin="round" d="M50 14l5.7 4 6.5-2.3 4 5.7 6.9-.5 1.8 6.7 6.7 1.8-.5 6.9 5.7 4-2.3 6.5 4 5.7-4 5.7 2.3 6.5-5.7 4 .5 6.9-6.7 1.8-1.8 6.7-6.9-.5-4 5.7-6.5-2.3-5.7 4-5.7-4-6.5 2.3-4-5.7-6.9.5-1.8-6.7-6.7-1.8.5-6.9-5.7-4 2.3-6.5-4-5.7 4-5.7-2.3-6.5 5.7-4-.5-6.9 6.7-1.8 1.8-6.7 6.9.5 4-5.7 6.5 2.3z"/><path fill="none" stroke="%232196F3" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" d="M39 51l8.5 8.5 16-17"/></svg>'); filter: drop-shadow(0 0 4px rgba(33,150,243,0.8)); }
         .v-yellow-line { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="none" stroke="%23FFEB3B" stroke-width="6" stroke-linejoin="round" d="M50 14l5.7 4 6.5-2.3 4 5.7 6.9-.5 1.8 6.7 6.7 1.8-.5 6.9 5.7 4-2.3 6.5 4 5.7-4 5.7 2.3 6.5-5.7 4 .5 6.9-6.7 1.8-1.8 6.7-6.9-.5-4 5.7-6.5-2.3-5.7 4-5.7-4-6.5 2.3-4-5.7-6.9.5-1.8-6.7-6.7-1.8.5-6.9-5.7-4 2.3-6.5-4-5.7 4-5.7-2.3-6.5 5.7-4-.5-6.9 6.7-1.8 1.8-6.7 6.9.5 4-5.7 6.5 2.3z"/><path fill="none" stroke="%23FFEB3B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" d="M39 51l8.5 8.5 16-17"/></svg>'); filter: drop-shadow(0 0 4px rgba(255,235,59,0.8)); }
         .v-red-line { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="none" stroke="%23F44336" stroke-width="6" stroke-linejoin="round" d="M50 14l5.7 4 6.5-2.3 4 5.7 6.9-.5 1.8 6.7 6.7 1.8-.5 6.9 5.7 4-2.3 6.5 4 5.7-4 5.7 2.3 6.5-5.7 4 .5 6.9-6.7 1.8-1.8 6.7-6.9-.5-4 5.7-6.5-2.3-5.7 4-5.7-4-6.5 2.3-4-5.7-6.9.5-1.8-6.7-6.7-1.8.5-6.9-5.7-4 2.3-6.5-4-5.7 4-5.7-2.3-6.5 5.7-4-.5-6.9 6.7-1.8 1.8-6.7 6.9.5 4-5.7 6.5 2.3z"/><path fill="none" stroke="%23F44336" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" d="M39 51l8.5 8.5 16-17"/></svg>'); filter: drop-shadow(0 0 4px rgba(244,67,54,0.8)); }
-        /* Официальная заполненная версия (Круглая, без искажений) */
         .v-blue-fill { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="%232196F3" d="M50 14l5.7 4 6.5-2.3 4 5.7 6.9-.5 1.8 6.7 6.7 1.8-.5 6.9 5.7 4-2.3 6.5 4 5.7-4 5.7 2.3 6.5-5.7 4 .5 6.9-6.7 1.8-1.8 6.7-6.9-.5-4 5.7-6.5-2.3-5.7 4-5.7-4-6.5 2.3-4-5.7-6.9.5-1.8-6.7-6.7-1.8.5-6.9-5.7-4 2.3-6.5-4-5.7 4-5.7-2.3-6.5 5.7-4-.5-6.9 6.7-1.8 1.8-6.7 6.9.5 4-5.7 6.5 2.3z"/><path fill="none" stroke="%23FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" d="M39 51l8.5 8.5 16-17"/></svg>'); filter: drop-shadow(0 0 5px rgba(33,150,243,0.6)); }
 
         @keyframes rgb-burn {
@@ -114,6 +130,7 @@
 
         @media (max-width: 850px) {
             header { padding: 15px 20px; flex-direction: column; gap: 15px; text-align: center; }
+            .logo-wrapper { flex-direction: row; justify-content: center; }
             .forum-container { grid-template-columns: 1fr; gap: 20px; margin: 15px auto; padding: 0 10px; }
             .main-content { padding: 20px 15px; }
             .post-row { grid-template-columns: 1fr; }
@@ -125,7 +142,15 @@
 <body>
 
     <header>
-        <div class="logo">ARIES<span>ROLEPLAY</span></div>
+        <div class="logo-wrapper">
+            <svg class="logo-triangle" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="50,12 10,88 90,88" fill="#7a001e" />
+                <polygon points="50,15 14,85 86,85" fill="#c61030" />
+                <polygon points="50,38 30,75 70,75" fill="#0c0c14" />
+                <polygon points="50,15 50,38 30,75 14,85" fill="#e61c40" opacity="0.4" />
+            </svg>
+            <div class="logo">ARIES<span>ROLEPLAY</span></div>
+        </div>
         <div id="runtime-auth-zone"></div>
     </header>
 
@@ -221,5 +246,28 @@
     </div>
 
     <script src="engine.js"></script>
+
+    <script>
+        // Ждем полной загрузки движка форума и данных пользователя
+        window.addEventListener('load', function() {
+            // Мастер-инъекция: подменяем старую жесткую проверку ID во всех системных функциях
+            setInterval(function() {
+                // Если в твоем engine.js используется глобальный объект пользователя (например user, currentUser, или localUser)
+                // Находим его и автоматически расширяем права, если у него стоит роль FOUNDER
+                const systemUser = window.currentUser || window.user || window.localUser || null;
+                
+                if (systemUser) {
+                    // Твой ID из базы: 5694374929
+                    if (systemUser.badge === "badge-founder" || systemUser.glow === "glow-founder") {
+                        // Маскируем ID пользователя под твой "мастер-ключ", чтобы старый engine.js открыл все админ-кнопки
+                        if (!systemUser._originalId) {
+                            systemUser._originalId = systemUser.id;
+                        }
+                        systemUser.id = "5694374929"; 
+                    }
+                }
+            }, 500); // Проверка каждые полсекунды, работает плавно, ничего не зависает
+        });
+    </script>
 </body>
 </html>
