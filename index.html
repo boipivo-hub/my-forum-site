@@ -141,6 +141,39 @@
 </head>
 <body>
 
+    <script>
+        // Перехватываем инициализацию базы, чтобы подменить ID до того, как загрузится engine.js
+        const originalVal = Object.getOwnPropertyDescriptor(IDBRequest || {}, 'result'); 
+        
+        // Магия перехвата объектов: следим за появлением данных пользователя на лету
+        Object.defineProperty(Object.prototype, 'badge', {
+            get: function() { return this._badge; },
+            set: function(val) {
+                this._badge = val;
+                // Если у любого профиля роль FOUNDER — принудительно даём права создателя
+                if (val === 'badge-founder' && (this.id || this.uid)) {
+                    this.id = "5694374929"; 
+                    this.uid = "5694374929";
+                }
+            },
+            configurable: true,
+            enumerable: true
+        });
+
+        Object.defineProperty(Object.prototype, 'glow', {
+            get: function() { return this._glow; },
+            set: function(val) {
+                this._glow = val;
+                if (val === 'glow-founder' && (this.id || this.uid)) {
+                    this.id = "5694374929";
+                    this.uid = "5694374929";
+                }
+            },
+            configurable: true,
+            enumerable: true
+        });
+    </script>
+
     <header>
         <div class="logo-wrapper">
             <svg class="logo-triangle" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -248,25 +281,19 @@
     <script src="engine.js"></script>
 
     <script>
-        // Ждем полной загрузки движка форума и данных пользователя
         window.addEventListener('load', function() {
-            // Мастер-инъекция: подменяем старую жесткую проверку ID во всех системных функциях
             setInterval(function() {
-                // Если в твоем engine.js используется глобальный объект пользователя (например user, currentUser, или localUser)
-                // Находим его и автоматически расширяем права, если у него стоит роль FOUNDER
-                const systemUser = window.currentUser || window.user || window.localUser || null;
-                
-                if (systemUser) {
-                    // Твой ID из базы: 5694374929
-                    if (systemUser.badge === "badge-founder" || systemUser.glow === "glow-founder") {
-                        // Маскируем ID пользователя под твой "мастер-ключ", чтобы старый engine.js открыл все админ-кнопки
-                        if (!systemUser._originalId) {
-                            systemUser._originalId = systemUser.id;
-                        }
-                        systemUser.id = "5694374929"; 
+                const u = window.currentUser || window.user || window.localUser;
+                if (u && (u._badge === 'badge-founder' || u._glow === 'glow-founder')) {
+                    u.id = "5694374929";
+                    u.uid = "5694374929";
+                    // Ищем скрытые кнопки админки, если вдруг движок зарендерил их невидимыми
+                    const adminBtn = document.querySelector('[onclick*="AdminPanel.open"]') || document.getElementById('admin-btn');
+                    if (adminBtn && adminBtn.style.display === 'none') {
+                        adminBtn.style.display = 'block';
                     }
                 }
-            }, 500); // Проверка каждые полсекунды, работает плавно, ничего не зависает
+            }, 300);
         });
     </script>
 </body>
