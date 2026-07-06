@@ -1,79 +1,24 @@
 // ==========================================================================
-// 1. ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ И FIREBASE
+// 1. ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И НАСТРОЙКА FIREBASE
 // ==========================================================================
+// Если у тебя в HTML уже подключен Firebase Config, этот блок просто подхватит его.
+// Если нет — он использует стандартный URL твоей базы данных.
 const firebaseConfig = {
-    databaseURL: "https://aries-forum-default-rtdb.firebaseio.com" // Твоя URL базы данных Firebase
+    databaseURL: "https://aries-forum-default-rtdb.firebaseio.com"
 };
 
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
-// Глобальные хранилища данных, которые используются в твоем рендере
 let GlobalNodes = {};
 let GlobalUsers = {};
 
 // ==========================================================================
-// 2. ВСПОМОГАТЕЛЬНЫЕ МОДУЛИ (АВТОРЫ, РАЗДЕЛЫ, АДМИНКА)
+// 2. ВСПОМОГАТЕЛЬНЫЕ МОДУЛИ ДЛЯ ОКНОН (МОДАЛОК)
 // ==========================================================================
 
-// Модуль Авторизации
-const AuthModule = {
-    open() { 
-        const win = document.getElementById('m-auth');
-        if(win) win.style.display = 'flex'; 
-    },
-    close() { 
-        const win = document.getElementById('m-auth');
-        if(win) win.style.display = 'none'; 
-    },
-    submitLogin() {
-        const u = document.getElementById('f-user').value.trim();
-        const p = document.getElementById('f-pass').value.trim();
-        if(!u || !p) return alert('Заполните все поля!');
-        
-        firebase.database().ref('users').orderByChild('username').equalTo(u).once('value', snap => {
-            if(!snap.exists()) return alert('Пользователь не найден!');
-            let userData = null;
-            snap.forEach(child => { userData = child.val(); });
-            
-            if(userData.password !== p) return alert('Неверный пароль!');
-            App.user = userData.username; // Записываем ник строкой, как требует твой движок
-            localStorage.setItem('forum_session_username', userData.username);
-            this.close();
-            App.initAuthZone();
-            App.render();
-        });
-    },
-    submitRegister() {
-        const u = document.getElementById('f-user').value.trim();
-        const p = document.getElementById('f-pass').value.trim();
-        if(!u || !p) return alert('Заполните все поля!');
-        
-        const uid = 'user-' + Date.now();
-        const newUser = {
-            id: uid,
-            uid: uid,
-            username: u,
-            password: p,
-            glow: 'glow-user',
-            badge: 'badge-user',
-            verify: 'none',
-            avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png'
-        };
-        
-        firebase.database().ref('users/' + u).set(newUser).then(() => {
-            alert('Регистрация успешна!');
-            App.user = u;
-            localStorage.setItem('forum_session_username', u);
-            this.close();
-            App.initAuthZone();
-            App.render();
-        });
-    }
-};
-
-// Модуль Настройки Профиля
+// Модуль управления профилем
 const ProfileCore = {
     open() {
         if(!App.user) return;
@@ -95,21 +40,19 @@ const ProfileCore = {
     },
     saveData() {
         if(!App.user) return;
-        const newNick = document.getElementById('new-profile-nick').value.trim();
         const newAv = document.getElementById('new-profile-avatar-url').value.trim();
-        if(!newNick) return alert('Никнейм не может быть пустым!');
         
         firebase.database().ref('users/' + App.user).update({
             avatar: newAv || 'https://i.postimg.cc/9Q2g9g6y/user2.png'
         }).then(() => {
-            alert('Данные изменены!');
+            alert('Аватар успешно обновлен!');
             this.close();
             App.render();
         });
     }
 };
 
-// Панель Управления Создателя
+// Модуль Админ-Панели (Управление ролями и галочками)
 const AdminPanel = {
     open() {
         const win = document.getElementById('m-admin');
@@ -137,14 +80,14 @@ const AdminPanel = {
             badge: badge,
             verify: verify
         }).then(() => {
-            alert('Настройки аккаунта обновлены!');
+            alert('Настройки пользователя успешно применены!');
             this.close();
             App.render();
         });
     }
 };
 
-// Управление Разделами
+// Модуль создания разделов
 const NodeManager = {
     open() { 
         const win = document.getElementById('m-create-node');
@@ -156,7 +99,7 @@ const NodeManager = {
     },
     submit() {
         const title = document.getElementById('node-new-title').value.trim();
-        if(!title) return alert('Введите название!');
+        if(!title) return alert('Введите название раздела!');
         
         const key = 'node-' + Date.now();
         firebase.database().ref('nodes/' + key).set({
@@ -172,15 +115,15 @@ const NodeManager = {
 };
 
 // ==========================================================================
-// 3. ЯДРО ПРИЛОЖЕНИЯ (ОБЪЕКТ APP) — ПОЛНЫЙ ВАРИАНТ С ТВОИМ РЕНДЕРОМ
+// 3. ОСНОВНОЕ ЯДРО ФОРУМА (ОБЪЕКТ APP)
 // ==========================================================================
 const App = {
-    user: null, // Имя текущего пользователя (строка)
+    user: null, 
     activeNodeKey: null,
     activeThreadId: null,
 
     init() {
-        // Восстанавливаем авторизацию из памяти
+        // Восстановление сессии авторизации из памяти браузера
         const savedUser = localStorage.getItem('forum_session_username');
         if (savedUser) {
             this.user = savedUser;
@@ -188,13 +131,14 @@ const App = {
 
         this.initAuthZone();
 
-        // Слушаем пользователей базы данных
+        // Подгружаем базу пользователей
         firebase.database().ref('users').on('value', snap => {
             GlobalUsers = snap.val() || {};
+            this.initAuthZone();
             this.render();
         });
 
-        // Слушаем разделы базы данных
+        // Подгружаем структуру разделов и тем
         firebase.database().ref('nodes').on('value', snap => {
             GlobalNodes = snap.val() || {};
             this.renderSidebar();
@@ -209,13 +153,63 @@ const App = {
         if (this.user) {
             const uData = GlobalUsers[this.user] || { glow: 'glow-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
             zone.innerHTML = `
-                <span class="${uData.glow}" style="cursor:pointer; font-weight:600;" onclick="ProfileCore.open()">${this.user}</span>
-                <img class="avatar-mini" src="${uData.avatar}" onclick="ProfileCore.open()" style="width:32px; height:32px; border-radius:50%; margin-left:5px; vertical-align:middle;">
-                <button class="btn-core" style="background:#222; padding:6px 12px; font-size:11px; margin-left:8px;" onclick="App.logout()">Выйти</button>
+                <span class="${uData.glow}" style="cursor:pointer; font-weight:600; margin-right:10px;" onclick="ProfileCore.open()">${this.user}</span>
+                <img class="avatar-mini" src="${uData.avatar}" onclick="ProfileCore.open()" style="width:32px; height:32px; border-radius:50%; margin-right:10px; cursor:pointer; vertical-align:middle; object-fit:cover;">
+                <button class="btn-core" style="background:#222; padding:6px 12px; font-size:11px;" onclick="App.logout()">Выйти</button>
             `;
         } else {
-            zone.innerHTML = `<button class="btn-core" onclick="AuthModule.open()">Войти на портал</button>`;
+            zone.innerHTML = `<button class="btn-core" onclick="document.getElementById('m-auth').style.display='flex'">Войти на портал</button>`;
         }
+    },
+
+    login() {
+        const u = document.getElementById('auth-username').value.trim();
+        const p = document.getElementById('auth-password').value.trim();
+        if(!u || !p) return alert('Заполните все поля для входа!');
+        
+        firebase.database().ref('users/' + u).once('value', snap => {
+            if(!snap.exists()) return alert('Такой пользователь не зарегистрирован!');
+            const userData = snap.val();
+            
+            if(userData.password !== p) return alert('Введен неверный пароль!');
+            
+            this.user = userData.username;
+            localStorage.setItem('forum_session_username', userData.username);
+            document.getElementById('m-auth').style.display = 'none';
+            this.initAuthZone();
+            this.render();
+        });
+    },
+
+    register() {
+        const u = document.getElementById('auth-username').value.trim();
+        const p = document.getElementById('auth-password').value.trim();
+        if(!u || !p) return alert('Заполните все поля для регистрации!');
+        if(u.length < 3) return alert('Слишком короткий никнейм!');
+        
+        firebase.database().ref('users/' + u).once('value', snap => {
+            if(snap.exists()) return alert('Этот никнейм уже занят!');
+            
+            const uid = 'user-' + Date.now();
+            const newUser = {
+                id: uid,
+                username: u,
+                password: p,
+                glow: 'glow-user',
+                badge: 'badge-user',
+                verify: 'none',
+                avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png'
+            };
+            
+            firebase.database().ref('users/' + u).set(newUser).then(() => {
+                alert('Регистрация успешно завершена!');
+                this.user = u;
+                localStorage.setItem('forum_session_username', u);
+                document.getElementById('m-auth').style.display = 'none';
+                this.initAuthZone();
+                this.render();
+            });
+        });
     },
 
     logout() {
@@ -240,16 +234,7 @@ const App = {
         const existingAdmBtn = document.getElementById('ui-adm-btn');
         const existingNodeBtn = document.getElementById('ui-node-btn');
         
-        // Достаем кастомный список разрешенных ников (вайтлист твоего друга)
-        let allowedNicks = [];
-        try {
-            allowedNicks = JSON.parse(localStorage.getItem('forced_nicks') || '[]');
-        } catch(e) { allowedNicks = []; }
-
-        const currentNick = typeof this.user === 'string' ? this.user : '';
-        
-        // Если зашел ты ИЛИ твой друг из вайтлиста панелей
-        if (currentNick === 'Qumestlies_Shawtys' || (currentNick && allowedNicks.includes(currentNick))) {
+        if (this.user === 'Qumestlies_Shawtys') {
             const navMenu = document.getElementById('nodes-navigation-list');
             if (navMenu) {
                 if (!existingAdmBtn) {
@@ -282,20 +267,22 @@ const App = {
     },
 
     render() {
-        this.checkAdminButtons();
-
         const view = document.getElementById('render-forum-core');
         if (!view) return;
+        
+        // Постоянно проверяем права на кнопки управления в левом меню
+        this.checkAdminButtons();
+
         const node = GlobalNodes[this.activeNodeKey];
         if(!node) {
-            view.innerHTML = `<h2 style="color:#fff; font-weight:300;">Добро пожаловать на Aries Role Play<br><span style="font-size:14px; color:#555;">Выберите интересующий раздел в левом меню навигации.</span></h2>`;
+            view.innerHTML = `<p style="color:#444; text-align:center; padding:40px 0;">Раздел не найден или был удален.</p>`;
             return;
         }
         
         if(this.activeThreadId) { this.renderThread(view, node); return; }
         
         let html = `
-            <div style="font-size:11px; color:#555; text-transform:uppercase; margin-bottom:5px; font-weight:bold;">${node.path || 'Форум'}</div>
+            <div style="font-size:11px; color:#555; text-transform:uppercase; margin-bottom:5px; font-weight:bold;">${node.path}</div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; border-bottom:1px solid var(--border-color); padding-bottom:15px; flex-wrap:wrap; gap:10px;">
                 <h2 style="margin:0; font-size:22px; font-weight:800; color:#fff;">${node.title}</h2>
                 <button class="btn-core" onclick="App.openCreateThreadForm()">+ Создать тему</button>
@@ -331,17 +318,17 @@ const App = {
             postsArray.forEach(p => {
                 const u = GlobalUsers[p.author] || { glow: 'glow-user', badge: 'badge-user', verify: 'none', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
                 
-                let verifyBadge = '';
+                let vHtml = '';
                 if(u.verify && u.verify !== 'none') {
-                    verifyBadge = `<span class="verified-badge ${u.verify}"></span>`;
+                    vHtml = `<span class="verified-badge ${u.verify}"></span>`;
                 }
 
                 html += `
                     <div class="post-row">
                         <div class="post-author-zone">
-                            <img class="avatar-round" src="${u.avatar}" style="width:70px; height:70px; border-radius:50%; object-fit:cover;">
-                            <div style="margin-top:12px;"><span class="${u.glow}" style="font-size:14px;">${p.author}${verifyBadge}</span></div>
-                            <div class="badge-role ${u.badge}">${(u.badge || 'badge-user').replace('badge-', '').toUpperCase()}</div>
+                            <img class="avatar-round" src="${u.avatar}">
+                            <div style="margin-top:12px;"><span class="${u.glow}" style="font-size:14px;">${p.author}${vHtml}</span></div>
+                            <div class="badge-role ${u.badge}">${u.badge.replace('badge-', '').toUpperCase()}</div>
                         </div>
                         <div class="post-text-zone">${p.text}</div>
                     </div>
@@ -364,20 +351,16 @@ const App = {
         const text = document.getElementById('post-reply-text').value.trim();
         if(!text) return;
         
-        const authorName = typeof this.user === 'string' ? this.user : 'Пользователь';
-        const newPost = { author: authorName, text: text };
-        
+        const newPost = { author: this.user, text: text };
         firebase.database().ref('nodes/' + this.activeNodeKey + '/threads/' + this.activeThreadId + '/posts').push(newPost)
         .then(() => {
-            const area = document.getElementById('post-reply-text');
-            if(area) area.value = '';
+            document.getElementById('post-reply-text').value = '';
         });
     },
 
     openCreateThreadForm() {
         if(!this.user) return alert('Авторизуйтесь на портале!');
         const view = document.getElementById('render-forum-core');
-        if(!view) return;
         view.innerHTML = `
             <h2 style="color:#fff; font-weight:800; margin-bottom:20px;">Создание новой темы</h2>
             <input class="input-field" id="new-t-title" placeholder="Введите заголовок">
@@ -395,14 +378,12 @@ const App = {
         if(!title || !text) return alert('Заполните формы!');
         
         const id = 'thread-' + Date.now();
-        const authorName = typeof this.user === 'string' ? this.user : 'Пользователь';
-        
         const newThread = {
             id: id,
             title: title,
-            creator: authorName,
+            creator: this.user,
             posts: {
-                "first": { author: authorName, text: text }
+                "first": { author: this.user, text: text }
             }
         };
         
@@ -413,14 +394,5 @@ const App = {
     }
 };
 
-// ==========================================================================
-// 4. ТОЧКА ВХОДА И ФОНОВЫЕ СЕРВИСЫ
-// ==========================================================================
-window.onload = () => { 
-    App.init(); 
-    
-    // Каждую секунду проверяем статус админ-панелей и кнопок на экране
-    setInterval(() => { 
-        App.checkAdminButtons(); 
-    }, 1000);
-};
+// Автоматический запуск при полной загрузке страницы
+window.onload = () => { App.init(); };
