@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aries Role Play — Панель Создателя</title>
-    <!-- Подключаем Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
@@ -149,85 +148,70 @@
             position: fixed;
             bottom: 10px;
             right: 10px;
-            background: rgba(0,0,0,0.9);
-            border: 1px solid #555;
-            color: #00ff00;
-            padding: 10px;
-            font-family: monospace;
-            font-size: 11px;
-            z-index: 10000;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--accent);
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 99999;
+            color: #fff;
             max-width: 300px;
-            border-radius: 4px;
+            font-family: monospace;
         }
     </style>
 </head>
 <body>
 
-    <!-- ОКНО ОТЛАДКИ -->
-    <div id="debug-box">Ожидание авторизации...</div>
-
     <header>
         <div class="logo-wrapper">
-            <svg class="logo-triangle" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="50,12 10,88 90,88" fill="#7a001e" />
-                <polygon points="50,15 14,85 86,85" fill="#c61030" />
-                <polygon points="50,38 30,75 70,75" fill="#0c0c14" />
-                <polygon points="50,15 50,38 30,75 14,85" fill="#e61c40" opacity="0.4" />
+            <svg class="logo-triangle" viewBox="0 0 100 100">
+                <polygon points="50,15 90,85 10,85" fill="#ff0055"/>
             </svg>
             <div class="logo">ARIES<span>ROLEPLAY</span></div>
         </div>
-        
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <button id="founder-panel-btn" class="btn-core founder-forced-btn" onclick="document.getElementById('m-admin').style.display='flex'; if(typeof AdminPanel !== 'undefined') AdminPanel.open();">🛡️ Панель Создателя</button>
-            <div id="runtime-auth-zone"></div>
-        </div>
+        <div id="runtime-auth-zone"></div>
     </header>
 
     <div class="forum-container">
         <div class="sidebar">
-            <button id="founder-node-btn" class="btn-core founder-forced-btn" style="width: 100%; margin-bottom: 15px; background: #9900ff;" onclick="document.getElementById('m-create-node').style.display='flex'; if(typeof NodeManager !== 'undefined') NodeManager.open();">📦 Создать раздел</button>
             <div id="nodes-navigation-list"></div>
+            <button id="founder-panel-btn" class="btn-core founder-forced-btn" style="width: 100%; margin-top: 15px; background: linear-gradient(135deg, #ff0055, #9900ff);" onclick="AdminPanel.open()">🛡️ Админ-Панель</button>
+            <button id="founder-node-btn" class="btn-core founder-forced-btn" style="width: 100%; margin-top: 8px; background: #141424; border: 1px solid var(--border-color);" onclick="NodeManager.open()">📦 Создать раздел</button>
         </div>
-        <div class="main-content" id="render-forum-core">Синхронизация с сервером облака...</div>
+        <div class="main-content" id="render-forum-core">
+            Загрузка форумных разделов движка...
+        </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ -->
-    <div id="m-auth" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9998;">
+    <div id="m-auth" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:9999;">
         <div style="background:var(--bg-card); border:1px solid var(--border-color); padding:30px; border-radius:6px; width:340px;">
-            <h3 id="auth-title" style="margin-top:0; color:#fff; font-weight:800;">Вход в систему</h3>
-            <input type="text" id="f-user" class="input-field" placeholder="Введите Ваш никнейм">
-            <input type="password" id="f-pass" class="input-field" placeholder="Введите пароль">
-            <div id="auth-btn-container"></div>
-            <button class="btn-core" style="background:#222; width:100%; margin-top:8px;" onclick="AuthModule.close()">Отмена</button>
-        </div>
-    </div>
-
-    <!-- МОДАЛЬНОЕ ОКНО НАСТРОЙКИ ПРОФИЛЯ -->
-    <div id="m-profile" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9998;">
-        <div style="background:var(--bg-card); border:1px solid var(--border-color); padding:30px; border-radius:6px; width:350px; text-align:center;">
-            <h3 style="margin-top:0; color:#fff; font-weight:800;">Настройки профиля</h3>
-            <div style="margin-bottom:20px;">
-                <img id="my-profile-avatar-view" class="avatar-round" src="" style="margin-bottom:10px; display:inline-block;"><br>
-                <label class="btn-core" style="background:#1c1c30; font-size:11px; padding:6px 12px;">
-                    Выбрать аватарку/GIF
-                    <input type="file" id="profile-file-input" accept="image/*" style="display:none;" onchange="ProfileCore.upload(event)">
-                </label>
-            </div>
-            <label style="font-size:12px; color:#555; text-align:left; display:block; margin-bottom:5px;">Изменить игровой никнейм:</label>
-            <input type="text" id="new-profile-nick" class="input-field" placeholder="Новый никнейм">
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <button class="btn-core" onclick="ProfileCore.saveData()" style="flex:1;">Сохранить изменения</button>
-                <button class="btn-core" onclick="ProfileCore.close()" style="background:#222; width:80px;">Закрыть</button>
+            <h3 style="margin-top:0; text-align:center; color:#fff;">Вход / Регистрация</h3>
+            <input type="text" id="auth-username" class="input-field" placeholder="Игровой никнейм">
+            <input type="password" id="auth-password" class="input-field" placeholder="Пароль аккаунта">
+            <div style="display:flex; gap:10px;">
+                <button class="btn-core" onclick="App.login()" style="flex:1;">Войти</button>
+                <button class="btn-core" onclick="App.register()" style="flex:1; background:#222;">Создать</button>
             </div>
         </div>
     </div>
 
-    <!-- СУПЕР ПАНЕЛЬ УПРАВЛЕНИЯ -->
+    <div id="m-profile" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:9999;">
+        <div style="background:var(--bg-card); border:1px solid var(--border-color); padding:30px; border-radius:6px; width:360px; text-align:center;">
+            <h3 style="margin-top:0; color:#fff;">Личный Кабинет</h3>
+            <img id="my-profile-avatar-view" src="" class="avatar-round" style="margin-bottom:15px;">
+            <input type="text" id="new-profile-nick" class="input-field" readonly style="opacity:0.6;">
+            <input type="text" id="new-profile-avatar-url" class="input-field" placeholder="URL нового аватара">
+            <div style="display:flex; gap:10px;">
+                <button class="btn-core" onclick="ProfileCore.saveData()" style="flex:1;">Сохранить</button>
+                <button class="btn-core" onclick="ProfileCore.close()" style="flex:1; background:#222;">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
     <div id="m-admin" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
         <div style="background:#09090f; border:1px solid var(--accent); padding:25px; border-radius:6px; width:380px; box-shadow: 0 0 25px rgba(255,0,85,0.2); max-height: 90vh; overflow-y: auto;">
             <h3 style="margin-top:0; color:var(--accent); font-weight:800; text-transform:uppercase; font-size:15px; letter-spacing:0.5px;">🛡️ Панель Управления Создателя</h3>
             
-            <!-- ВЫДАЧА ДОСТУПА ПО НИКНЕЙМУ -->
             <div style="background: #11111e; padding: 12px; border: 1px dashed var(--accent); border-radius: 4px; margin-bottom: 15px;">
                 <label style="font-size:11px; color:#ff0055; font-weight: bold; display:block; margin-bottom:5px;">👑 ДАТЬ ДОСТУП ПО НИКНЕЙМУ:</label>
                 <div style="display: flex; gap: 5px;">
@@ -276,7 +260,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО СОЗДАНИЯ РАЗДЕЛОВ -->
     <div id="m-create-node" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
         <div style="background:var(--bg-card); border:1px solid var(--border-color); padding:30px; border-radius:6px; width:360px;">
             <h3 style="margin-top:0; color:#fff; font-weight:800;">📦 Создание нового раздела</h3>
@@ -291,7 +274,8 @@
         </div>
     </div>
 
-    <!-- ТВОЙ ENGINE -->
+    <div id="debug-box">Инициализация дебаг-панели...</div>
+
     <script src="engine.js"></script>
 
     <script>
@@ -330,19 +314,23 @@
                 return;
             }
 
-            const detectedNick = String(u.username || u.name || u.nick || u.login || u.displayName || '').trim();
+            // Корректная обработка структуры данных
+            const detectedNick = String(typeof u === 'object' ? (u.username || u.name || u.nick || u.login || '') : u).trim();
             const currentIdStr = String(u.id || u.uid || '');
 
-            debugBox.innerHTML = `🟢 Авторизован:<br>ID: ${currentIdStr}<br>Ник на сайте: "${detectedNick}"<br>Ищет в списке: [${list.join(', ')}]`;
+            debugBox.innerHTML = `🟢 Авторизован:<br>ID: ${currentIdStr || 'Не указан'}<br>Ник на сайте: "${detectedNick}"<br>Ищет в списке: [${list.join(', ')}]`;
 
-            if (currentIdStr === masterID || (detectedNick && list.includes(detectedNick))) {
+            // Твоя жесткая привязка Master ID или ника из списка forced_nicks
+            if (currentIdStr === masterID || detectedNick === 'Qumestlies_Shawtys' || (detectedNick && list.includes(detectedNick))) {
                 const pBtn = document.getElementById('founder-panel-btn');
                 const nBtn = document.getElementById('founder-node-btn');
                 if(pBtn) pBtn.style.display = 'block';
                 if(nBtn) nBtn.style.display = 'block';
                 
-                u.id = masterID;
-                u.uid = masterID;
+                if(typeof u === 'object') {
+                    u.id = masterID;
+                    u.uid = masterID;
+                }
                 
                 debugBox.innerHTML += "<br><span style='color:#00ffff;'>🔥 ПРАВА СОЗДАТЕЛЯ АКТИВИРОВАНЫ!</span>";
             }
