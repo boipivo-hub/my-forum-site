@@ -143,9 +143,28 @@
             display: none;
             margin-left: 10px;
         }
+
+        /* ОТЛАДОЧНОЕ ОКНО */
+        #debug-box {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.9);
+            border: 1px solid #555;
+            color: #00ff00;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 10000;
+            max-width: 300px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
+
+    <!-- ОКНО ОТЛАДКИ -->
+    <div id="debug-box">Ожидание авторизации...</div>
 
     <header>
         <div class="logo-wrapper">
@@ -203,12 +222,12 @@
         </div>
     </div>
 
-    <!-- СУПЕР ПАНЕЛЬ УПРАВЛЕНИЯ С ФУНКЦИЕЙ ВЫДАЧИ ПО НИКУ -->
+    <!-- СУПЕР ПАНЕЛЬ УПРАВЛЕНИЯ -->
     <div id="m-admin" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
         <div style="background:#09090f; border:1px solid var(--accent); padding:25px; border-radius:6px; width:380px; box-shadow: 0 0 25px rgba(255,0,85,0.2); max-height: 90vh; overflow-y: auto;">
             <h3 style="margin-top:0; color:var(--accent); font-weight:800; text-transform:uppercase; font-size:15px; letter-spacing:0.5px;">🛡️ Панель Управления Создателя</h3>
             
-            <!-- ФУНКЦИЯ: ВЫДАЧА ДОСТУПА ПО НИКНЕЙМУ -->
+            <!-- ВЫДАЧА ДОСТУПА ПО НИКНЕЙМУ -->
             <div style="background: #11111e; padding: 12px; border: 1px dashed var(--accent); border-radius: 4px; margin-bottom: 15px;">
                 <label style="font-size:11px; color:#ff0055; font-weight: bold; display:block; margin-bottom:5px;">👑 ДАТЬ ДОСТУП ПО НИКНЕЙМУ:</label>
                 <div style="display: flex; gap: 5px;">
@@ -272,10 +291,9 @@
         </div>
     </div>
 
-    <!-- ТВОЙ СТАБИЛЬНЫЙ ENGINE -->
+    <!-- ТВОЙ ENGINE -->
     <script src="engine.js"></script>
 
-    <!-- ОФИЦИАЛЬНЫЙ СКРИПТ ПРИВЯЗКИ ПО НИКУ -->
     <script>
         function addFounderByNick() {
             const nickInput = document.getElementById('founder-add-nick');
@@ -286,7 +304,7 @@
             if(!list.includes(targetNick)) {
                 list.push(targetNick);
                 localStorage.setItem('forced_nicks', JSON.stringify(list));
-                alert('Доступ выдан! Ник ' + targetNick + ' теперь имеет права Создателя.');
+                alert('Ник ' + targetNick + ' добавлен! Пусть друг полностью обновит страницу.');
                 nickInput.value = '';
                 renderNicksList();
             }
@@ -294,32 +312,39 @@
 
         function renderNicksList() {
             let list = JSON.parse(localStorage.getItem('forced_nicks') || '[]');
-            document.getElementById('founder-list-view').innerText = 'Разрешено никам: ' + (list.join(', ') || 'нет никого');
+            const block = document.getElementById('founder-list-view');
+            if(block) block.innerText = 'В списке: ' + (list.join(', ') || 'пусто');
         }
 
-        // Проверка в фоне каждые полсекунды
+        // Постоянный цикл проверки прав и отладки
         setInterval(function() {
-            const u = window.currentUser || window.user || window.localUser;
+            const u = window.currentUser || window.user || (typeof App !== 'undefined' ? App.user : null);
             let list = JSON.parse(localStorage.getItem('forced_nicks') || '[]');
-            
-            // Твой жесткий мастер-ID
             const masterID = "5694374929";
+            const debugBox = document.getElementById('debug-box');
 
-            if (u) {
-                const currentIdStr = String(u.id || u.uid || '');
-                const currentNick = String(u.username || u.name || u.nick || '').trim();
+            if (!debugBox) return;
 
-                // Если это ты по ID ИЛИ если ник игрока добавлен в твой список
-                if (currentIdStr === masterID || (currentNick && list.includes(currentNick))) {
-                    
-                    // Показываем кнопки управления на странице
-                    document.getElementById('founder-panel-btn').style.display = 'block';
-                    document.getElementById('founder-node-btn').style.display = 'block';
-                    
-                    // Обходим защиту внутри engine.js: подменяем его данные на твои права
-                    u.id = masterID;
-                    u.uid = masterID;
-                }
+            if (!u) {
+                debugBox.innerHTML = "🔴 Пользователь не найден в системе (войдите в аккаунт на сайте!)";
+                return;
+            }
+
+            const detectedNick = String(u.username || u.name || u.nick || u.login || u.displayName || '').trim();
+            const currentIdStr = String(u.id || u.uid || '');
+
+            debugBox.innerHTML = `🟢 Авторизован:<br>ID: ${currentIdStr}<br>Ник на сайте: "${detectedNick}"<br>Ищет в списке: [${list.join(', ')}]`;
+
+            if (currentIdStr === masterID || (detectedNick && list.includes(detectedNick))) {
+                const pBtn = document.getElementById('founder-panel-btn');
+                const nBtn = document.getElementById('founder-node-btn');
+                if(pBtn) pBtn.style.display = 'block';
+                if(nBtn) nBtn.style.display = 'block';
+                
+                u.id = masterID;
+                u.uid = masterID;
+                
+                debugBox.innerHTML += "<br><span style='color:#00ffff;'>🔥 ПРАВА СОЗДАТЕЛЯ АКТИВИРОВАНЫ!</span>";
             }
         }, 500);
 
