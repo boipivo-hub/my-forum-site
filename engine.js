@@ -1,8 +1,6 @@
 // ==========================================================================
-// 1. ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И НАСТРОЙКА FIREBASE
+// 1. ИНИЦИАЛИЗАЦИЯ И НАСТРОЙКА FIREBASE
 // ==========================================================================
-// Если у тебя в HTML уже подключен Firebase Config, этот блок просто подхватит его.
-// Если нет — он использует стандартный URL твоей базы данных.
 const firebaseConfig = {
     databaseURL: "https://aries-forum-default-rtdb.firebaseio.com"
 };
@@ -15,10 +13,9 @@ let GlobalNodes = {};
 let GlobalUsers = {};
 
 // ==========================================================================
-// 2. ВСПОМОГАТЕЛЬНЫЕ МОДУЛИ ДЛЯ ОКНОН (МОДАЛОК)
+// 2. ВСПОМОГАТЕЛЬНЫЕ МОДУЛИ ДЛЯ МОДАЛЬНЫХ ОКНОН
 // ==========================================================================
 
-// Модуль управления профилем
 const ProfileCore = {
     open() {
         if(!App.user) return;
@@ -52,7 +49,6 @@ const ProfileCore = {
     }
 };
 
-// Модуль Админ-Панели (Управление ролями и галочками)
 const AdminPanel = {
     open() {
         const win = document.getElementById('m-admin');
@@ -74,20 +70,23 @@ const AdminPanel = {
         const glow = document.getElementById('adm-set-glow').value;
         const badge = document.getElementById('adm-set-badge').value;
         const verify = document.getElementById('adm-set-verify').value;
+        const banned = document.getElementById('adm-set-ban').value;
         
+        if(!uName) return alert('Пользователь не выбран!');
+
         firebase.database().ref('users/' + uName).update({
             glow: glow,
             badge: badge,
-            verify: verify
+            verify: verify,
+            banned: banned
         }).then(() => {
-            alert('Настройки пользователя успешно применены!');
+            alert(`Настройки для игрока ${uName} успешно применены!`);
             this.close();
             App.render();
-        });
+        }).catch(err => alert('Ошибка сохранения: ' + err.message));
     }
 };
 
-// Модуль создания разделов
 const NodeManager = {
     open() { 
         const win = document.getElementById('m-create-node');
@@ -99,23 +98,26 @@ const NodeManager = {
     },
     submit() {
         const title = document.getElementById('node-new-title').value.trim();
+        const path = document.getElementById('node-new-path').value.trim() || "Форум / Aries RolePlay";
+        
         if(!title) return alert('Введите название раздела!');
         
         const key = 'node-' + Date.now();
         firebase.database().ref('nodes/' + key).set({
             key: key,
             title: title,
-            path: "Форум / Aries RolePlay",
-            threads: {}
+            path: path
         }).then(() => {
             this.close();
             document.getElementById('node-new-title').value = '';
-        });
+            document.getElementById('node-new-path').value = '';
+            alert('Раздел успешно создан!');
+        }).catch(err => alert('Ошибка: ' + err.message));
     }
 };
 
 // ==========================================================================
-// 3. ОСНОВНОЕ ЯДРО ФОРУМА (ОБЪЕКТ APP)
+// 3. ОСНОВНОЕ ЯДРО ДВИЖКА (ОБЪЕКТ APP)
 // ==========================================================================
 const App = {
     user: null, 
@@ -123,7 +125,6 @@ const App = {
     activeThreadId: null,
 
     init() {
-        // Восстановление сессии авторизации из памяти браузера
         const savedUser = localStorage.getItem('forum_session_username');
         if (savedUser) {
             this.user = savedUser;
@@ -131,19 +132,26 @@ const App = {
 
         this.initAuthZone();
 
-        // Подгружаем базу пользователей
+        // Безопасное чтение юзеров
         firebase.database().ref('users').on('value', snap => {
             GlobalUsers = snap.val() || {};
+            
+            if(this.user && GlobalUsers[this.user] && GlobalUsers[this.user].banned === 'yes') {
+                alert('Ваш аккаунт заблокирован на данном форуме!');
+                this.logout();
+                return;
+            }
+
             this.initAuthZone();
             this.render();
-        });
+        }, err => { console.error("Ошибка Firebase Users:", err); });
 
-        // Подгружаем структуру разделов и тем
+        // Безопасное чтение разделов
         firebase.database().ref('nodes').on('value', snap => {
             GlobalNodes = snap.val() || {};
             this.renderSidebar();
             this.render();
-        });
+        }, err => { console.error("Ошибка Firebase Nodes:", err); });
     },
 
     initAuthZone() {
@@ -153,25 +161,28 @@ const App = {
         if (this.user) {
             const uData = GlobalUsers[this.user] || { glow: 'glow-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
             zone.innerHTML = `
-                <span class="${uData.glow}" style="cursor:pointer; font-weight:600; margin-right:10px;" onclick="ProfileCore.open()">${this.user}</span>
-                <img class="avatar-mini" src="${uData.avatar}" onclick="ProfileCore.open()" style="width:32px; height:32px; border-radius:50%; margin-right:10px; cursor:pointer; vertical-align:middle; object-fit:cover;">
+                <span class="${uData.glow || 'glow-user'}" style="cursor:pointer; font-weight:600; margin-right:10px;" onclick="ProfileCore.open()">${this.user}</span>
+                <img src="${uData.avatar || 'https://i.postimg.cc/9Q2g9g6y/user2.png'}" onclick="ProfileCore.open()" style="width:32px; height:32px; border-radius:50%; margin-right:10px; cursor:pointer; vertical-align:middle; object-fit:cover;">
                 <button class="btn-core" style="background:#222; padding:6px 12px; font-size:11px;" onclick="App.logout()">Выйти</button>
             `;
+            window.user = { username: this.user, id: this.user === 'Qumestlies_Shawtys' ? "5694374929" : "0" };
         } else {
-            zone.innerHTML = `<button class="btn-core" onclick="document.getElementById('m-auth').style.display='flex'">Войти на портал</button>`;
+            zone.innerHTML = `<button class="btn-core" onclick="document.getElementById('m-auth').style.display='flex'">Войти</button>`;
+            window.user = null;
         }
     },
 
     login() {
         const u = document.getElementById('auth-username').value.trim();
         const p = document.getElementById('auth-password').value.trim();
-        if(!u || !p) return alert('Заполните все поля для входа!');
+        if(!u || !p) return alert('Заполните все поля!');
         
         firebase.database().ref('users/' + u).once('value', snap => {
-            if(!snap.exists()) return alert('Такой пользователь не зарегистрирован!');
+            if(!snap.exists()) return alert('Пользователь не найден!');
             const userData = snap.val();
             
-            if(userData.password !== p) return alert('Введен неверный пароль!');
+            if(userData.banned === 'yes') return alert('Этот аккаунт заблокирован!');
+            if(userData.password !== p) return alert('Неверный пароль!');
             
             this.user = userData.username;
             localStorage.setItem('forum_session_username', userData.username);
@@ -184,11 +195,10 @@ const App = {
     register() {
         const u = document.getElementById('auth-username').value.trim();
         const p = document.getElementById('auth-password').value.trim();
-        if(!u || !p) return alert('Заполните все поля для регистрации!');
-        if(u.length < 3) return alert('Слишком короткий никнейм!');
+        if(!u || !p) return alert('Заполните все поля!');
         
         firebase.database().ref('users/' + u).once('value', snap => {
-            if(snap.exists()) return alert('Этот никнейм уже занят!');
+            if(snap.exists()) return alert('Этот ник уже занят!');
             
             const uid = 'user-' + Date.now();
             const newUser = {
@@ -198,11 +208,12 @@ const App = {
                 glow: 'glow-user',
                 badge: 'badge-user',
                 verify: 'none',
+                banned: 'no',
                 avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png'
             };
             
             firebase.database().ref('users/' + u).set(newUser).then(() => {
-                alert('Регистрация успешно завершена!');
+                alert('Регистрация успешна!');
                 this.user = u;
                 localStorage.setItem('forum_session_username', u);
                 document.getElementById('m-auth').style.display = 'none';
@@ -215,6 +226,7 @@ const App = {
     logout() {
         localStorage.removeItem('forum_session_username');
         this.user = null;
+        window.user = null;
         this.initAuthZone();
         this.render();
     },
@@ -224,40 +236,22 @@ const App = {
         if (!nav) return;
         nav.innerHTML = `<div class="sidebar-title">Навигация разделов</div>`;
 
-        for (let key in GlobalNodes) {
+        Object.keys(GlobalNodes).forEach(key => {
             const activeClass = this.activeNodeKey === key ? 'active' : '';
             nav.innerHTML += `<a href="#" class="nav-link ${activeClass}" onclick="App.route('${key}')">${GlobalNodes[key].title}</a>`;
-        }
+        });
     },
 
     checkAdminButtons() {
-        const existingAdmBtn = document.getElementById('ui-adm-btn');
-        const existingNodeBtn = document.getElementById('ui-node-btn');
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem('forced_nicks') || '[]'); } catch(e){}
+        const isMaster = (this.user === 'Qumestlies_Shawtys' || list.includes(this.user));
         
-        if (this.user === 'Qumestlies_Shawtys') {
-            const navMenu = document.getElementById('nodes-navigation-list');
-            if (navMenu) {
-                if (!existingAdmBtn) {
-                    const btn = document.createElement('button');
-                    btn.id = 'ui-adm-btn'; btn.className = 'btn-core'; btn.style.width = '100%'; btn.style.marginTop = '20px';
-                    btn.style.background = 'linear-gradient(135deg, #ff0055, #8a2387)';
-                    btn.innerHTML = '🛡️ Панель Создателя';
-                    btn.onclick = () => AdminPanel.open();
-                    navMenu.appendChild(btn);
-                }
-                if (!existingNodeBtn) {
-                    const btnNode = document.createElement('button');
-                    btnNode.id = 'ui-node-btn'; btnNode.className = 'btn-core'; btnNode.style.width = '100%'; btnNode.style.marginTop = '8px';
-                    btnNode.style.background = '#1c1c30'; btnNode.style.border = '1px solid #2c2c42';
-                    btnNode.innerHTML = '➕ Создать раздел';
-                    btnNode.onclick = () => NodeManager.open();
-                    navMenu.appendChild(btnNode);
-                }
-            }
-        } else {
-            if (existingAdmBtn) existingAdmBtn.remove();
-            if (existingNodeBtn) existingNodeBtn.remove();
-        }
+        const pBtn = document.getElementById('founder-panel-btn');
+        const nBtn = document.getElementById('founder-node-btn');
+        
+        if(pBtn) pBtn.style.display = isMaster ? 'block' : 'none';
+        if(nBtn) nBtn.style.display = isMaster ? 'block' : 'none';
     },
 
     route(nodeKey) {
@@ -270,19 +264,18 @@ const App = {
         const view = document.getElementById('render-forum-core');
         if (!view) return;
         
-        // Постоянно проверяем права на кнопки управления в левом меню
         this.checkAdminButtons();
 
         const node = GlobalNodes[this.activeNodeKey];
         if(!node) {
-            view.innerHTML = `<p style="color:#444; text-align:center; padding:40px 0;">Раздел не найден или был удален.</p>`;
+            view.innerHTML = `<p style="color:#444; text-align:center; padding:40px 0;">Выберите интересующий раздел в левом меню навигации.</p>`;
             return;
         }
         
         if(this.activeThreadId) { this.renderThread(view, node); return; }
         
         let html = `
-            <div style="font-size:11px; color:#555; text-transform:uppercase; margin-bottom:5px; font-weight:bold;">${node.path}</div>
+            <div style="font-size:11px; color:#555; text-transform:uppercase; margin-bottom:5px; font-weight:bold;">${node.path || 'Форум'}</div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; border-bottom:1px solid var(--border-color); padding-bottom:15px; flex-wrap:wrap; gap:10px;">
                 <h2 style="margin:0; font-size:22px; font-weight:800; color:#fff;">${node.title}</h2>
                 <button class="btn-core" onclick="App.openCreateThreadForm()">+ Создать тему</button>
@@ -290,17 +283,17 @@ const App = {
         `;
         
         if(!node.threads) {
-            html += `<p style="color:#444; text-align:center; padding:40px 0;">Обсуждения отсутствуют.</p>`;
+            html += `<p style="color:#444; text-align:center; padding:40px 0;">Обсуждения отсутствуют. Будьте первым!</p>`;
         } else {
-            for(let tId in node.threads) {
+            Object.keys(node.threads).forEach(tId => {
                 const t = node.threads[tId];
                 html += `
                     <div style="background:#09090f; padding:18px; border:1px solid var(--border-color); border-radius:5px; margin-bottom:12px; cursor:pointer;" onclick="App.openThread('${t.id}')">
                         <div style="font-weight:bold; font-size:16px; color:#fff;">${t.title}</div>
-                        <div style="font-size:11px; color:#444; margin-top:6px;">Автор: <span style="color:#aaa;">${t.creator}</span></div>
+                        <div style="font-size:11px; color:#444; margin-top:6px;">Автор темы: <span style="color:#aaa;">${t.creator}</span></div>
                     </div>
                 `;
-            }
+            });
         }
         view.innerHTML = html;
     },
@@ -310,7 +303,7 @@ const App = {
     renderThread(view, node) {
         if(!node.threads || !node.threads[this.activeThreadId]) return;
         const thread = node.threads[this.activeThreadId];
-        let html = `<button class="btn-core" style="background:#1c1c30; margin-bottom:20px; padding:6px 14px; font-size:11px;" onclick="App.route('${this.activeNodeKey}')">↩ Назад</button>
+        let html = `<button class="btn-core" style="background:#1c1c30; margin-bottom:20px; padding:6px 14px; font-size:11px;" onclick="App.route('${this.activeNodeKey}')">↩ Назад в раздел</button>
                     <h2 style="color:#fff; margin-bottom:25px; font-size:20px; font-weight:800;">${thread.title}</h2>`;
         
         if(thread.posts) {
@@ -326,9 +319,9 @@ const App = {
                 html += `
                     <div class="post-row">
                         <div class="post-author-zone">
-                            <img class="avatar-round" src="${u.avatar}">
-                            <div style="margin-top:12px;"><span class="${u.glow}" style="font-size:14px;">${p.author}${vHtml}</span></div>
-                            <div class="badge-role ${u.badge}">${u.badge.replace('badge-', '').toUpperCase()}</div>
+                            <img class="avatar-round" src="${u.avatar || 'https://i.postimg.cc/9Q2g9g6y/user2.png'}">
+                            <div style="margin-top:12px;"><span class="${u.glow || 'glow-user'}" style="font-size:14px;">${p.author}${vHtml}</span></div>
+                            <div class="badge-role ${u.badge || 'badge-user'}">${String(u.badge || 'badge-user').replace('badge-', '').toUpperCase()}</div>
                         </div>
                         <div class="post-text-zone">${p.text}</div>
                     </div>
@@ -339,7 +332,7 @@ const App = {
         if(this.user) {
             html += `
                 <div style="margin-top:25px; background:#08080d; padding:20px; border-radius:5px; border:1px solid var(--border-color);">
-                    <textarea class="input-field" id="post-reply-text" rows="4" placeholder="Напишите ответ..."></textarea>
+                    <textarea class="input-field" id="post-reply-text" rows="4" placeholder="Напишите ответ в тему..."></textarea>
                     <button class="btn-core" onclick="App.sendReply()">Отправить ответ</button>
                 </div>
             `;
@@ -354,7 +347,8 @@ const App = {
         const newPost = { author: this.user, text: text };
         firebase.database().ref('nodes/' + this.activeNodeKey + '/threads/' + this.activeThreadId + '/posts').push(newPost)
         .then(() => {
-            document.getElementById('post-reply-text').value = '';
+            const replyBox = document.getElementById('post-reply-text');
+            if(replyBox) replyBox.value = '';
         });
     },
 
@@ -364,9 +358,9 @@ const App = {
         view.innerHTML = `
             <h2 style="color:#fff; font-weight:800; margin-bottom:20px;">Создание новой темы</h2>
             <input class="input-field" id="new-t-title" placeholder="Введите заголовок">
-            <textarea class="input-field" id="new-t-text" rows="6" placeholder="Введите текст..."></textarea>
+            <textarea class="input-field" id="new-t-text" rows="6" placeholder="Введите текст сообщения..."></textarea>
             <div style="display:flex; gap:10px;">
-                <button class="btn-core" onclick="App.submitThread()">Опубликовать</button>
+                <button class="btn-core" onclick="App.submitThread()">Опубликовать тему</button>
                 <button class="btn-core" style="background:#222;" onclick="App.render()">Отмена</button>
             </div>
         `;
@@ -394,5 +388,4 @@ const App = {
     }
 };
 
-// Автоматический запуск при полной загрузке страницы
 window.onload = () => { App.init(); };
