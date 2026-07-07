@@ -151,12 +151,47 @@
             </svg>
             <div class="logo">ARIES<span>ROLEPLAY</span></div>
         </div>
-        <div id="runtime-auth-zone"></div>
+        
+        <!-- ВХОДНАЯ ЗОНА С ДОБАВЛЕННОЙ КНОПКОЙ ДОНАТА -->
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <button class="btn-core" style="background: linear-gradient(135deg, #00c6ff, #0072ff); box-shadow: 0 0 15px rgba(0,114,255,0.4);" onclick="document.getElementById('m-donate').style.display='flex'">💎 Поддержать / Донат</button>
+            <div id="runtime-auth-zone"></div>
+        </div>
     </header>
 
     <div class="forum-container">
         <div class="sidebar" id="nodes-navigation-list"></div>
         <div class="main-content" id="render-forum-core">Синхронизация с сервером облака...</div>
+    </div>
+
+    <!-- ОКНО ПЛАТЕЖНОЙ СИСТЕМЫ (СТИЛЬ GOOGLE PLAY / PRIVAT24) -->
+    <div id="m-donate" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
+        <div style="background:#09090f; border:1px solid #0072ff; padding:30px; border-radius:8px; width:360px; box-shadow: 0 0 30px rgba(0,114,255,0.25); text-align:center;">
+            <div style="font-size: 11px; font-weight: 800; color: #0072ff; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px;">Aries Cloud Pay</div>
+            <h3 style="margin-top:0; color:#fff; font-weight:800; font-size: 20px;">⚡ Безопасный Донат</h3>
+            
+            <p style="font-size:13px; color:#8a8a9e; margin-bottom:20px; line-height: 1.4;">Ваша карта защищена технологиями Google Pay & PrivatPay. Номер карты получателя скрыт.</p>
+            
+            <!-- АВТО-ГЕНЕРАЦИЯ БЕЗОПАСНОГО QR-КОДА ИЗ ТВОЕЙ ССЫЛКИ -->
+            <div style="background:#fff; padding:12px; border-radius:8px; display:inline-block; margin-bottom:15px; box-shadow: 0 0 20px rgba(255,255,255,0.08);">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://www.privat24.ua/send/4285t" alt="Сканируй в Приват24" style="width:170px; height:170px; display:block;">
+            </div>
+            
+            <label style="font-size:11px; color:#555570; display:block; margin-bottom:15px; font-weight: 500;">👉 Наведите камеру телефона для оплаты в Приват24</label>
+            
+            <!-- КНОПКА БЫСТРОЙ ОПЛАТЫ ДЛЯ ТЕХ КТО С ТЕЛЕФОНА (КАК В GOOGLE PLAY) -->
+            <a href="https://www.privat24.ua/send/4285t" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:15px; background: #fff; color: #000; text-align:center; line-height:22px; font-weight: 700; box-shadow: 0 4px 10px rgba(255,255,255,0.15);">
+                <span style="color:#4285F4">G</span><span style="color:#EA4335">o</span><span style="color:#FBBC05">o</span><span style="color:#4285F4">g</span><span style="color:#34A853">l</span><span style="color:#EA4335">e</span> Pay / С карты
+            </a>
+
+            <!-- ИНСТРУКЦИЯ ПО ВЕРИФИКАЦИИ -->
+            <div style="background:#11111e; border:1px solid #1c1c30; padding:12px; border-radius:5px; font-size:12px; color:#b5b5e6; text-align:left; margin-bottom:20px; line-height: 1.5;">
+                🔒 <b>Подтверждение платежа:</b><br>
+                После успешного перевода сохраните чек и отправьте его Главной Администрации проекта для автоматической активации привилегий.
+            </div>
+            
+            <button class="btn-core" onclick="document.getElementById('m-donate').style.display='none'" style="background:#1a1a2e; color: #aaa; width:100%;">Вернуться на форум</button>
+        </div>
     </div>
 
     <div id="m-auth" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9998;">
@@ -192,7 +227,6 @@
         <div style="background:#09090f; border:1px solid var(--accent); padding:30px; border-radius:6px; width:380px; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 25px rgba(255,0,85,0.2);">
             <h3 style="margin-top:0; color:var(--accent); font-weight:800; text-transform:uppercase; font-size:16px; letter-spacing:0.5px;">🛡️ Панель Управления Создателя</h3>
             
-            <!-- БЛОК ОБЛАЧНЫХ СОЗДАТЕЛЕЙ (СИНХРОНИЗИРОВАН С ENGINE.JS) -->
             <div style="background: #11111e; border: 1px solid var(--border-color); padding: 12px; border-radius: 4px; margin-bottom: 15px;">
                 <label style="font-size:12px; color:#aaa; display:block; margin-bottom:5px; font-weight: bold;">Добавить создателя в Облако:</label>
                 <div style="display: flex; gap: 8px; margin-bottom: 10px;">
@@ -257,7 +291,6 @@
         </div>
     </div>
 
-    <!-- ПОДКЛЮЧЕНИЕ КОРНЕВОГО ДВИЖКА (БЕЗ ЛИШНИХ КОНФЛИКТНЫХ СКРИПТОВ) -->
     <script src="engine.js"></script>
 </body>
 </html>
