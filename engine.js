@@ -79,7 +79,7 @@ const AuthModule = {
             container.innerHTML = `<button class="btn-core" style="width:100%;" onclick="AuthModule.executeRegister()">Зарегистрироваться</button>
             <p style="font-size:12px; text-align:center; color:#555; margin-top:10px; cursor:pointer;" onclick="AuthModule.open(false)">Уже есть аккаунт? Войти</p>`;
         } else {
-            document.getElementById('auth-title').innerText = "Вход на форум";
+            document.getElementById('auth-title').innerText = "Вход на forum";
             container.innerHTML = `<button class="btn-core" style="width:100%;" onclick="AuthModule.executeLogin()">Выполнить вход</button>
             <p style="font-size:12px; text-align:center; color:#555; margin-top:10px; cursor:pointer;" onclick="AuthModule.open(true)">Нет аккаунта? Создать</p>`;
         }
@@ -317,8 +317,9 @@ const App = {
         if (!nav) return;
         nav.innerHTML = `<div class="sidebar-title">Навигация проекта</div>`;
         for(let key in GlobalNodes) {
+            // ИСПРАВЛЕНО: Проверяем активный раздел и вешаем класс 'active'
             const activeClass = (this.activeNodeKey === key) ? 'active' : '';
-            nav.innerHTML += `<a href="#" class="nav-link ${activeClass}" onclick="App.route('${key}')">${GlobalNodes[key].title}</a>`;
+            nav.innerHTML += `<a href="javascript:void(0)" class="nav-link ${activeClass}" onclick="App.route('${key}')">${GlobalNodes[key].title}</a>`;
         }
     },
     checkAdminButtons() {
@@ -354,6 +355,7 @@ const App = {
     route(nodeKey) {
         this.activeNodeKey = nodeKey;
         this.activeThreadId = null;
+        this.renderMenu(); // Перерисовываем меню, чтобы сбросить старый "active" и поставить на новый раздел
         this.render();
     },
     render() {
@@ -380,8 +382,10 @@ const App = {
         } else {
             for(let tId in node.threads) {
                 const t = node.threads[tId];
+                // ИСПРАВЛЕНО: Теперь проверяется активная тема и ей присваивается класс topic-link active, чтобы она горела неоновым красным
+                const activeTopicClass = (this.activeThreadId === t.id) ? 'active' : '';
                 html += `
-                    <div style="background:#09090f; padding:18px; border:1px solid var(--border-color); border-radius:5px; margin-bottom:12px; cursor:pointer;" onclick="App.openThread('${t.id}')">
+                    <div class="topic-link ${activeTopicClass}" style="background:#09090f; padding:18px; border:1px solid var(--border-color); border-radius:5px; margin-bottom:12px; cursor:pointer;" onclick="App.openThread('${t.id}')">
                         <div style="font-weight:bold; font-size:16px; color:#fff;">${t.title}</div>
                         <div style="font-size:11px; color:#444; margin-top:6px;">Автор: <span style="color:#aaa;">${t.creator}</span></div>
                     </div>
@@ -390,7 +394,10 @@ const App = {
         }
         view.innerHTML = html;
     },
-    openThread(id) { this.activeThreadId = id; this.render(); },
+    openThread(id) { 
+        this.activeThreadId = id; 
+        this.render(); 
+    },
     renderThread(view, node) {
         if(!node.threads || !node.threads[this.activeThreadId]) return;
         const thread = node.threads[this.activeThreadId];
