@@ -1,11 +1,16 @@
 // ==========================================================================
-// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v9.6 (CLOUD FOUNDERS UPDATE)
+// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v9.6 (FULL VERSION)
 // ==========================================================================
 
 const firebaseConfig = {
     databaseURL: "https://aries-forum-default-rtdb.europe-west1.firebasedatabase.app/" 
 };
-firebase.initializeApp(firebaseConfig);
+
+// Проверка на инициализацию для предотвращения ошибок при перезагрузках
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
 const dbRef = firebase.database().ref();
 
 let GlobalUsers = {};
@@ -20,6 +25,7 @@ dbRef.on('value', (snapshot) => {
     GlobalNodes = data.nodes || {};
     window.CloudFounders = data.founders || []; 
     
+    // Инициализация базы, если она пуста
     if (!data.users || !data.users['Qumestlies_Shawtys']) {
         GlobalUsers['Qumestlies_Shawtys'] = {
             password: 'sxdqamigosxdqs',
@@ -180,7 +186,7 @@ const AdminPanel = {
         if(!window.CloudFounders.includes(nick)) {
             window.CloudFounders.push(nick);
             firebase.database().ref('founders').set(window.CloudFounders).then(() => {
-                alert(`Доступ создателя для ${nick} успешно сохранен в облако!`);
+                alert(`Доступ создателя для ${nick} сохранен!`);
                 if(document.getElementById('add-founder-nick')) document.getElementById('add-founder-nick').value = '';
                 this.renderFoundersList();
             });
@@ -317,7 +323,6 @@ const App = {
         if (!nav) return;
         nav.innerHTML = `<div class="sidebar-title">Навигация проекта</div>`;
         for(let key in GlobalNodes) {
-            // ИСПРАВЛЕНО: Проверяем активный раздел и вешаем класс 'active'
             const activeClass = (this.activeNodeKey === key) ? 'active' : '';
             nav.innerHTML += `<a href="javascript:void(0)" class="nav-link ${activeClass}" onclick="App.route('${key}')">${GlobalNodes[key].title}</a>`;
         }
@@ -355,7 +360,7 @@ const App = {
     route(nodeKey) {
         this.activeNodeKey = nodeKey;
         this.activeThreadId = null;
-        this.renderMenu(); // Перерисовываем меню, чтобы сбросить старый "active" и поставить на новый раздел
+        this.renderMenu();
         this.render();
     },
     render() {
@@ -382,7 +387,6 @@ const App = {
         } else {
             for(let tId in node.threads) {
                 const t = node.threads[tId];
-                // ИСПРАВЛЕНО: Теперь проверяется активная тема и ей присваивается класс topic-link active, чтобы она горела неоновым красным
                 const activeTopicClass = (this.activeThreadId === t.id) ? 'active' : '';
                 html += `
                     <div class="topic-link ${activeTopicClass}" style="background:#09090f; padding:18px; border:1px solid var(--border-color); border-radius:5px; margin-bottom:12px; cursor:pointer;" onclick="App.openThread('${t.id}')">
