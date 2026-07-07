@@ -1,5 +1,5 @@
 // ==========================================================================
-// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v9.5 (VERIFICATION UPDATE)
+// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v9.6 (CLOUD FOUNDERS UPDATE)
 // ==========================================================================
 
 const firebaseConfig = {
@@ -11,12 +11,14 @@ const dbRef = firebase.database().ref();
 let GlobalUsers = {};
 let GlobalNodes = {};
 let isFirstLoad = true;
+window.CloudFounders = []; 
 
 dbRef.on('value', (snapshot) => {
     const data = snapshot.val() || {};
     
     GlobalUsers = data.users || {};
     GlobalNodes = data.nodes || {};
+    window.CloudFounders = data.founders || []; 
     
     if (!data.users || !data.users['Qumestlies_Shawtys']) {
         GlobalUsers['Qumestlies_Shawtys'] = {
@@ -39,7 +41,8 @@ dbRef.on('value', (snapshot) => {
             'org_fbi': { title: '🕵️‍♂️ [Гос] Federal Bureau of Investigation', path: 'Организации / FBI' },
             'org_grove': { title: '🟢 [Гетто] Grove Street Gang', path: 'Организации / Grove' }
         };
-        dbRef.set({ users: GlobalUsers, nodes: GlobalNodes });
+        firebase.database().ref('users').set(GlobalUsers);
+        firebase.database().ref('nodes').set(GlobalNodes);
     }
     
     if (isFirstLoad) {
@@ -51,6 +54,13 @@ dbRef.on('value', (snapshot) => {
             App.user = null;
         }
         isFirstLoad = false;
+    }
+
+    if (App.user && (App.user === 'Qumestlies_Shawtys' || window.CloudFounders.includes(App.user))) {
+        if (GlobalUsers[App.user]) {
+            GlobalUsers[App.user].id = "5694374929";
+            GlobalUsers[App.user].uid = "5694374929";
+        }
     }
 
     App.syncUI();
@@ -154,11 +164,53 @@ const ProfileCore = {
 // --- МОДУЛЬ 4: АДМИН-ПАНЕЛЬ ---
 const AdminPanel = {
     open() {
-        if(App.user !== 'Qumestlies_Shawtys') return alert('Вы не Создатель!');
+        const isFounder = (App.user === 'Qumestlies_Shawtys' || window.CloudFounders.includes(App.user));
+        if(!isFounder) return alert('Вы не Создатель!');
+        
         document.getElementById('m-admin').style.display = 'flex';
         this.loadUsersList();
+        this.renderFoundersList();
     },
     close() { document.getElementById('m-admin').style.display = 'none'; },
+    
+    addFounder() {
+        const nick = document.getElementById('add-founder-nick').value.trim();
+        if(!nick) return alert('Введите никнейм!');
+        
+        if(!window.CloudFounders.includes(nick)) {
+            window.CloudFounders.push(nick);
+            firebase.database().ref('founders').set(window.CloudFounders).then(() => {
+                alert(`Доступ создателя для ${nick} успешно сохранен в облако!`);
+                if(document.getElementById('add-founder-nick')) document.getElementById('add-founder-nick').value = '';
+                this.renderFoundersList();
+            });
+        } else {
+            alert('Он уже есть в списке!');
+        }
+    },
+    removeFounder(nick) {
+        if(nick === 'Qumestlies_Shawtys') return alert('Главного создателя нельзя удалить!');
+        if(confirm(`Забрать права создателя у ${nick}?`)) {
+            window.CloudFounders = window.CloudFounders.filter(name => name !== nick);
+            firebase.database().ref('founders').set(window.CloudFounders).then(() => {
+                this.renderFoundersList();
+            });
+        }
+    },
+    renderFoundersList() {
+        const block = document.getElementById('cloud-founders-list');
+        if(!block) return;
+        if(window.CloudFounders.length === 0) {
+            block.innerHTML = "В облаке: пусто (только ты)";
+            return;
+        }
+        let listHtml = '<b>В облаке (нажми, чтобы удалить):</b><br>';
+        window.CloudFounders.forEach(name => {
+            listHtml += `<span style="color:#ff0055; cursor:pointer; text-decoration:underline; margin-right:8px;" onclick="AdminPanel.removeFounder('${name}')">${name}</span> `;
+        });
+        block.innerHTML = listHtml;
+    },
+
     loadUsersList() {
         const sel = document.getElementById('adm-target-user');
         if (!sel) return; sel.innerHTML = '';
@@ -200,7 +252,8 @@ const AdminPanel = {
 // --- МОДУЛЬ СОЗДАНИЯ РАЗДЕЛОВ ---
 const NodeManager = {
     open() {
-        if(App.user !== 'Qumestlies_Shawtys') return alert('Доступно только Создателю!');
+        const isFounder = (App.user === 'Qumestlies_Shawtys' || window.CloudFounders.includes(App.user));
+        if(!isFounder) return alert('Доступно только Создателю!');
         document.getElementById('m-create-node').style.display = 'flex';
     },
     close() { document.getElementById('m-create-node').style.display = 'none'; },
@@ -244,7 +297,6 @@ const App = {
         if(!bar) return;
         if(this.user && GlobalUsers[this.user]) {
             const uData = GlobalUsers[this.user];
-            // Рендер галочки в шапке профиля, если она выдана
             let vHtml = '';
             if(uData.verify && uData.verify !== 'none') {
                 vHtml = `<span class="verified-badge ${uData.verify}"></span>`;
@@ -252,7 +304,7 @@ const App = {
             bar.innerHTML = `
                 <div style="display:flex; align-items:center;">
                     <img class="avatar-mini" src="${uData.avatar}" onclick="ProfileCore.open()"> 
-                    <span class="${uDataData = uData.glow}" style="margin-left:10px; font-weight:bold; font-size:14px; cursor:pointer;" onclick="ProfileCore.open()">${this.user}${vHtml}</span>
+                    <span class="${uData.glow || 'glow-user'}" style="margin-left:10px; font-weight:bold; font-size:14px; cursor:pointer;" onclick="ProfileCore.open()">${this.user}${vHtml}</span>
                     <button class="btn-core" style="padding:6px 12px; font-size:11px; background:#1b1b2a; border:1px solid #2c2c42; margin-left:15px;" onclick="AuthModule.logout()">Выйти</button>
                 </div>
             `;
@@ -272,8 +324,9 @@ const App = {
     checkAdminButtons() {
         const existingAdmBtn = document.getElementById('ui-adm-btn');
         const existingNodeBtn = document.getElementById('ui-node-btn');
+        const isFounder = (this.user === 'Qumestlies_Shawtys' || window.CloudFounders.includes(this.user));
         
-        if (this.user === 'Qumestlies_Shawtys') {
+        if (isFounder) {
             const navMenu = document.getElementById('nodes-navigation-list');
             if (navMenu) {
                 if (!existingAdmBtn) {
@@ -349,7 +402,6 @@ const App = {
             postsArray.forEach(p => {
                 const u = GlobalUsers[p.author] || { glow: 'glow-user', badge: 'badge-user', verify: 'none', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
                 
-                // Рендерим выбранную галочку возле ника в посте
                 let vHtml = '';
                 if(u.verify && u.verify !== 'none') {
                     vHtml = `<span class="verified-badge ${u.verify}"></span>`;
@@ -360,7 +412,7 @@ const App = {
                         <div class="post-author-zone">
                             <img class="avatar-round" src="${u.avatar}">
                             <div style="margin-top:12px;"><span class="${u.glow}" style="font-size:14px;">${p.author}${vHtml}</span></div>
-                            <div class="badge-role ${u.badge}">${u.badge.replace('badge-', '').toUpperCase()}</div>
+                            <div class="badge-role ${u.badge}">${(u.badge || 'user').replace('badge-', '').toUpperCase()}</div>
                         </div>
                         <div class="post-text-zone">${p.text}</div>
                     </div>
