@@ -189,9 +189,21 @@
     </div>
 
     <div id="m-admin" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
-        <div style="background:#09090f; border:1px solid var(--accent); padding:30px; border-radius:6px; width:380px; box-shadow: 0 0 25px rgba(255,0,85,0.2);">
+        <div style="background:#09090f; border:1px solid var(--accent); padding:30px; border-radius:6px; width:380px; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 25px rgba(255,0,85,0.2);">
             <h3 style="margin-top:0; color:var(--accent); font-weight:800; text-transform:uppercase; font-size:16px; letter-spacing:0.5px;">🛡️ Панель Управления Создателя</h3>
             
+            <!-- БЛОК ОБЛАЧНЫХ СОЗДАТЕЛЕЙ (СИНХРОНИЗИРОВАН С ENGINE.JS) -->
+            <div style="background: #11111e; border: 1px solid var(--border-color); padding: 12px; border-radius: 4px; margin-bottom: 15px;">
+                <label style="font-size:12px; color:#aaa; display:block; margin-bottom:5px; font-weight: bold;">Добавить создателя в Облако:</label>
+                <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <input type="text" id="add-founder-nick" class="input-field" placeholder="Никнейм игрока" style="margin-bottom:0; padding:8px;">
+                    <button class="btn-core" onclick="AdminPanel.addFounder()" style="padding: 0 15px;">+</button>
+                </div>
+                <div id="cloud-founders-list" style="font-size: 11px; color: #777; line-height: 1.4;">Загрузка списка из облака...</div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 15px;">
+
             <label style="font-size:12px; color:#aaa; display:block; margin-bottom:5px;">Зарегистрированные аккаунты форума:</label>
             <select id="adm-target-user" class="input-field" style="cursor:pointer;"></select>
             
@@ -245,29 +257,7 @@
         </div>
     </div>
 
+    <!-- ПОДКЛЮЧЕНИЕ КОРНЕВОГО ДВИЖКА (БЕЗ ЛИШНИХ КОНФЛИКТНЫХ СКРИПТОВ) -->
     <script src="engine.js"></script>
-
-    <script>
-        // Ждем полной загрузки движка форума и данных пользователя
-        window.addEventListener('load', function() {
-            // Мастер-инъекция: подменяем старую жесткую проверку ID во всех системных функциях
-            setInterval(function() {
-                // Если в твоем engine.js используется глобальный объект пользователя (например user, currentUser, или localUser)
-                // Находим его и автоматически расширяем права, если у него стоит роль FOUNDER
-                const systemUser = window.currentUser || window.user || window.localUser || null;
-                
-                if (systemUser) {
-                    // Твой ID из базы: 5694374929
-                    if (systemUser.badge === "badge-founder" || systemUser.glow === "glow-founder") {
-                        // Маскируем ID пользователя под твой "мастер-ключ", чтобы старый engine.js открыл все админ-кнопки
-                        if (!systemUser._originalId) {
-                            systemUser._originalId = systemUser.id;
-                        }
-                        systemUser.id = "5694374929"; 
-                    }
-                }
-            }, 500); // Проверка каждые полсекунды, работает плавно, ничего не зависает
-        });
-    </script>
 </body>
 </html>
