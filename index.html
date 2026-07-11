@@ -1,13 +1,24 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARIES RP | Профессиональный форум</title>
-    
-    <!-- Firebase SDK (обязательно для работы всех наших модулей) -->
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+<!-- Firebase App (the core Firebase SDK) -->
+<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+<!-- Firebase Database -->
+<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM",
+    authDomain: "aries-forum.firebaseapp.com",
+    databaseURL: "https://aries-forum-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "aries-forum",
+    storageBucket: "aries-forum.firebasestorage.app",
+    messagingSenderId: "614643963857",
+    appId: "1:614643963857:web:01f1f941c72249ac6eb2f0",
+    measurementId: "G-8YWLND4LR2"
+  };
+
+  // Инициализация именно через compat-версию
+  firebase.initializeApp(firebaseConfig);
+  console.log("Firebase initialized successfully!");
+</script>
     
     <!-- Стили -->
     <style>
