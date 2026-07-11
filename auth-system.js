@@ -1,41 +1,33 @@
 const AuthSystem = {
-    // Регистрация с отправкой письма
-    async register(email, password, nickname) {
+    async sendLink() {
+        const email = document.getElementById('email').value;
+        const actionCodeSettings = {
+            url: window.location.href, // Возврат на эту же страницу
+            handleCodeInApp: true,
+        };
+
         try {
-            const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
-            const user = userCredential.user;
-
-            await user.sendEmailVerification();
-            await user.updateProfile({ displayName: nickname });
-            
-            await firebase.database().ref('users/' + user.uid).set({
-                nickname: nickname,
-                email: email,
-                createdAt: firebase.database.ServerValue.TIMESTAMP
-            });
-
-            alert("Регистрация прошла успешно! Проверьте почту для подтверждения аккаунта.");
+            await firebase.auth().sendSignInLinkToEmail(email, actionCodeSettings);
+            window.localStorage.setItem('emailForSignIn', email);
+            alert("Ссылка для входа отправлена на " + email);
         } catch (error) {
             alert("Ошибка: " + error.message);
         }
     },
 
-    // Вход с проверкой верификации
-    async login(email, password) {
-        try {
-            const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
-            if (!userCredential.user.emailVerified) {
-                alert("Аккаунт не подтвержден. Проверьте почту!");
-                await firebase.auth().signOut();
-            } else {
-                location.reload();
-            }
-        } catch (error) {
-            alert("Ошибка входа: " + error.message);
-        }
-    },
+    async finishSignIn() {
+        if (firebase.auth().isSignInWithEmailLink(window.location.href)) {
+            let email = window.localStorage.getItem('emailForSignIn');
+            if (!email) email = prompt('Введите ваш Email для подтверждения:');
 
-    logout() {
-        firebase.auth().signOut().then(() => location.reload());
+            try {
+                await firebase.auth().signInWithEmailLink(email, window.location.href);
+                window.localStorage.removeItem('emailForSignIn');
+                alert("Успешный вход!");
+                window.location.href = window.location.pathname; // Очистка URL
+            } catch (error) {
+                alert("Ошибка входа: " + error.message);
+            }
+        }
     }
 };
