@@ -1,12 +1,12 @@
 /**
- * ARIES RP CORE ENGINE - FULL VERSION
- * Собрано для ARIES RP. Все модули интегрированы.
+ * ARIES RP CORE ENGINE - PRO VERSION
+ * Управление авторизацией, правами, модерацией и потоками данных.
  */
 
 // 1. Инициализация базы данных
 const db = firebase.database();
 
-// 2. Объект Engine (Ядро)
+// 2. Ядро системы (Engine)
 const Engine = {
     user: null,
     isOwner: false,
@@ -15,10 +15,12 @@ const Engine = {
         firebase.auth().onAuthStateChanged((user) => {
             this.user = user;
             if (user) {
+                // Проверка прав при логине
                 db.ref('admins/' + user.uid).once('value', (snap) => {
                     const data = snap.val();
                     this.isOwner = (data && data.role === 'owner');
                     this.renderAdminTools();
+                    console.log("ARIES RP: Auth session initialized for", user.displayName);
                 });
             }
         });
@@ -28,7 +30,7 @@ const Engine = {
         if (!this.user) return;
         const snap = await db.ref('admins/' + this.user.uid).once('value');
         if (snap.exists()) {
-            const adminPanel = document.getElementById('admin-panel');
+            const adminPanel = document.getElementById('admin-dashboard');
             if (adminPanel) adminPanel.classList.remove('hidden');
         }
     },
@@ -41,15 +43,14 @@ const Engine = {
 // 3. Менеджер форума
 const ForumManager = {
     async createCategory(title, description, permissions) {
-        if (!Engine.isOwner) return;
+        if (!Engine.isOwner) return alert("Ошибка: Недостаточно прав.");
         const catRef = db.ref('categories').push();
         await catRef.set({ title, desc: description, permissions, createdAt: firebase.database.ServerValue.TIMESTAMP });
     },
 
-    async createThread(categoryId, title, content) {
-        if (!Engine.user) return;
-        const threadRef = db.ref('threads/' + categoryId).push();
-        await threadRef.set({ title, author: Engine.user.displayName, content, status: "open", createdAt: firebase.database.ServerValue.TIMESTAMP });
+    async setAdminPrivileges(uid, role, color) {
+        if (!Engine.isOwner) return;
+        await db.ref('admins/' + uid).set({ role, color });
     },
 
     async deleteThread(categoryId, threadId) {
@@ -70,19 +71,22 @@ const ForumManager = {
 const ModerationEngine = {
     async applySanction(targetUid, type, reason, duration) {
         if (!await ForumManager.checkAccess('admin')) return;
-        await db.ref('users/' + targetUid + '/sanctions').push({ type, reason, duration, admin: Engine.user.uid, timestamp: firebase.database.ServerValue.TIMESTAMP });
+        await db.ref('users/' + targetUid + '/sanctions').push({ 
+            type, reason, duration, admin: Engine.user.uid, timestamp: firebase.database.ServerValue.TIMESTAMP 
+        });
         if (type === 'ban') await db.ref('users/' + targetUid + '/isBanned').set(true);
     },
 
-    async logAction(action, target, details) {
-        await db.ref('audit_logs').push({ adminId: Engine.user.uid, action, target, details, timestamp: firebase.database.ServerValue.TIMESTAMP });
+    async applyAdminVisuals(elementId, isAdmin) {
+        const el = document.getElementById(elementId);
+        if (el && isAdmin) el.classList.add('nick-admin');
     }
 };
 
-// 5. Управление темами и ответами
+// 5. Управление темами
 const ThreadManager = {
     async postReply(categoryId, threadId, message) {
-        if (!Engine.user) return;
+        if (!Engine.user) return alert("Войдите для ответа");
         await db.ref(`threads/${categoryId}/${threadId}/replies`).push({
             authorId: Engine.user.uid,
             authorName: Engine.user.displayName,
@@ -97,12 +101,12 @@ document.addEventListener('DOMContentLoaded', () => {
     Engine.init();
     Engine.completeAuth();
 
-    // Слушатель удаления тем
+    // Делегирование событий для кнопок удаления (защита)
     document.body.addEventListener('click', async (e) => {
         if (e.target.classList.contains('delete-thread-btn')) {
             const threadId = e.target.getAttribute('data-id');
             const catId = e.target.getAttribute('data-cat');
-            await ForumManager.deleteThread(catId, threadId);
+            if (confirm("Удалить тему?")) await ForumManager.deleteThread(catId, threadId);
         }
     });
 });
