@@ -1,5 +1,2 @@
-body { background: #06080d; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-.modal { background: #11151c; padding: 30px; border-radius: 10px; width: 320px; border: 1px solid #2a3543; }
-.input-field { width: 100%; padding: 10px; margin: 8px 0; background: #0b0e14; border: 1px solid #333; color: white; border-radius: 5px; box-sizing: border-box; }
-.btn-core { width: 100%; padding: 10px; background: #3c5a99; border: none; color: white; border-radius: 5px; cursor: pointer; }
-.hidden { display: none; }
+.post-card { background: #181c24; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #2a2f3a; }
+#forum-container { margin-top: 20px; width: 350px; }
