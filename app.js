@@ -1,11 +1,82 @@
 /**
- * ARIES RP - APP LOGIC (FORUM ENGINE)
+ * ARIES ROLEPLAY - MASTER ENGINE V9
+ * @author: Qumestlies_Shawty (Owner)
  */
 
-const ForumEngine = {
-    currentCat: null,
+const App = {
+    user: null,
+    profile: null,
+    OWNER_EMAIL: "ponkc29@gamil.com",
+    OWNER_NICK: "Qumestlies_Shawty",
 
-    async loadHome() {
+    async init() {
+        console.log("ARIES: Engine booting...");
+        this.genCaptcha();
+
+        auth.onAuthStateChanged(async (u) => {
+            if (u) {
+                this.user = u;
+                await this.syncProfile();
+            } else {
+                this.user = null;
+                this.profile = null;
+                UI.renderHeader(false);
+            }
+            this.loadHome();
+        });
+
+        if (auth.isSignInWithEmailLink(window.location.href)) {
+            AuthManager.completeAuth();
+        }
+    },
+
+    async syncProfile() {
+        const uid = this.user.uid;
+        const snap = await db.ref(`users/${uid}`).once('value');
+        let data = snap.val();
+
+        if (!data) {
+            const pendingNick = localStorage.getItem('aries_pending_nick') || "New_Player_" + Math.floor(Math.random()*1000);
+            data = {
+                nickname: pendingNick,
+                email: this.user.email,
+                role: "user",
+                avatar: "https://i.imgur.com/6EOnf8A.png",
+                isRainbow: false,
+                isBanned: false,
+                joinedAt: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            // ЕСЛИ ЗАШЕЛ ТЫ (Овнер)
+            if (this.user.email === this.OWNER_EMAIL) {
+                data.nickname = this.OWNER_NICK;
+                data.role = "owner";
+                data.isRainbow = true;
+            }
+            await db.ref(`users/${uid}`).set(data);
+            localStorage.removeItem('aries_pending_nick');
+        }
+
+        this.profile = data;
+
+        if (this.profile.isBanned) {
+            document.body.innerHTML = "<div style='background:#000; color:red; height:100vh; display:flex; align-items:center; justify-content:center;'><h1>ACCESS DENIED: BAN</h1></div>";
+            return;
+        }
+
+        UI.renderHeader(true, this.profile);
+        if (data.role === 'owner' || data.role === 'admin') {
+            document.getElementById('owner-panel').classList.remove('hidden');
+        }
+    },
+
+    genCaptcha() {
+        const code = Math.random().toString(36).substring(2, 7).toUpperCase();
+        const el = document.getElementById('captcha-code');
+        if (el) el.innerText = code;
+    },
+
+    loadHome: async function() {
         const root = document.getElementById('forum-root');
         root.innerHTML = "Загрузка разделов...";
 
@@ -13,124 +84,113 @@ const ForumEngine = {
         root.innerHTML = "";
 
         if (!snap.exists()) {
-            root.innerHTML = "<p>Форум пуст. Создайте первый раздел.</p>";
+            root.innerHTML = "<p>Форум пуст. Создайте раздел в панели админа.</p>";
             return;
         }
 
         snap.forEach(child => {
             const cat = child.val();
-            const id = child.key;
+            const cid = child.key;
             root.innerHTML += `
-                <div class="category-card">
-                    <div class="cat-header" onclick="ForumEngine.viewCategory('${id}')">
-                        <h3>${cat.title}</h3>
-                    </div>
-                    <div id="threads-preview-${id}"></div>
+                <div class="cat-card">
+                    <div class="cat-h">${cat.title}</div>
+                    <div id="cat-threads-${cid}"></div>
+                    ${this.profile ? `<button onclick="Forum.openThreadModal('${cid}')" style="margin:10px; cursor:pointer;">+ ТЕМА</button>` : ''}
                 </div>
             `;
-            this.loadThreads(id);
+            this.loadThreads(cid);
         });
     },
 
-    async loadThreads(id) {
-        const container = document.getElementById(`threads-preview-${id}`);
-        const snap = await db.ref(`threads/${id}`).limitToLast(5).once('value');
-        
-        container.innerHTML = "";
+    async loadThreads(cid) {
+        const list = document.getElementById(`cat-threads-${cid}`);
+        const snap = await db.ref(`threads/${cid}`).once('value');
+        list.innerHTML = "";
         snap.forEach(child => {
             const t = child.val();
-            container.innerHTML += `
-                <div class="thread-row">
-                    <i class="fas fa-comment tr-icon"></i>
+            list.innerHTML += `
+                <div class="thread-row" onclick="alert('Открытие темы в разработке')">
+                    <i class="fas fa-comment tr-icon" style="margin-right:15px; color:#b71c1c;"></i>
                     <div class="tr-info">
-                        <span class="tr-title">
-                            <span class="tag tag-${t.status === 'Открыто' ? 'open' : 'closed'}">${t.status}</span>
-                            ${t.title}
-                        </span>
+                        <span class="tr-title">${t.title}</span>
                         <span class="tr-meta">Автор: ${t.author} • ${new Date(t.date).toLocaleDateString()}</span>
                     </div>
                 </div>
             `;
         });
-    },
-
-    viewCategory(id) {
-        this.currentCat = id;
-        UI.modal('create-thread');
-    },
-
-    async submitThread() {
-        if (!Engine.profile) return alert("Войдите на форум!");
-        const title = document.getElementById('th-title').value;
-        const text = document.getElementById('th-content').value;
-
-        if (!title || !text) return alert("Заполните все поля!");
-
-        await db.ref(`threads/${this.currentCat}`).push({
-            title: title,
-            content: text,
-            author: Engine.profile.nickname,
-            authorUid: Engine.user.uid,
-            status: "Открыто",
-            date: firebase.database.ServerValue.TIMESTAMP
-        });
-
-        UI.closeModals();
-        this.loadHome();
     }
 };
 
-const AdminPanel = {
-    async open() {
-        UI.modal('admin');
-        const list = document.getElementById('admin-user-list');
-        list.innerHTML = "Загрузка игроков...";
+const AuthManager = {
+    async initAuth() {
+        const nick = document.getElementById('auth-nick').value.trim();
+        const email = document.getElementById('auth-email').value.trim();
+        const capIn = document.getElementById('captcha-input').value.trim();
+        const capReal = document.getElementById('captcha-code').innerText;
 
-        const snap = await db.ref('users').once('value');
-        list.innerHTML = "";
-        snap.forEach(child => {
-            const u = child.val();
-            const uid = child.key;
-            list.innerHTML += `
-                <div class="user-row" style="padding:10px; border-bottom:1px solid #222; display:flex; justify-content:space-between;">
-                    <span>${u.nickname} (${u.role})</span>
-                    <div class="btns">
-                        <button onclick="AdminPanel.setRole('${uid}', 'admin')">Админ</button>
-                        <button onclick="AdminPanel.setRole('${uid}', 'user')">Игрок</button>
-                        <button onclick="AdminPanel.ban('${uid}')" style="color:red;">БАН</button>
-                    </div>
-                </div>
-            `;
-        });
+        if (capIn !== capReal) {
+            alert("Неверная капча!");
+            App.genCaptcha();
+            return;
+        }
+
+        if (nick.length < 3 || !email.includes('@')) {
+            alert("Ник или Почта введены неверно!");
+            return;
+        }
+
+        const settings = { url: window.location.href, handleCodeInApp: true };
+
+        try {
+            console.log("Sending email to:", email);
+            await auth.sendSignInLinkToEmail(email, settings);
+            
+            localStorage.setItem('aries_email', email);
+            localStorage.setItem('aries_pending_nick', nick);
+            
+            alert("ССЫЛКА ОТПРАВЛЕНА! Проверьте почту " + email);
+            UI.closeModals();
+        } catch (e) {
+            alert("ОШИБКА FIREBASE: " + e.message);
+            console.error(e);
+        }
     },
 
-    async setRole(uid, role) {
-        await db.ref(`users/${uid}`).update({ role: role, isRainbow: (role === 'admin' || role === 'owner') });
-        alert("Роль обновлена!");
-        this.open();
-    },
+    async completeAuth() {
+        let email = localStorage.getItem('aries_email') || prompt('Введите ваш Email для верификации:');
+        try {
+            await auth.signInWithEmailLink(email, window.location.href);
+            localStorage.removeItem('aries_email');
+            window.history.replaceState({}, null, window.location.pathname);
+            alert("Вход выполнен!");
+        } catch (e) {
+            alert("Ошибка: Ссылка недействительна!");
+        }
+    }
+};
 
-    async ban(uid) {
-        await db.ref(`users/${uid}`).update({ isBanned: true });
-        alert("Забанен!");
-        this.open();
-    },
+const Forum = {
+    openThreadModal(cid) {
+        this.currentCat = cid;
+        UI.modal('create-thread'); // Для примера
+    }
+};
 
+const Admin = {
     async createCategory() {
-        const title = prompt("Название нового раздела:");
+        const title = prompt("Название раздела:");
         if (title) {
-            await db.ref('categories').push({ title: title });
-            ForumEngine.loadHome();
+            await db.ref('categories').push({ title: title, order: Date.now() });
+            App.loadHome();
         }
     }
 };
 
 const UI = {
     renderHeader(isAuth, data) {
-        const nav = document.getElementById('user-navigation');
+        const zone = document.getElementById('user-zone');
         if (isAuth) {
-            nav.innerHTML = `
-                <div class="notif-bell"><i class="fas fa-bell"></i><span class="bell-count">0</span></div>
+            zone.innerHTML = `
                 <div class="user-pill" onclick="UI.modal('profile')">
                     <img src="${data.avatar}" class="nav-ava" style="width:35px; height:35px; border-radius:50%; margin-right:10px;">
                     <span class="${data.isRainbow ? 'rainbow-text' : ''}">${data.nickname}</span>
@@ -138,14 +198,14 @@ const UI = {
             `;
         }
     },
-
     modal(id) {
         document.getElementById('modal-overlay').classList.remove('hidden');
         document.getElementById('modal-' + id).classList.remove('hidden');
     },
-
     closeModals() {
         document.getElementById('modal-overlay').classList.add('hidden');
         document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
     }
 };
+
+document.addEventListener('DOMContentLoaded', () => App.init());
