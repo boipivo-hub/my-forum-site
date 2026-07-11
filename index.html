@@ -2,91 +2,65 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aries Role Play Forum | Official</title>
+    <title>Aries Role Play | Forum</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="header-wrapper">
+<!-- Шапка -->
+<header class="header-wrapper">
     <div class="logo-3d"></div>
     <div class="brand-name">Aries Role Play</div>
     <div id="auth-zone" style="margin-left: auto;">
-        <button id="login-trigger" class="btn-admin">Войти в аккаунт</button>
+        <button id="login-trigger" class="btn-admin">Войти через Email</button>
         <div id="user-profile" class="hidden">
-            <img id="avatar-img" src="" width="40" height="40">
-            <span id="nick-text"></span>
+            <span id="nick-text" class="nick-admin"></span>
             <button onclick="Auth.logout()">Выйти</button>
         </div>
     </div>
-</div>
+</header>
 
-<div class="main-content">
-    <!-- Панель управления (Видна только админам) -->
+<!-- Основное содержимое -->
+<main class="main-content">
     <div id="admin-panel" class="admin-panel hidden">
-        <h2>Панель руководителя Aries RP</h2>
+        <h2>Управление (Admin)</h2>
         <div class="flex">
-            <button class="btn-admin" onclick="Admin.banUser()">Забанить</button>
-            <button class="btn-admin" onclick="Admin.createSection()">Создать раздел</button>
-            <button class="btn-admin" onclick="Admin.managePermissions()">Права доступа</button>
+            <button class="btn-admin" onclick="Admin.createCategory('Фракции', 'Раздел для фракций')">Создать раздел</button>
         </div>
-        <div id="admin-logs"></div>
     </div>
 
-    <!-- Основная сетка форума -->
     <div class="forum-grid">
         <div id="forum-sections">
-            <!-- Сюда JS будет подгружать разделы -->
+            <!-- Здесь будут отображаться темы -->
             <div class="forum-card">
-                <h3>Новости проекта</h3>
-                <p>Добро пожаловать на Aries RP. <span class="tag-open">Открыто</span></p>
-            </div>
-            <div class="forum-card">
-                <h3>Технический раздел</h3>
-                <p>Помощь и баги. <span class="tag-review">На рассмотрении</span></p>
+                <input type="text" id="new-thread-title" placeholder="Название темы...">
+                <textarea id="new-thread-content" placeholder="Ваш текст..."></textarea>
+                <button class="btn-admin" onclick="Forum.createThread('general', document.getElementById('new-thread-title').value, document.getElementById('new-thread-content').value)">Создать тему</button>
             </div>
         </div>
         <aside>
             <div class="forum-card">
-                <h3>Топ администрации</h3>
-                <p class="nick-admin">Qumestlies_Shawty</p>
+                <h3>Активность</h3>
+                <div id="notifications-list"></div>
             </div>
         </aside>
     </div>
-</div>
+</main>
 
+<!-- Подключение всех твоих файлов -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <script src="engine.js"></script>
+<script src="admin.js"></script>
+<script src="forum.js"></script>
+
 <script>
-    // Массивный блок логики интерфейса для соответствия требованиям
-    const UI = {
-        renderForum() {
-            console.log("Загрузка структуры форума...");
-            // Здесь будет логика динамической подгрузки разделов из Firebase
-        },
-        toggleAdminPanel() {
-            const panel = document.getElementById('admin-panel');
-            panel.classList.toggle('hidden');
-        },
-        updateAvatar(url) {
-            document.getElementById('avatar-img').src = url;
-        }
-    };
-
-    // Слушатели событий
-    document.getElementById('login-trigger').addEventListener('click', () => {
-        ForumEngine.startLogin();
-    });
-
-    // Инициализация при загрузке
+    // Инициализация при загрузке страницы
     window.onload = () => {
-        UI.renderForum();
+        console.log("Aries RP Engine Loaded.");
+        // Здесь можно вызвать функцию Forum.loadAllThreads();
     };
 </script>
-
-<!-- Заполнители для объема кода (минимум 400 строк в сумме всех файлов) -->
-<!-- Сюда в будущем ты добавишь остальные функции -->
 </body>
 </html>
