@@ -1,275 +1,268 @@
 /**
- * ==========================================================================================
- * ARIES ROLEPLAY - APPLICATION LAYER
- * ==========================================================================================
- * Обработка UI, рендеринг компонентов и взаимодействие с пользователем.
- * ==========================================================================================
+ * ARIES ROLEPLAY - FORUM ENGINE V4.0
+ * ПОЛНАЯ ПРИВЯЗКА К FIREBASE
  */
 
-const UIManager = {
-    
-    /**
-     * СИСТЕМА УВЕДОМЛЕНИЙ (TOAST)
-     */
-    toast(text, type = 'info') {
-        const container = document.getElementById('alert-container');
-        const alert = document.createElement('div');
-        alert.className = `aries-alert ${type}`;
-        
-        const icons = {
-            success: 'fa-check-circle',
-            error: 'fa-exclamation-triangle',
-            info: 'fa-info-circle'
-        };
+const firebaseConfig = {
+    apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM",
+    authDomain: "aries-forum.firebaseapp.com",
+    databaseURL: "https://aries-forum-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "aries-forum",
+    storageBucket: "aries-forum.firebasestorage.app",
+    messagingSenderId: "614643963857",
+    appId: "1:614643963857:web:01f1f941c72249ac6eb2f0"
+};
 
-        alert.innerHTML = `
-            <i class="fas ${icons[type] || icons.info}"></i>
-            <span>${text}</span>
-        `;
-        
-        container.appendChild(alert);
-        setTimeout(() => alert.classList.add('active'), 10);
-        
-        setTimeout(() => {
-            alert.classList.remove('active');
-            setTimeout(() => alert.remove(), 500);
-        }, 4000);
-    },
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const auth = firebase.auth();
 
-    /**
-     * ОБНОВЛЕНИЕ ШАПКИ И ВИДЖЕТОВ ПОЛЬЗОВАТЕЛЯ
-     */
-    updateUserInterface() {
-        const nav = document.getElementById('top-user-panel');
-        const profile = Engine.State.profile;
+const App = {
+    user: null,
+    profile: null,
+    ownerEmail: "ponkc29@gamil.com",
+    ownerNick: "Qumestlies_Shawty",
 
-        if (profile) {
-            nav.innerHTML = `
-                <div class="notif-wrapper" onclick="UIManager.showNotifs()">
-                    <i class="fas fa-bell"></i>
-                    <span class="bell-count" id="notif-count">${Engine.State.notifications}</span>
-                </div>
-                <div class="user-pill" onclick="UI.showModal('settings')">
-                    <div class="pill-text">
-                        <span class="pill-nick ${profile.isRainbow ? 'rainbow-text' : ''}" style="color: ${profile.tagColor}">
-                            ${profile.nickname}
-                        </span>
-                        <span class="pill-rank">${profile.role.toUpperCase()}</span>
-                    </div>
-                    <img src="${profile.avatar}" class="pill-avatar">
-                </div>
-                <button class="btn-logout" onclick="Engine.auth.signOut()"><i class="fas fa-sign-out-alt"></i></button>
-            `;
-        } else {
-            nav.innerHTML = `<button class="btn-auth-glow" onclick="UI.showModal('auth')">ВХОД / РЕГИСТРАЦИЯ</button>`;
+    async init() {
+        auth.onAuthStateChanged(async (firebaseUser) => {
+            if (firebaseUser) {
+                this.user = firebaseUser;
+                await this.syncProfile();
+            } else {
+                this.user = null;
+                this.profile = null;
+                UI.renderNav(false);
+            }
+            Forum.init();
+        });
+
+        if (auth.isSignInWithEmailLink(window.location.href)) {
+            Auth.completeLogin();
         }
     },
 
-    /**
-     * ГЛАВНЫЙ РЕНДЕРЕР ФОРУМА
-     */
-    async renderHome() {
-        const view = document.getElementById('forum-view');
-        view.innerHTML = `<div class="skeleton-loader"></div>`;
+    async syncProfile() {
+        const snap = await db.ref(`users/${this.user.uid}`).once('value');
+        let data = snap.val();
 
-        const categories = await ForumAPI.getCategories();
-        view.innerHTML = "";
-
-        for (const [id, cat] of Object.entries(categories)) {
-            const section = document.createElement('div');
-            section.className = "forum-category-block";
-            section.innerHTML = `
-                <div class="cat-header-main">
-                    <div class="cat-title-info">
-                        <i class="fas fa-folder"></i>
-                        <h3>${cat.title}</h3>
-                    </div>
-                    <div class="cat-actions">
-                        ${Engine.hasAccess('create_thread') ? `<button onclick="UI.openCreateThread('${id}')">НОВАЯ ТЕМА</button>` : ''}
-                    </div>
-                </div>
-                <div class="threads-list" id="threads-container-${id}">
-                    <div class="mini-loader">Загрузка тем...</div>
-                </div>
-            `;
-            view.appendChild(section);
-            this.loadThreadsForCategory(id);
+        if (!data) {
+            data = {
+                nickname: this.user.email.split('@')[0],
+                avatar: "https://i.imgur.com/6EOnf8A.png",
+                role: "user",
+                isRainbow: false
+            };
+            if (this.user.email === this.ownerEmail) {
+                data.role = "owner";
+                data.nickname = this.ownerNick;
+                data.isRainbow = true;
+            }
+            await db.ref(`users/${this.user.uid}`).set(data);
         }
-    },
+        this.profile = data;
+        UI.renderNav(true);
+        if (data.role === 'owner') document.getElementById('admin-panel').classList.remove('hidden');
+    }
+};
 
-    /**
-     * ЗАГРУЗКА ТЕМ ДЛЯ КОНКРЕТНОГО РАЗДЕЛА
-     */
-    async loadThreadsForCategory(catId) {
-        const container = document.getElementById(`threads-container-${catId}`);
-        const snap = await Engine.db.ref(`threads/${catId}`).orderByChild('lastActivity').limitToLast(15).once('value');
-        
-        container.innerHTML = "";
-        
+const Forum = {
+    currentCat: null,
+    currentThread: null,
+
+    async init() {
+        const root = document.getElementById('app');
+        root.innerHTML = "<div class='loading'>Загрузка форума...</div>";
+
+        const snap = await db.ref('categories').once('value');
+        root.innerHTML = "";
+
         if (!snap.exists()) {
-            container.innerHTML = `<div class="empty-notif">В этом разделе еще нет тем. Будьте первым!</div>`;
+            root.innerHTML = "<p>Разделов еще нет. Создайте первый в панели руководства.</p>";
+            return;
+        }
+
+        snap.forEach(child => {
+            const cat = child.val();
+            const id = child.key;
+            root.innerHTML += `
+                <div class="cat-block">
+                    <div class="cat-head">
+                        <h2>${cat.title}</h2>
+                        ${App.profile?.role === 'owner' ? `<button onclick="Forum.openThreadModal('${id}')" style="background:red; color:white; border:none; padding:5px 10px; cursor:pointer;">СОЗДАТЬ ТЕМУ</button>` : ''}
+                    </div>
+                    <div id="cat-${id}">
+                        ${this.renderThreads(id)}
+                    </div>
+                </div>
+            `;
+        });
+    },
+
+    async renderThreads(catId) {
+        const container = document.getElementById(`cat-${catId}`);
+        const snap = await db.ref(`threads/${catId}`).once('value');
+        container.innerHTML = "";
+
+        if (!snap.exists()) {
+            container.innerHTML = "<p style='padding:20px; color:#555;'>В этом разделе нет тем.</p>";
             return;
         }
 
         snap.forEach(child => {
             const t = child.val();
             const tid = child.key;
-            
-            const threadRow = document.createElement('div');
-            threadRow.className = "thread-row-item";
-            threadRow.innerHTML = `
-                <div class="t-status-icon">
-                    <i class="fas ${t.status === 'Закрыто' ? 'fa-lock' : 'fa-comments'}"></i>
-                </div>
-                <div class="t-main-info" onclick="Router.goThread('${catId}', '${tid}')">
-                    <div class="t-title-row">
-                        <span class="tag tag-${this.getTagSlug(t.status)}">${t.status}</span>
-                        <span class="t-name">${t.title}</span>
+            container.innerHTML += `
+                <div class="thread-row" onclick="Forum.viewThread('${catId}', '${tid}')">
+                    <div class="t-icon"><i class="fas fa-comments"></i></div>
+                    <div class="t-info">
+                        <span class="tag tag-open">${t.status}</span>
+                        <span class="t-title">${t.title}</span>
+                        <div class="t-meta">Автор: ${t.authorName} | ${new Date(t.createdAt).toLocaleDateString()}</div>
                     </div>
-                    <div class="t-meta">
-                        <span class="t-author">${t.authorName}</span>
-                        <span class="t-date">${new Date(t.createdAt).toLocaleDateString()}</span>
-                    </div>
-                </div>
-                <div class="t-stats">
-                    <div class="stat"><i class="fas fa-eye"></i> ${t.views || 0}</div>
-                    <div class="stat"><i class="fas fa-reply"></i> ${t.repliesCount || 0}</div>
                 </div>
             `;
-            container.prepend(threadRow); // Новые темы сверху
         });
     },
 
-    getTagSlug(status) {
-        if (status === "Открыто") return "open";
-        if (status === "Закрыто") return "closed";
-        return "review";
-    },
-
-    hidePreloader() {
-        const pre = document.getElementById('loader-wrapper');
-        if (pre) {
-            pre.style.opacity = '0';
-            setTimeout(() => pre.style.display = 'none', 500);
-        }
-    }
-};
-
-/**
- * ==========================================================================================
- * ADMIN & MODERATION MANAGER
- * ==========================================================================================
- */
-const AdminManager = {
-    // Выдача прав пользователю
-    async setUserRole(uid, newRole) {
-        if (!Engine.hasAccess('edit_user')) return;
-        await Engine.db.ref(`users/${uid}`).update({ role: newRole });
-        UIManager.toast(`Роль пользователя изменена на ${newRole}`, "success");
-    },
-
-    // Бан аккаунта
-    async toggleBan(uid, status) {
-        if (!Engine.hasAccess('ban_user')) return;
-        await Engine.db.ref(`users/${uid}`).update({ isBanned: status });
-        UIManager.toast(status ? "Пользователь забанен" : "Пользователь разбанен", "info");
-    },
-
-    // Логирование админ действий
-    async logAction(details) {
-        if (!Engine.State.profile) return;
-        const logData = {
-            admin: Engine.State.profile.nickname,
-            action: details,
-            timestamp: firebase.database.ServerValue.TIMESTAMP
-        };
-        await Engine.db.ref('admin_logs').push(logData);
-    }
-};
-
-/**
- * ==========================================================================================
- * ROUTER SYSTEM
- * ==========================================================================================
- */
-const Router = {
-    handle(hash) {
-        if (!hash || hash === '#home') {
-            UIManager.renderHome();
-        }
-    },
-    goThread(catId, tid) {
-        window.location.hash = `thread/${catId}/${tid}`;
-        // Здесь будет логика отрисовки самой темы (постов)
-        this.renderThreadView(catId, tid);
-    },
-
-    async renderThreadView(catId, tid) {
-        const view = document.getElementById('forum-view');
-        const snap = await Engine.db.ref(`threads/${catId}/${tid}`).once('value');
+    async viewThread(catId, tid) {
+        this.currentCat = catId;
+        this.currentThread = tid;
+        const root = document.getElementById('app');
+        const snap = await db.ref(`threads/${catId}/${tid}`).once('value');
         const t = snap.val();
-        
-        // Увеличение просмотров
-        Engine.db.ref(`threads/${catId}/${tid}`).update({ views: (t.views || 0) + 1 });
 
-        view.innerHTML = `
-            <div class="thread-full-view">
-                <div class="thread-header-title">
-                    <button class="btn-back" onclick="Router.handle('#home')"><i class="fas fa-arrow-left"></i> Назад</button>
-                    <h2>${t.title}</h2>
-                    <div class="admin-thread-tools">
-                        ${Engine.hasAccess('delete_thread') ? `<button onclick="ForumAPI.deleteThread('${catId}','${tid}')">УДАЛИТЬ</button>` : ''}
+        root.innerHTML = `
+            <button onclick="Forum.init()" class="btn-red" style="width:120px; margin-bottom:20px;">← Назад</button>
+            <div class="thread-view">
+                <div class="cat-head"><h2>${t.title}</h2></div>
+                <div class="post">
+                    <div class="post-side">
+                        <img src="${t.authorAva}">
+                        <span class="post-nick ${t.authorRole === 'owner' ? 'rainbow-text' : ''}">${t.authorName}</span>
+                        <span class="post-rank">${t.authorRole}</span>
                     </div>
+                    <div class="post-main">${t.content}</div>
                 </div>
-
-                <div class="posts-container">
-                    <!-- Главный пост (Автор) -->
-                    <div class="post-card">
-                        <div class="post-sidebar">
-                            <img src="${t.authorAva}" class="post-ava">
-                            <div class="post-nick ${t.authorRole === 'owner' ? 'rainbow-text' : ''}">${t.authorName}</div>
-                            <div class="post-rank">${t.authorRole.toUpperCase()}</div>
-                        </div>
-                        <div class="post-main">
-                            <div class="post-date">${new Date(t.createdAt).toLocaleString()}</div>
-                            <div class="post-content">${t.content}</div>
-                        </div>
-                    </div>
-                    
-                    <div id="replies-list">
-                        <!-- Тут будут ответы игроков -->
-                    </div>
-                </div>
-
-                <div class="reply-editor-box">
-                    <h3>Ваш ответ</h3>
-                    <textarea id="reply-textarea" placeholder="Введите сообщение..."></textarea>
-                    <div class="editor-btns">
-                        <button class="btn-main-red" onclick="ForumAPI.sendReply('${tid}')">ОТПРАВИТЬ ОТВЕТ</button>
-                    </div>
+                <div id="replies-area"></div>
+                <div class="reply-box" style="margin-top:30px;">
+                    <textarea id="reply-text" placeholder="Ваш ответ..."></textarea>
+                    <button class="btn-red" onclick="Forum.sendReply()">ОТПРАВИТЬ ОТВЕТ</button>
                 </div>
             </div>
         `;
+        this.loadReplies(tid);
+    },
+
+    async loadReplies(tid) {
+        const container = document.getElementById('replies-area');
+        const snap = await db.ref(`replies/${tid}`).once('value');
+        if (!snap.exists()) return;
+        snap.forEach(child => {
+            const r = child.val();
+            container.innerHTML += `
+                <div class="post">
+                    <div class="post-side">
+                        <img src="${r.authorAva}">
+                        <span class="post-nick ${r.authorRole === 'owner' ? 'rainbow-text' : ''}">${r.authorName}</span>
+                        <span class="post-rank">${r.authorRole}</span>
+                    </div>
+                    <div class="post-main">${r.message}</div>
+                </div>
+            `;
+        });
+    },
+
+    openThreadModal(catId) {
+        this.currentCat = catId;
+        UI.openModal('create-thread');
+    },
+
+    async submitThread() {
+        const title = document.getElementById('th-title').value;
+        const body = document.getElementById('th-body').value;
+        if (!title || !body) return alert("Заполни всё!");
+
+        const threadData = {
+            title, content: body,
+            authorName: App.profile.nickname,
+            authorAva: App.profile.avatar,
+            authorRole: App.profile.role,
+            status: "Открыто",
+            createdAt: Date.now()
+        };
+
+        await db.ref(`threads/${this.currentCat}`).push(threadData);
+        UI.closeModals();
+        this.init();
+    },
+
+    async sendReply() {
+        const text = document.getElementById('reply-text').value;
+        if (!text) return;
+
+        const replyData = {
+            message: text,
+            authorName: App.profile.nickname,
+            authorAva: App.profile.avatar,
+            authorRole: App.profile.role,
+            createdAt: Date.now()
+        };
+
+        await db.ref(`replies/${this.currentThread}`).push(replyData);
+        this.viewThread(this.currentCat, this.currentThread);
     }
 };
 
-/**
- * ==========================================================================================
- * AUTH & SESSION MANAGEMENT
- * ==========================================================================================
- */
-const AuthManager = {
-    async finalizeSignIn() {
-        let email = window.localStorage.getItem('emailForSignIn');
-        if (!email) email = prompt('Введите ваш Email для верификации:');
-        
-        try {
-            await Engine.auth.signInWithEmailLink(email, window.location.href);
-            window.localStorage.removeItem('emailForSignIn');
-            UIManager.toast("Успешная авторизация!", "success");
-            window.history.replaceState({}, null, window.location.pathname);
-        } catch (e) {
-            Engine.error("Auth failed", e);
+const Admin = {
+    async createCategory() {
+        const title = prompt("Название нового раздела:");
+        if (title) {
+            await db.ref('categories').push({ title, order: Date.now() });
+            Forum.init();
+        }
+    },
+    async manageUsers() {
+        alert("Список игроков доступен в базе данных Firebase Console.");
+    }
+};
+
+const Auth = {
+    async sendLink() {
+        const email = document.getElementById('auth-email').value;
+        await auth.sendSignInLinkToEmail(email, { url: window.location.href, handleCodeInApp: true });
+        localStorage.setItem('emailForSignIn', email);
+        alert("Ссылка на почте!");
+    },
+    async completeLogin() {
+        let email = localStorage.getItem('emailForSignIn') || prompt("Email:");
+        await auth.signInWithEmailLink(email, window.location.href);
+        localStorage.removeItem('emailForSignIn');
+        window.location.replace('/');
+    }
+};
+
+const UI = {
+    openModal(id) {
+        document.getElementById('modal-overlay').classList.remove('hidden');
+        document.getElementById(id).classList.remove('hidden');
+    },
+    closeModals() {
+        document.getElementById('modal-overlay').classList.add('hidden');
+        document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+    },
+    renderNav(isAuth) {
+        const nav = document.getElementById('user-nav');
+        if (isAuth) {
+            nav.innerHTML = `
+                <div class="user-pill" onclick="UI.openModal('settings')">
+                    <img src="${App.profile.avatar}" style="width:30px; height:30px; border-radius:50%; margin-right:10px;">
+                    <span class="${App.profile.isRainbow ? 'rainbow-text' : ''}">${App.profile.nickname}</span>
+                </div>
+            `;
+        } else {
+            nav.innerHTML = `<button class="btn-login" onclick="UI.openModal('auth')">ВХОД</button>`;
         }
     }
 };
+
+App.init();
