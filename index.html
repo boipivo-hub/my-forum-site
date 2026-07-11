@@ -1,23 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <title>Aries Forum</title>
+    <style>
+        body { background: #0f1217; color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding: 50px; }
+        .modal { background: #181c24; padding: 20px; border-radius: 10px; width: 300px; }
+        .input-field { width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; }
+        .btn-core { width: 100%; padding: 10px; background: #5a67d8; border: none; color: white; border-radius: 5px; cursor: pointer; }
+        .hidden { display: none; }
+        .post-card { background: #2a2f3a; padding: 15px; margin: 10px 0; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+    <!-- Блок Авторизации -->
+    <div id="auth-box" class="modal">
+        <h3>Вход на форум</h3>
+        <input id="email" type="email" class="input-field" placeholder="Email">
+        <button class="btn-core" onclick="AuthModule.sendEmailCode()">Получить ссылку для входа</button>
+    </div>
+
+    <!-- Блок Форума (скрыт до входа) -->
+    <div id="forum-ui" class="hidden">
+        <input id="post-title" class="input-field" placeholder="Заголовок">
+        <textarea id="post-body" class="input-field" placeholder="Текст поста"></textarea>
+        <button class="btn-core" onclick="ForumNodes.createPost()">Опубликовать</button>
+        <div id="forum-container"></div>
+    </div>
+
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-</head>
-<body>
-    <div id="recaptcha-container"></div>
-    <div id="auth-box" class="modal">
-        <div id="step1"><input id="phone" placeholder="+7..."> <input id="nick" placeholder="Ник"> <button onclick="AuthModule.sendSMS()">Вход</button></div>
-        <div id="step2" class="hidden"><input id="code" placeholder="Код"> <button onclick="AuthModule.verify()">ОК</button></div>
-    </div>
-    <div id="forum-ui" class="hidden">
-        <input id="title" placeholder="Заголовок"> <textarea id="body" placeholder="Текст"></textarea>
-        <button onclick="ForumNodes.createPost(document.getElementById('title').value, document.getElementById('body').value)">Постить</button>
-        <div id="forum-container"></div>
-    </div>
-    <script src="engine.js"></script><script src="security.js"></script>
-    <script src="auth-module.js"></script><script src="forum-nodes.js"></script><script src="app.js"></script>
+
+    <script>
+        // Инициализация (вставь свои данные из Firebase)
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM",
+            authDomain: "aries-forum.firebaseapp.com",
+            databaseURL: "https://aries-forum-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "aries-forum",
+            storageBucket: "aries-forum.firebasestorage.app",
+            messagingSenderId: "614643963857",
+            appId: "1:614643963857:web:01f1f941c72249ac6eb2f0"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        // Логика авторизации
+        const AuthModule = {
+            async sendEmailCode() {
+                const email = document.getElementById('email').value;
+                const settings = { url: window.location.href, handleCodeInApp: true };
+                try {
+                    await firebase.auth().sendSignInLinkToEmail(email, settings);
+                    window.localStorage.setItem('emailForSignIn', email);
+                    alert("Письмо со ссылкой отправлено на твою почту!");
+                } catch(e) { alert("Ошибка: " + e.message); }
+            }
+        };
+
+        // Логика форума
+        const ForumNodes = {
+            createPost() {
+                const title = document.getElementById('post-title').value;
+                const body = document.getElementById('post-body').value;
+                firebase.database().ref('posts').push({ title, body, time: Date.now() });
+            }
+        };
+
+        // Проверка входа
+        firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('auth-box').classList.add('hidden');
+                document.getElementById('forum-ui').classList.remove('hidden');
+            }
+        });
+
+        // Авто-завершение входа по ссылке
+        if (firebase.auth().isSignInWithEmailLink(window.location.href)) {
+            let email = window.localStorage.getItem('emailForSignIn');
+            firebase.auth().signInWithEmailLink(email, window.location.href)
+                .then(() => { window.localStorage.removeItem('emailForSignIn'); alert("Вход выполнен!"); })
+                .catch(e => alert("Ошибка ссылки: " + e.message));
+        }
+    </script>
 </body>
 </html>
