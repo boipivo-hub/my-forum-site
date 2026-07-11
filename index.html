@@ -2,30 +2,70 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ARIES RP FORUM</title>
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+    
+    <!-- Используем Compat версию для работы в браузере без сборщиков -->
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database-compat.js"></script>
+
     <script>
-        const firebaseConfig = { /* твой конфиг */ };
+        // КОНФИГ - Скопируй его ОЧЕНЬ внимательно из консоли Firebase (Project Settings)
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM",
+            authDomain: "aries-forum.firebaseapp.com",
+            databaseURL: "https://aries-forum-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "aries-forum",
+            storageBucket: "aries-forum.firebasestorage.app",
+            messagingSenderId: "614643963857",
+            appId: "1:614643963857:web:01f1f941c72249ac6eb2f0"
+        };
+
+        // Инициализация
         firebase.initializeApp(firebaseConfig);
+        console.log("Firebase инициализирован!");
     </script>
+    
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Зона входа -->
-    <div id="auth-zone">
-        <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Пароль">
-        <input type="text" id="nickname" placeholder="Никнейм">
-        <button onclick="AuthSystem.register(document.getElementById('email').value, document.getElementById('password').value, document.getElementById('nickname').value)">Регистрация</button>
-        <button onclick="AuthSystem.login(document.getElementById('email').value, document.getElementById('password').value)">Войти</button>
-    </div>
+    <nav>
+        <div class="nav-logo">ARIES RP FORUM</div>
+        <div id="auth-zone">
+            <!-- Эти поля будут использоваться для AuthSystem -->
+            <input type="email" id="reg-email" placeholder="Email">
+            <input type="password" id="reg-pass" placeholder="Пароль">
+            <input type="text" id="reg-nick" placeholder="Ник">
+            <button onclick="handleRegister()">Регистрация</button>
+            <button onclick="handleLogin()">Войти</button>
+        </div>
+    </nav>
 
-    <!-- Загрузка скриптов в строгом порядке -->
+    <div id="forum-container"></div>
+
+    <!-- Твои скрипты -->
     <script src="auth-system.js"></script>
+    <script src="db-schema.js"></script>
     <script src="engine.js"></script>
     <script src="ui-manager.js"></script>
+
+    <script>
+        // Простые обертки для кнопок
+        function handleRegister() {
+            AuthSystem.register(
+                document.getElementById('reg-email').value,
+                document.getElementById('reg-pass').value,
+                document.getElementById('reg-nick').value
+            );
+        }
+        function handleLogin() {
+            AuthSystem.login(
+                document.getElementById('reg-email').value,
+                document.getElementById('reg-pass').value
+            );
+        }
+    </script>
 </body>
 </html>
