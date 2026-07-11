@@ -1,32 +1,30 @@
 const AuthModule = {
-    async sendSMS() {
-        const phone = document.getElementById('phone').value;
-        if(!phone) return alert("Введите номер!");
-        
-        // Удаляем старую капчу, чтобы не было конфликтов
-        document.getElementById('recaptcha-container').innerHTML = '<div id="recaptcha-verifier"></div>';
-        window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-verifier', { 'size': 'invisible' });
-        
+    // 1. Отправляем письмо с кодом
+    async sendEmailCode() {
+        const email = document.getElementById('email').value;
+        const actionCodeSettings = {
+            url: window.location.href, // Вернет юзера на эту же страницу
+            handleCodeInApp: true
+        };
         try {
-            window.confirmationResult = await firebase.auth().signInWithPhoneNumber(phone, window.recaptchaVerifier);
-            document.getElementById('step1').classList.add('hidden');
-            document.getElementById('step2').classList.remove('hidden');
-            alert("Код отправлен! Проверь телефон.");
-        } catch(e) { 
-            console.error(e); // Посмотри сюда в консоли F12!
-            alert("Ошибка отправки: " + e.message); 
-        }
+            await firebase.auth().sendSignInLinkToEmail(email, actionCodeSettings);
+            window.localStorage.setItem('emailForSignIn', email); // Сохраняем почту
+            alert("Письмо отправлено! Проверь почту (папка Спам тоже).");
+        } catch(e) { alert("Ошибка: " + e.message); }
     },
-    
-    async verify() {
-        const code = document.getElementById('code').value;
-        try {
-            await window.confirmationResult.confirm(code);
-            alert("Успешно!");
-            location.reload();
-        } catch(e) { 
-            console.error(e);
-            alert("Неверный код или истек срок действия!"); 
+
+    // 2. Завершаем вход (вызывается автоматически при открытии ссылки из письма)
+    async finishSignIn() {
+        if (firebase.auth().isSignInWithEmailLink(window.location.href)) {
+            let email = window.localStorage.getItem('emailForSignIn');
+            if (!email) email = window.prompt('Пожалуйста, введи свою почту для подтверждения:');
+            
+            try {
+                await firebase.auth().signInWithEmailLink(email, window.location.href);
+                window.localStorage.removeItem('emailForSignIn');
+                alert("Успешный вход!");
+                location.reload();
+            } catch(e) { alert("Ошибка входа: " + e.message); }
         }
     }
 };
