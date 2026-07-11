@@ -1,33 +1,155 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aries Role Play - Control Panel</title>
+    <!-- Подключаем шрифты для стиля -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Стилизация всего интерфейса под черно-красный дизайн */
+        :root {
+            --main-bg: #0a0a0a;
+            --card-bg: #151515;
+            --red-aries: #b71c1c;
+            --border-red: #d32f2f;
+            --text-white: #eeeeee;
+        }
+        body { margin: 0; background-color: var(--main-bg); color: var(--text-white); font-family: 'Roboto', sans-serif; }
+        
+        /* HEADER SECTION */
+        .header-container {
+            display: flex;
+            align-items: center;
+            padding: 15px 30px;
+            background: #000;
+            border-bottom: 3px solid var(--border-red);
+        }
+        .menu-burger { cursor: pointer; display: flex; flex-direction: column; gap: 5px; margin-right: 20px; }
+        .burger-line { width: 30px; height: 3px; background: white; }
+        .logo-box { height: 50px; display: flex; align-items: center; }
+        .logo-box img { height: 100%; }
+
+        /* NAVIGATION MENU */
+        .side-menu {
+            position: fixed;
+            left: -300px;
+            top: 0;
+            width: 300px;
+            height: 100%;
+            background: #111;
+            transition: 0.4s;
+            border-right: 2px solid var(--red-aries);
+            z-index: 1000;
+            padding-top: 80px;
+        }
+        .side-menu.active { left: 0; }
+        .menu-item { padding: 20px 30px; color: white; cursor: pointer; border-bottom: 1px solid #222; }
+        .menu-item:hover { background: var(--red-aries); }
+
+        /* MAIN CONTENT AREA */
+        .content-wrap { padding: 20px; }
+        .section-card {
+            background: var(--card-bg);
+            border-left: 5px solid var(--border-red);
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <div class="menu-container" onclick="toggleMenu()">
-            <div class="line"></div><div class="line"></div><div class="line"></div>
+
+    <!-- Шапка -->
+    <header class="header-container">
+        <div class="menu-burger" onclick="toggleMenu()">
+            <div class="burger-line"></div>
+            <div class="burger-line"></div>
+            <div class="burger-line"></div>
         </div>
-        <img src="logo.png" class="logo-img">
-        <h1>Aries Role Play Forum</h1>
+        <div class="logo-box">
+            <img src="logo.png" alt="Aries Role Play">
+        </div>
     </header>
 
-    <div id="admin-panel" class="admin-panel admin-only" style="display:none;">
-        <h3>Панель руководителя</h3>
-        <button onclick="AdminPanel.createSection('Новый раздел')">Создать раздел</button>
+    <!-- Навигация -->
+    <div class="side-menu" id="main-menu">
+        <div class="menu-item">Главная</div>
+        <div class="menu-item">Форумы</div>
+        <div class="menu-item">База знаний</div>
+        <div class="menu-item" id="admin-link" style="display:none;">Панель руководства</div>
     </div>
 
-    <div class="main-content">
-        <div class="forum-card">
-            <h3>Новости Aries RP</h3>
-            <span class="admin-badge">Важное</span>
+    <!-- Основной контент -->
+    <main class="content-wrap">
+        <div class="section-card" id="auth-section">
+            <h2>Регистрация / Вход</h2>
+            <p>Добро пожаловать на Aries Role Play</p>
         </div>
-    </div>
+        <!-- Блок формы входа/регистрации -->
+        <section id="auth-container" class="section-card">
+            <h3>Авторизация</h3>
+            <div class="input-group">
+                <label>Имя пользователя или email:</label>
+                <input type="text" id="login-input" style="width: 100%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #333; color: white;">
+            </div>
+            <div class="input-group">
+                <label>Пароль:</label>
+                <input type="password" id="pass-input" style="width: 100%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #333; color: white;">
+            </div>
+            <div class="action-buttons">
+                <button onclick="handleLogin()" style="background: var(--red-aries); color: white; border: none; padding: 10px 25px; cursor: pointer;">Войти</button>
+                <button onclick="showRegister()" style="background: transparent; color: white; border: 1px solid var(--red-aries); padding: 10px 25px; cursor: pointer; margin-left: 10px;">Регистрация</button>
+            </div>
+        </section>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="engine.js"></script>
-    <script src="admin.js"></script>
+        <!-- Секция панели руководства (Изначально скрыта) -->
+        <section id="admin-dashboard" class="section-card" style="display:none; border-left: 5px solid #ff0000; background: #1f0000;">
+            <h2 style="color: #ff5252;">Панель руководителя Aries RP</h2>
+            <div class="admin-tools" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="tool-item">
+                    <button onclick="adminAction('mute')" style="width: 100%; padding: 15px; background: #330000; color: white; border: 1px solid #ff0000;">Выдать Мут</button>
+                </div>
+                <div class="tool-item">
+                    <button onclick="adminAction('ban')" style="width: 100%; padding: 15px; background: #330000; color: white; border: 1px solid #ff0000;">Выдать Бан</button>
+                </div>
+                <div class="tool-item">
+                    <button onclick="adminAction('warn')" style="width: 100%; padding: 15px; background: #330000; color: white; border: 1px solid #ff0000;">Выдать Warn</button>
+                </div>
+                <div class="tool-item">
+                    <button onclick="adminAction('logs')" style="width: 100%; padding: 15px; background: #330000; color: white; border: 1px solid #ff0000;">Просмотр логов</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Блок форумов -->
+        <section class="section-card">
+            <h3>Разделы игровых серверов</h3>
+            <div class="forum-item" style="padding: 15px; border-bottom: 1px solid #333;">
+                <span style="font-weight: bold;">Сервера Aries RP</span><br>
+                <small style="color: #888;">Темы: 0 | Сообщений: 0</small>
+            </div>
+            <div class="forum-item" style="padding: 15px;">
+                <span style="font-weight: bold;">Прочее комьюнити</span><br>
+                <small style="color: #888;">Раздел мероприятий и общения</small>
+            </div>
+        </section>
+    </main>
+
+    <!-- Скрипт-заглушка для обработки событий -->
+    <script>
+        function toggleMenu() {
+            document.getElementById('main-menu').classList.toggle('active');
+        }
+        
+        function handleLogin() {
+            // Логика авторизации будет позже в engine.js
+            console.log("Попытка входа...");
+        }
+
+        function adminAction(type) {
+            alert("Функция панели руководителя: " + type);
+        }
+    </script>
 </body>
 </html>
