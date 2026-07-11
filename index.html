@@ -2,96 +2,30 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ARIES RP FORUM</title>
-    
-    <!-- Стили -->
-    <link rel="stylesheet" href="style.css">
-
-    <!-- Firebase SDK (Version 9 Compatibility) -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
-
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM",
-            authDomain: "aries-forum.firebaseapp.com",
-            databaseURL: "https://aries-forum-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "aries-forum",
-            storageBucket: "aries-forum.firebasestorage.app",
-            messagingSenderId: "614643963857",
-            appId: "1:614643963857:web:01f1f941c72249ac6eb2f0"
-        };
+        const firebaseConfig = { /* твой конфиг */ };
         firebase.initializeApp(firebaseConfig);
     </script>
 </head>
 <body>
 
-    <!-- Навигация -->
-    <header>
-        <div class="menu-burger" onclick="document.getElementById('main-menu').classList.toggle('active')">
-            <div class="burger-line"></div>
-            <div class="burger-line"></div>
-            <div class="burger-line"></div>
-        </div>
-        <img src="logo.png" class="logo" alt="ARIES RP">
-        <div id="user-profile-corner" style="margin-left: auto;"></div>
-    </header>
-
-    <!-- Боковое меню -->
-    <nav id="main-menu">
-        <div class="menu-item">Форум</div>
-        <div class="menu-item">Правила</div>
-        <div class="menu-item" onclick="ProfileCore.open()">Профиль</div>
-    </nav>
-
-    <!-- Основной контент -->
-    <div class="content-wrap">
-        <main id="main-content">
-            <div id="forum-container">
-                <div id="loading-spinner" style="text-align: center; padding: 50px;">
-                    <h3>Загрузка системы Aries RP...</h3>
-                </div>
-            </div>
-        </main>
+    <!-- Зона входа -->
+    <div id="auth-zone">
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Пароль">
+        <input type="text" id="nickname" placeholder="Никнейм">
+        <button onclick="AuthSystem.register(document.getElementById('email').value, document.getElementById('password').value, document.getElementById('nickname').value)">Регистрация</button>
+        <button onclick="AuthSystem.login(document.getElementById('email').value, document.getElementById('password').value)">Войти</button>
     </div>
 
-    <!-- Модальное окно профиля -->
-    <div id="m-profile" class="modal-overlay">
-        <div class="modal-card">
-            <h3>Редактирование профиля</h3>
-            <img id="my-profile-avatar-view" src="" alt="Avatar">
-            <input type="file" onchange="ProfileCore.upload(event)">
-            <input type="text" id="new-profile-nick" placeholder="Новый ник">
-            <button onclick="ProfileCore.saveData()">Сохранить изменения</button>
-            <button onclick="ProfileCore.close()">Закрыть</button>
-        </div>
-    </div>
-
-    <!-- Подключаем логику в строгом порядке -->
-    <script src="db-schema.js"></script>   <!-- Сначала структура -->
-    <script src="engine.js"></script>      <!-- Потом движок -->
-    <script src="ui-manager.js"></script>  <!-- Потом UI -->
-    <script src="profile-core.js"></script> <!-- Потом профиль -->
-
-    <!-- Инициализатор -->
-    <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                console.log("ARIES RP: Core System Starting...");
-                // Инициализация движка
-                Engine.init();
-                // Финальная сборка UI
-                if (typeof UIManagerFinal !== 'undefined') {
-                    await UIManagerFinal.boot();
-                }
-                document.getElementById('loading-spinner').style.display = 'none';
-            } catch (e) {
-                console.error("Boot Error:", e);
-                document.body.innerHTML = "<h1>Ошибка загрузки системы. Проверьте консоль F12.</h1>";
-            }
-        });
-    </script>
+    <!-- Загрузка скриптов в строгом порядке -->
+    <script src="auth-system.js"></script>
+    <script src="engine.js"></script>
+    <script src="ui-manager.js"></script>
 </body>
 </html>
