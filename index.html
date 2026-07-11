@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -7,20 +7,17 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
-    <div class="modal">
-        <div id="recaptcha-container"></div>
-        <div id="step1">
-            <input id="phone" class="input-field" placeholder="Номер +7...">
-            <input id="nick" class="input-field" placeholder="Никнейм">
-            <button class="btn-core" onclick="AuthModule.sendSMS()">Получить код</button>
-        </div>
-        <div id="step2" class="hidden">
-            <input id="code" class="input-field" placeholder="Код из СМС">
-            <button class="btn-core" onclick="AuthModule.verify()">Подтвердить</button>
-        </div>
+    <div id="recaptcha-container"></div>
+    <div id="auth-box" class="modal">
+        <div id="step1"><input id="phone" placeholder="+7..."> <input id="nick" placeholder="Ник"> <button onclick="AuthModule.sendSMS()">Вход</button></div>
+        <div id="step2" class="hidden"><input id="code" placeholder="Код"> <button onclick="AuthModule.verify()">ОК</button></div>
     </div>
-    <script src="engine.js"></script>
-    <script src="security.js"></script>
-    <script src="auth-module.js"></script>
+    <div id="forum-ui" class="hidden">
+        <input id="title" placeholder="Заголовок"> <textarea id="body" placeholder="Текст"></textarea>
+        <button onclick="ForumNodes.createPost(document.getElementById('title').value, document.getElementById('body').value)">Постить</button>
+        <div id="forum-container"></div>
+    </div>
+    <script src="engine.js"></script><script src="security.js"></script>
+    <script src="auth-module.js"></script><script src="forum-nodes.js"></script><script src="app.js"></script>
 </body>
 </html>
