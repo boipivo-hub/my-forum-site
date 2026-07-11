@@ -1,83 +1,66 @@
 /**
- * ARIES RP AUTH MODULE - FULL VERSION
- * Реализация Passwordless (Email Link) авторизации
+ * ARIES RP AUTH MODULE - FIXED VERSION (EMAIL + PASSWORD)
+ * Метод: Классическая почта и пароль
  */
 
 const AuthModule = {
-    // 1. Инициализация (проверка состояния при загрузке страницы)
+    // 1. Инициализация (следит за тем, залогинен юзер или нет)
     init() {
         firebase.auth().onAuthStateChanged((user) => {
             if (user) {
-                console.log("Пользователь авторизован:", user.email);
+                console.log("Пользователь в системе:", user.email);
                 this.updateUI(true);
             } else {
-                this.finishSignIn(); // Пытаемся завершить вход по ссылке
+                this.updateUI(false);
             }
         });
     },
 
-    // 2. Отправка письма для входа/регистрации (Passwordless)
-    async sendEmailCode() {
-        const emailInput = document.getElementById('login-input');
-        const email = emailInput ? emailInput.value : null;
+    // 2. Регистрация (Создает юзера в Firebase Auth)
+    async registerUser() {
+        const email = document.getElementById('login-input').value;
+        const pass = document.getElementById('pass-input').value;
 
-        if (!email) {
-            alert("Введите Email!");
-            return;
-        }
-
-        const actionCodeSettings = {
-            url: window.location.origin + window.location.pathname, // Ссылка на текущую страницу
-            handleCodeInApp: true
-        };
+        if (!email || !pass) { alert("Заполни оба поля!"); return; }
 
         try {
-            await firebase.auth().sendSignInLinkToEmail(email, actionCodeSettings);
-            window.localStorage.setItem('emailForSignIn', email);
-            alert("Письмо с кодом доступа отправлено на ваш Email. Проверьте папку 'Спам'!");
+            const cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
+            await cred.user.sendEmailVerification();
+            alert("Регистрация успешна! Письмо с верификацией отправлено на почту.");
         } catch (e) {
-            console.error("Auth Error:", e);
-            alert("Ошибка отправки письма: " + e.message);
+            alert("Ошибка регистрации: " + e.message);
         }
     },
 
-    // 3. Завершение входа по ссылке из письма
-    async finishSignIn() {
-        if (firebase.auth().isSignInWithEmailLink(window.location.href)) {
-            let email = window.localStorage.getItem('emailForSignIn');
-            
-            // Если почта потерялась в кэше, запрашиваем вручную
-            if (!email) {
-                email = window.prompt('Для завершения входа введите ваш Email:');
-            }
+    // 3. Вход (Email + Пароль)
+    async loginUser() {
+        const email = document.getElementById('login-input').value;
+        const pass = document.getElementById('pass-input').value;
 
-            try {
-                const result = await firebase.auth().signInWithEmailLink(email, window.location.href);
-                window.localStorage.removeItem('emailForSignIn');
-                
-                // Дополнительная логика: сохранение профиля в базе данных
-                if (result.additionalUserInfo.isNewUser) {
-                    await db.ref('users/' + result.user.uid).set({
-                        email: email,
-                        createdAt: firebase.database.ServerValue.TIMESTAMP,
-                        role: 'user'
-                    });
-                }
-                
-                alert("Успешный вход!");
-                window.location.replace(window.location.origin + window.location.pathname);
-            } catch (e) {
-                alert("Ошибка завершения входа: " + e.message);
+        try {
+            const cred = await firebase.auth().signInWithEmailAndPassword(email, pass);
+            if (!cred.user.emailVerified) {
+                alert("Ошибка: Сначала подтверди почту по ссылке из письма!");
+                await firebase.auth().signOut();
+                return;
             }
+            alert("Вход выполнен!");
+            location.reload();
+        } catch (e) {
+            alert("Ошибка входа: " + e.message);
         }
     },
 
-    // 4. Логика обновления интерфейса
+    // 4. Обновление интерфейса (показ/скрытие админки)
     updateUI(isLoggedIn) {
-        const authContainer = document.getElementById('auth-container');
-        if (isLoggedIn) {
-            authContainer.innerHTML = "<h3>Добро пожаловать, вы авторизованы!</h3><button onclick='AuthModule.logout()'>Выйти</button>";
-            document.getElementById('admin-link').style.display = 'block';
+        const adminLink = document.getElementById('admin-link');
+        const adminDashboard = document.getElementById('admin-dashboard');
+        
+        if (isLoggedIn && adminLink && adminDashboard) {
+            adminLink.style.display = 'block';
+            adminDashboard.style.display = 'block';
+        } else if (adminLink) {
+            adminLink.style.display = 'none';
         }
     },
 
@@ -88,5 +71,5 @@ const AuthModule = {
     }
 };
 
-// Запуск модуля
+// Запуск
 AuthModule.init();
