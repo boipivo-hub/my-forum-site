@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aries Role Play - Control Panel</title>
-    <!-- Подключаем шрифты для стиля -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* Стилизация всего интерфейса под черно-красный дизайн */
         :root {
             --main-bg: #0a0a0a;
             --card-bg: #151515;
@@ -17,62 +15,53 @@
         }
         body { margin: 0; background-color: var(--main-bg); color: var(--text-white); font-family: 'Roboto', sans-serif; }
         
-        /* HEADER SECTION */
-        .header-container {
-            display: flex;
-            align-items: center;
-            padding: 15px 30px;
-            background: #000;
-            border-bottom: 3px solid var(--border-red);
-        }
+        /* HEADER */
+        .header-container { display: flex; align-items: center; padding: 15px 30px; background: #000; border-bottom: 3px solid var(--border-red); }
         .menu-burger { cursor: pointer; display: flex; flex-direction: column; gap: 5px; margin-right: 20px; }
         .burger-line { width: 30px; height: 3px; background: white; }
-        .logo-box { height: 50px; display: flex; align-items: center; }
-        .logo-box img { height: 100%; }
+        
+        /* 3D LOGO */
+        .aries-logo-3d-pro { display: flex; align-items: center; gap: 20px; perspective: 800px; margin-left: 20px; }
+        .cube-container { width: 50px; height: 50px; position: relative; transform-style: preserve-3d; transform: rotateY(-20deg) rotateX(10deg); }
+        .side { position: absolute; width: 50px; height: 50px; background: linear-gradient(135deg, #d32f2f, #6b0000); box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
+        .front { transform: translateZ(25px); } .right { transform: rotateY(90deg) translateZ(25px); background: #8e0000; }
+        .top { transform: rotateX(90deg) translateZ(25px); background: #b71c1c; }
+        .text-container { display: flex; flex-direction: column; }
+        .main-title { font-size: 28px; font-weight: 900; color: #fff; text-shadow: 0 0 10px rgba(211, 47, 47, 0.8); letter-spacing: 3px; }
+        .sub-title { font-size: 16px; color: #d32f2f; font-weight: bold; letter-spacing: 5px; }
 
-        /* NAVIGATION MENU */
-        .side-menu {
-            position: fixed;
-            left: -300px;
-            top: 0;
-            width: 300px;
-            height: 100%;
-            background: #111;
-            transition: 0.4s;
-            border-right: 2px solid var(--red-aries);
-            z-index: 1000;
-            padding-top: 80px;
-        }
+        /* MENU & CONTENT */
+        .side-menu { position: fixed; left: -300px; top: 0; width: 300px; height: 100%; background: #111; transition: 0.4s; border-right: 2px solid var(--red-aries); z-index: 1000; padding-top: 80px; }
         .side-menu.active { left: 0; }
         .menu-item { padding: 20px 30px; color: white; cursor: pointer; border-bottom: 1px solid #222; }
         .menu-item:hover { background: var(--red-aries); }
-
-        /* MAIN CONTENT AREA */
-        .content-wrap { padding: 20px; }
-        .section-card {
-            background: var(--card-bg);
-            border-left: 5px solid var(--border-red);
-            padding: 25px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-        }
+        .content-wrap { padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .section-card { background: var(--card-bg); border-left: 5px solid var(--border-red); padding: 25px; margin-bottom: 20px; border-radius: 5px; }
+        
+        /* ADMIN TOOLS */
+        .admin-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+        button { background: var(--red-aries); color: white; border: none; padding: 15px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #8e0000; }
+        input { width: 100%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #333; color: white; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-    <!-- Шапка -->
     <header class="header-container">
         <div class="menu-burger" onclick="toggleMenu()">
-            <div class="burger-line"></div>
-            <div class="burger-line"></div>
-            <div class="burger-line"></div>
+            <div class="burger-line"></div><div class="burger-line"></div><div class="burger-line"></div>
         </div>
-        <div class="logo-box">
-            <img src="logo.png" alt="Aries Role Play">
+        <div class="aries-logo-3d-pro">
+            <div class="cube-container">
+                <div class="side top"></div><div class="side front"></div><div class="side right"></div>
+            </div>
+            <div class="text-container">
+                <span class="main-title">ARIES</span>
+                <span class="sub-title">ROLE PLAY</span>
+            </div>
         </div>
     </header>
 
-    <!-- Навигация -->
     <div class="side-menu" id="main-menu">
         <div class="menu-item">Главная</div>
         <div class="menu-item">Форумы</div>
@@ -80,76 +69,42 @@
         <div class="menu-item" id="admin-link" style="display:none;">Панель руководства</div>
     </div>
 
-    <!-- Основной контент -->
     <main class="content-wrap">
         <div class="section-card" id="auth-section">
             <h2>Регистрация / Вход</h2>
-            <p>Добро пожаловать на Aries Role Play</p>
+            <p>Добро пожаловать на Aries Role Play. Авторизуйтесь для доступа к функционалу.</p>
         </div>
-        <!-- Блок формы входа/регистрации -->
+
         <section id="auth-container" class="section-card">
             <h3>Авторизация</h3>
-            <div class="input-group">
-                <label>Имя пользователя или email:</label>
-                <input type="text" id="login-input" style="width: 100%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #333; color: white;">
-            </div>
-            <div class="input-group">
-                <label>Пароль:</label>
-                <input type="password" id="pass-input" style="width: 100%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #333; color: white;">
-            </div>
-            <div class="action-buttons">
-                <button onclick="handleLogin()" style="background: var(--red-aries); color: white; border: none; padding: 10px 25px; cursor: pointer;">Войти</button>
-                <button onclick="showRegister()" style="background: transparent; color: white; border: 1px solid var(--red-aries); padding: 10px 25px; cursor: pointer; margin-left: 10px;">Регистрация</button>
-            </div>
+            <input type="text" id="login-input" placeholder="Email">
+            <input type="password" id="pass-input" placeholder="Пароль">
+            <button onclick="handleLogin()">Войти</button>
+            <button onclick="showRegister()" style="background: transparent; border: 1px solid var(--red-aries); margin-left: 10px;">Регистрация</button>
         </section>
 
-        <!-- Секция панели руководства (Изначально скрыта) -->
         <section id="admin-dashboard" class="section-card" style="display:none; border-left: 5px solid #ff0000; background: #1f0000;">
             <h2 style="color: #ff5252;">Панель руководителя Aries RP</h2>
-            <div class="admin-tools" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div class="tool-item">
-                    <button onclick="adminAction('mute')" style="width: 100%; padding: 15px; background: #330000; color: white; border: 1px solid #ff0000;">Выдать Мут</button>
-                </div>
-                <div class="tool-item">
-                    <button onclick="adminAction('ban')" style="width: 100%; padding: 15px; background: #330000; color: white; border: 1px solid #ff0000;">Выдать Бан</button>
-                </div>
-                <div class="tool-item">
-                    <button onclick="adminAction('warn')" style="width: 100%; padding: 15px; background: #330000; color: white; border: 1px solid #ff0000;">Выдать Warn</button>
-                </div>
-                <div class="tool-item">
-                    <button onclick="adminAction('logs')" style="width: 100%; padding: 15px; background: #330000; color: white; border: 1px solid #ff0000;">Просмотр логов</button>
-                </div>
+            <div class="admin-tools">
+                <button onclick="adminAction('mute')">Выдать Мут</button>
+                <button onclick="adminAction('ban')">Выдать Бан</button>
+                <button onclick="adminAction('warn')">Выдать Warn</button>
+                <button onclick="adminAction('logs')">Просмотр логов</button>
             </div>
         </section>
 
-        <!-- Блок форумов -->
         <section class="section-card">
-            <h3>Разделы игровых серверов</h3>
-            <div class="forum-item" style="padding: 15px; border-bottom: 1px solid #333;">
-                <span style="font-weight: bold;">Сервера Aries RP</span><br>
-                <small style="color: #888;">Темы: 0 | Сообщений: 0</small>
-            </div>
-            <div class="forum-item" style="padding: 15px;">
-                <span style="font-weight: bold;">Прочее комьюнити</span><br>
-                <small style="color: #888;">Раздел мероприятий и общения</small>
-            </div>
+            <h3>Последние темы форума</h3>
+            <div class="forum-item" style="padding: 10px 0; border-bottom: 1px solid #333;">Сервера Aries RP — Обсуждение</div>
+            <div class="forum-item" style="padding: 10px 0;">Прочее комьюнити — Мероприятия</div>
         </section>
     </main>
 
-    <!-- Скрипт-заглушка для обработки событий -->
     <script>
-        function toggleMenu() {
-            document.getElementById('main-menu').classList.toggle('active');
-        }
-        
-        function handleLogin() {
-            // Логика авторизации будет позже в engine.js
-            console.log("Попытка входа...");
-        }
-
-        function adminAction(type) {
-            alert("Функция панели руководителя: " + type);
-        }
+        function toggleMenu() { document.getElementById('main-menu').classList.toggle('active'); }
+        function handleLogin() { console.log("Login sequence..."); }
+        function showRegister() { console.log("Register sequence..."); }
+        function adminAction(type) { alert("Admin Action: " + type); }
     </script>
 </body>
 </html>
