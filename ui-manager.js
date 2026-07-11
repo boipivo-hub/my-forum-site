@@ -1,129 +1,116 @@
 /**
- * UI MANAGER - ADVANCED RENDERER
- * Отвечает за динамическую отрисовку всего интерфейса
+ * ARIES RP - UI MANAGER
  */
-
 const UIManager = {
-    
-    toast(text, type = 'info') {
-        const container = document.getElementById('toast-manager');
-        const toast = document.createElement('div');
-        toast.className = `toast-item ${type}`;
-        toast.innerHTML = `<i class="fas fa-info-circle"></i> <span>${text}</span>`;
-        container.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.transform = "translateX(120%)";
-            setTimeout(() => toast.remove(), 500);
-        }, 4000);
+    currentCat: null,
+
+    async loadHome() {
+        const root = document.getElementById('dynamic-content');
+        root.innerHTML = "<div class='loader-mini'>Загрузка разделов...</div>";
+
+        try {
+            const snap = await db.ref('categories').once('value');
+            root.innerHTML = "";
+            
+            if (!snap.exists()) {
+                root.innerHTML = "<p>Разделов нет. Создайте первый через панель управления.</p>";
+                return;
+            }
+
+            snap.forEach(child => {
+                const cat = child.val();
+                const id = child.key;
+                root.innerHTML += `
+                    <div class="cat-card" onclick="UIManager.viewCategory('${id}')">
+                        <div class="cat-icon"><i class="fas fa-folder"></i></div>
+                        <div class="cat-info">
+                            <h3>${cat.title}</h3>
+                            <p>Официальный раздел Aries RP</p>
+                        </div>
+                    </div>
+                `;
+            });
+        } catch (e) {
+            console.error("LoadHome Error:", e);
+        }
     },
 
-    renderHeaderAuth(isAuth, data = null) {
-        const node = document.getElementById('header-auth-node');
+    async viewCategory(id) {
+        this.currentCat = id;
+        const root = document.getElementById('dynamic-content');
+        root.innerHTML = `
+            <div class="section-nav">
+                <button onclick="UIManager.loadHome()">← Назад</button>
+                <button class="btn-red" onclick="UIManager.openModal('create-thread')">НОВАЯ ТЕМА</button>
+            </div>
+            <div id="threads-container"></div>
+        `;
+        this.loadThreads(id);
+    },
+
+    async loadThreads(id) {
+        const container = document.getElementById('threads-container');
+        const snap = await db.ref(`threads/${id}`).once('value');
+        if (!snap.exists()) {
+            container.innerHTML = "<p class='empty'>В этом разделе еще нет тем.</p>";
+            return;
+        }
+        snap.forEach(child => {
+            const t = child.val();
+            container.innerHTML += `
+                <div class="thread-row">
+                    <span class="tag tag-open">${t.status}</span>
+                    <div class="t-main">
+                        <div class="t-title">${t.title}</div>
+                        <div class="t-meta">Автор: ${t.authorName}</div>
+                    </div>
+                </div>
+            `;
+        });
+    },
+
+    async createCategory() {
+        const title = prompt("Название раздела:");
+        if (title) {
+            await db.ref('categories').push({ title: title, order: Date.now() });
+            this.loadHome();
+        }
+    },
+
+    async submitThread() {
+        const title = document.getElementById('th-title').value;
+        const text = document.getElementById('th-text').value;
+        if (!title || !text) return;
+
+        await db.ref(`threads/${this.currentCat}`).push({
+            title, text,
+            authorName: Engine.profile.nickname,
+            status: "Открыто",
+            createdAt: Date.now()
+        });
+        this.closeModals();
+        this.viewCategory(this.currentCat);
+    },
+
+    renderAuthNode(isAuth, data) {
+        const node = document.getElementById('auth-node');
         if (isAuth) {
             node.innerHTML = `
-                <div class="user-pill" onclick="UIManager.openModal('settings')">
-                    <div class="pill-info">
-                        <span class="pill-nick ${data.isRainbow ? 'rainbow-text' : ''}">${data.nickname}</span>
-                        <span class="pill-role">${data.role.toUpperCase()}</span>
-                    </div>
-                    <img src="${data.avatar}" class="pill-ava">
+                <div class="user-pill">
+                    <img src="${data.avatar}" class="nav-ava">
+                    <span class="${data.isRainbow ? 'rainbow-text' : ''}">${data.nickname}</span>
                 </div>
             `;
-        } else {
-            node.innerHTML = `<button class="btn-auth-glow" onclick="UIManager.openAuth()">ВХОД / РЕГИСТРАЦИЯ</button>`;
         }
-    },
-
-    async renderForumHome() {
-        const root = document.getElementById('dynamic-root');
-        root.innerHTML = `<div class="skeleton-list"></div>`;
-        
-        const snap = await Engine.db.ref('categories').orderByChild('order').once('value');
-        root.innerHTML = "";
-
-        if (!snap.exists()) {
-            root.innerHTML = `<div class="info-empty">Разделы форума появятся скоро.</div>`;
-            return;
-        }
-
-        snap.forEach(catSnap => {
-            const cat = catSnap.val();
-            const id = catSnap.key;
-            
-            const catEl = document.createElement('div');
-            catEl.className = "forum-card";
-            catEl.innerHTML = `
-                <div class="card-head"><h2>${cat.title}</h2></div>
-                <div class="threads-list" id="cat-list-${id}">
-                    <div class="loader-inner">Загрузка тем...</div>
-                </div>
-            `;
-            root.appendChild(catEl);
-            this.renderThreads(id);
-        });
-    },
-
-    async renderThreads(catId) {
-        const list = document.getElementById(`cat-list-${catId}`);
-        const snap = await Engine.db.ref(`threads/${catId}`).limitToLast(10).once('value');
-        
-        list.innerHTML = "";
-        if (!snap.exists()) {
-            list.innerHTML = `<div class="empty-threads">Тем в этом разделе еще нет.</div>`;
-            return;
-        }
-
-        snap.forEach(tSnap => {
-            const t = tSnap.val();
-            const tid = tSnap.key;
-            const row = document.createElement('div');
-            row.className = "thread-row";
-            row.onclick = () => Router.page('thread', {catId, tid});
-            row.innerHTML = `
-                <div class="tr-icon"><i class="fas fa-comments"></i></div>
-                <div class="tr-info">
-                    <h4><span class="tag ${this.tagClass(t.status)}">${t.status}</span> ${t.title}</h4>
-                    <span class="tr-meta">Автор: ${t.authorName} • ${new Date(t.createdAt).toLocaleDateString()}</span>
-                </div>
-                <div class="tr-last">
-                    <span class="last-nick">${t.lastReplyBy || 'Нет ответов'}</span>
-                </div>
-            `;
-            list.appendChild(row);
-        });
-    },
-
-    tagClass(s) {
-        if (s === 'Открыто') return 'tag-open';
-        if (s === 'Закрыто') return 'tag-closed';
-        return 'tag-review';
-    },
-
-    openAuth() {
-        this.openModal('auth');
-        AuthSystem.generateCaptcha();
     },
 
     openModal(id) {
-        document.getElementById('modal-system-bg').classList.remove('hidden');
+        document.getElementById('modal-overlay').classList.remove('hidden');
         document.getElementById(`modal-${id}`).classList.remove('hidden');
     },
 
     closeModals() {
-        document.getElementById('modal-system-bg').classList.add('hidden');
+        document.getElementById('modal-overlay').classList.add('hidden');
         document.querySelectorAll('.modal-box').forEach(m => m.classList.add('hidden'));
-    },
-
-    toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('active');
-    }
-};
-
-// Простой роутер для переключения страниц
-const Router = {
-    page(name, params = {}) {
-        if (name === 'home') UIManager.renderForumHome();
-        // Можно расширить для открытия конкретных тем
     }
 };
