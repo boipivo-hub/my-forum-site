@@ -3,20 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARIES ROLEPLAY — ПАНЕЛЬ СООБЩЕСТВА</title>
+    <title>ARIES RP | OFFICIAL FORUM ENGINE</title>
     
-    <!-- Стили и Шрифты -->
+    <!-- External Dependencies -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;800&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (Compatibility Layer) -->
     <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database-compat.js"></script>
 
     <script>
-        // Твоя привязка БД (уже настроена)
+        /**
+         * FIREBASE GLOBAL CONFIGURATION
+         * Прямая привязка к твоей базе данных
+         */
         const firebaseConfig = {
             apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM",
             authDomain: "aries-forum.firebaseapp.com",
@@ -29,142 +32,167 @@
         firebase.initializeApp(firebaseConfig);
     </script>
 </head>
-<body>
+<body class="aries-theme-dark">
 
-<!-- Глобальный Прелоадер -->
-<div id="loader-wrapper">
-    <div class="loader-3d">
-        <img src="https://i.imgur.com/8YyX29k.png" alt="Aries Logo">
-        <div class="loader-bar"></div>
+    <!-- Глобальный Прелоадер с 3D анимацией -->
+    <div id="app-preloader">
+        <div class="cube-wrapper">
+            <div class="cube">
+                <div class="side front"><img src="https://i.imgur.com/8YyX29k.png"></div>
+                <div class="side back"><img src="https://i.imgur.com/8YyX29k.png"></div>
+                <div class="side left"><img src="https://i.imgur.com/8YyX29k.png"></div>
+                <div class="side right"><img src="https://i.imgur.com/8YyX29k.png"></div>
+            </div>
+            <div class="loader-text">ЗАГРУЗКА ARIES RP...</div>
+        </div>
     </div>
-</div>
 
-<!-- Система Уведомлений -->
-<div id="alert-container"></div>
+    <!-- Система Toast-уведомлений -->
+    <div id="toast-manager"></div>
 
-<!-- Шапка Форума -->
-<header class="aries-header">
-    <div class="container header-flex">
-        <div class="header-left">
-            <div class="burger-btn" onclick="UI.toggleSidebar()"><i class="fas fa-bars"></i></div>
-            <div class="logo-3d" onclick="Router.go('home')">
-                <img src="https://i.imgur.com/8YyX29k.png" alt="Logo">
-                <div class="logo-text">
-                    <span class="main-title">ARIES</span>
-                    <span class="sub-title">ROLE PLAY</span>
+    <!-- HEADER: Arizona Style -->
+    <header class="main-nav">
+        <div class="container flex-nav">
+            <div class="nav-left">
+                <div class="mobile-toggle" onclick="UIManager.toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </div>
+                <div class="logo-3d-wrap" onclick="location.reload()">
+                    <img src="https://i.imgur.com/8YyX29k.png" class="logo-img">
+                    <div class="logo-meta">
+                        <span class="logo-brand">ARIES <span>RP</span></span>
+                        <span class="logo-slogan">FORUM COMMUNITY</span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="header-right" id="top-user-panel">
-            <!-- Сюда JS отрисует колокольчик и профиль -->
-            <button class="btn-auth-glow" onclick="UI.showModal('auth')">АВТОРИЗАЦИЯ</button>
-        </div>
-    </div>
-</header>
-
-<!-- Панель Руководства (Видна только админам) -->
-<div id="admin-bar" class="admin-top-panel hidden">
-    <div class="container admin-flex">
-        <div class="admin-status">
-            <i class="fas fa-user-shield"></i> ДОСТУП: <span class="rainbow-text" id="admin-nick-top">...</span>
-        </div>
-        <div class="admin-nav">
-            <button onclick="AdminPanel.open()"><i class="fas fa-tools"></i> Управление</button>
-            <button onclick="AdminPanel.showBans()"><i class="fas fa-user-slash"></i> Бан-лист</button>
-        </div>
-    </div>
-</div>
-
-<main class="main-wrapper container">
-    <!-- Боковое меню -->
-    <aside class="aries-sidebar" id="sidebar">
-        <div class="side-nav">
-            <div class="nav-label">ГЛАВНОЕ МЕНЮ</div>
-            <a href="#" onclick="Router.go('home')" class="nav-item active"><i class="fas fa-home"></i> Главная страница</a>
-            <a href="#" class="nav-item"><i class="fas fa-book"></i> Правила проекта</a>
-            <a href="#" class="nav-item"><i class="fas fa-users"></i> Наша команда</a>
-            
-            <div class="nav-label">ИГРОВЫЕ МИРЫ</div>
-            <div class="server-card">
-                <div class="server-info">
-                    <span class="s-name">Aries Role Play #1</span>
-                    <span class="s-online" id="online-counter">Online: 0/1000</span>
-                </div>
-                <div class="server-progress"><div class="bar" style="width: 45%"></div></div>
+            <div class="nav-right" id="header-auth-node">
+                <!-- Сюда инжектится профиль или кнопка входа -->
+                <div class="shimmer-circle"></div>
             </div>
         </div>
-    </aside>
+    </header>
 
-    <!-- Основная контентная зона -->
-    <section class="aries-content">
-        <div id="forum-view">
-            <!-- Сюда рендерится список категорий/тем -->
-        </div>
-    </section>
-</main>
-
-<!-- МОДАЛЬНЫЕ ОКНА -->
-<div class="overlay hidden" id="modal-overlay" onclick="UI.closeModals()">
-    
-    <!-- Вход/Регистрация -->
-    <div class="modal-window" id="modal-auth" onclick="event.stopPropagation()">
-        <div class="modal-header">ВХОД ЧЕРЕЗ EMAIL</div>
-        <div class="modal-body">
-            <div class="captcha-box" id="captcha-area">
-                <p>Введите ваш Email (на него придет ссылка):</p>
-                <div class="input-field">
-                    <i class="fas fa-envelope"></i>
-                    <input type="email" id="auth-email" placeholder="ponkc29@gamil.com">
-                </div>
-                <!-- Простая Капча -->
-                <div class="simple-captcha">
-                    <span id="captcha-text"></span>
-                    <input type="text" id="captcha-input" placeholder="Код с картинки">
-                </div>
-                <button class="btn-main-red" onclick="Auth.startLogin()">ОТПРАВИТЬ ССЫЛКУ</button>
+    <!-- ADMIN STRIP: Только для Руководства -->
+    <div id="owner-tools" class="admin-strip hidden">
+        <div class="container admin-grid">
+            <div class="admin-identity">
+                <i class="fas fa-shield-alt"></i> ПАНЕЛЬ УПРАВЛЕНИЯ: <span id="owner-nick-display" class="rainbow-text">Qumestlies_Shawty</span>
+            </div>
+            <div class="admin-quick-actions">
+                <button onclick="AdminCore.openPanel()"><i class="fas fa-cogs"></i> МЕНЕДЖЕР</button>
+                <button onclick="AdminCore.createCategory()"><i class="fas fa-folder-plus"></i> СОЗДАТЬ РАЗДЕЛ</button>
+                <button onclick="AdminCore.viewAudit()"><i class="fas fa-list-ul"></i> ЛОГИ</button>
             </div>
         </div>
     </div>
 
-    <!-- Редактор Профиля -->
-    <div class="modal-window" id="modal-settings" onclick="event.stopPropagation()">
-        <div class="modal-header">НАСТРОЙКИ АККАУНТА</div>
-        <div class="modal-body">
-            <div class="profile-edit-grid">
-                <div class="ava-section">
-                    <img id="edit-preview" src="https://i.imgur.com/6EOnf8A.png">
-                    <input type="file" id="ava-file" hidden accept="image/*,image/gif" onchange="Profile.handleAva(event)">
-                    <button class="btn-sm" onclick="document.getElementById('ava-file').click()">ИЗМЕНИТЬ GIF/ФОТО</button>
+    <!-- MAIN LAYOUT -->
+    <main class="app-layout container">
+        
+        <!-- SIDEBAR -->
+        <aside class="app-sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sb-group">
+                    <div class="sb-label">НАВИГАЦИЯ</div>
+                    <a href="#" class="sb-link active" onclick="Router.page('home')"><i class="fas fa-th-large"></i> Список разделов</a>
+                    <a href="#" class="sb-link"><i class="fas fa-scroll"></i> Правила проекта</a>
+                    <a href="#" class="sb-link"><i class="fas fa-user-shield"></i> Состав администрации</a>
                 </div>
-                <div class="info-section">
+
+                <div class="sb-group">
+                    <div class="sb-label">МОНИТОРИНГ</div>
+                    <div class="server-status">
+                        <div class="sv-header">
+                            <span>Aries Role Play #1</span>
+                            <span class="sv-online">941/1000</span>
+                        </div>
+                        <div class="sv-progress"><div class="fill" style="width: 94%"></div></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CONTENT AREA -->
+        <section class="app-content">
+            <div id="dynamic-root">
+                <!-- Сюда рендерятся категории, темы, посты -->
+                <div class="skeleton-list">
+                    <div class="shimmer-block"></div>
+                    <div class="shimmer-block"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL SYSTEM -->
+    <div class="modal-layer hidden" id="modal-system-bg" onclick="UIManager.closeModals()">
+        
+        <!-- Auth Modal -->
+        <div class="modal-box hidden" id="modal-auth" onclick="event.stopPropagation()">
+            <div class="modal-title">АВТОРИЗАЦИЯ</div>
+            <div class="modal-content">
+                <div class="auth-form">
+                    <div class="form-group">
+                        <label>Введите ваш Email адрес:</label>
+                        <div class="input-icon">
+                            <i class="fas fa-at"></i>
+                            <input type="email" id="auth-email-field" placeholder="ponkc29@gamil.com">
+                        </div>
+                    </div>
+                    <!-- CAPTCHA -->
+                    <div class="captcha-wrapper">
+                        <div id="captcha-img-gen">A 7 X 2 B</div>
+                        <input type="text" id="captcha-input" placeholder="Введите код">
+                    </div>
+                    <button class="btn-action-red" onclick="AuthSystem.initiateLogin()">ОТПРАВИТЬ ССЫЛКУ</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Settings Modal -->
+        <div class="modal-box wide hidden" id="modal-settings" onclick="event.stopPropagation()">
+            <div class="modal-title">НАСТРОЙКИ ПРОФИЛЯ</div>
+            <div class="modal-content profile-editor">
+                <div class="pe-avatar">
+                    <img id="pe-preview" src="https://i.imgur.com/6EOnf8A.png">
+                    <input type="file" id="pe-file-input" hidden accept="image/*,image/gif" onchange="ProfileCore.handleFile(event)">
+                    <button class="btn-upload" onclick="document.getElementById('pe-file-input').click()">ОБНОВИТЬ GIF/ФОТО</button>
+                </div>
+                <div class="pe-fields">
                     <label>Отображаемый ник:</label>
-                    <input type="text" id="edit-nickname">
-                    <label>Новая почта:</label>
-                    <input type="email" id="edit-email">
-                    <button class="btn-main-red" onclick="Profile.save()">СОХРАНИТЬ</button>
+                    <input type="text" id="pe-nickname" placeholder="Player_Name">
+                    <label>Подпись профиля:</label>
+                    <textarea id="pe-bio" placeholder="Ваш статус..."></textarea>
+                    <button class="btn-action-red" onclick="ProfileCore.commit()">СОХРАНИТЬ ИЗМЕНЕНИЯ</button>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- ПАНЕЛЬ УПРАВЛЕНИЯ (ADMIN) -->
-    <div class="modal-window extra-wide" id="modal-admin" onclick="event.stopPropagation()">
-        <div class="modal-header">ПАНЕЛЬ РУКОВОДСТВА</div>
-        <div class="modal-body">
-            <div class="admin-tabs">
-                <button onclick="AdminPanel.setTab('users')">Пользователи</button>
-                <button onclick="AdminPanel.setTab('forum')">Разделы</button>
-                <button onclick="AdminPanel.setTab('logs')">Логи действий</button>
-            </div>
-            <div id="admin-tab-content">
-                <!-- Контент админки -->
+        <!-- Create Thread Modal -->
+        <div class="modal-box extra-wide hidden" id="modal-thread-create" onclick="event.stopPropagation()">
+            <div class="modal-title">СОЗДАНИЕ НОВОЙ ТЕМЫ</div>
+            <div class="modal-content">
+                <input type="text" id="th-title-in" class="full-input" placeholder="Заголовок темы...">
+                <div class="editor-tools">
+                    <button onclick="UIManager.format('bold')"><b>B</b></button>
+                    <button onclick="UIManager.format('italic')"><i>I</i></button>
+                    <button onclick="UIManager.insertMedia('img')"><i class="fas fa-image"></i></button>
+                    <button onclick="UIManager.insertMedia('video')"><i class="fas fa-video"></i></button>
+                </div>
+                <textarea id="th-body-in" class="full-area" placeholder="Текст сообщения..."></textarea>
+                <div class="modal-foot">
+                    <button class="btn-action-red" onclick="ForumUI.submitNewThread()">ОПУБЛИКОВАТЬ ТЕМУ</button>
+                </div>
             </div>
         </div>
+
     </div>
 
-</div>
-
-<script src="app.js"></script>
+    <!-- SCRIPTS LOAD -->
+    <script src="engine.js"></script>
+    <script src="auth-system.js"></script>
+    <script src="profile-core.js"></script>
+    <script src="ui-manager.js"></script>
 </body>
 </html>
