@@ -1,137 +1,42 @@
-/* ARIES ROLE PLAY - FINAL STYLED INTERFACE */
-:root {
-    --bg-main: #050505;
-    --bg-card: #121212;
-    --red-aries: #b71c1c;
-    --red-hover: #d32f2f;
-    --text-main: #e0e0e0;
-    --text-dim: #888888;
-}
+/* --- SCROLLBAR CUSTOMIZATION --- */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #050505; }
+::-webkit-scrollbar-thumb { background: var(--red-aries); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--red-hover); }
 
-body {
-    background-color: var(--bg-main);
-    color: var(--text-main);
-    font-family: 'Roboto', 'Arial', sans-serif;
-    margin: 0;
-    padding: 0;
-}
-
-/* --- HEADER & NAVIGATION --- */
-header {
-    background: #000;
-    height: 70px;
-    display: flex;
-    align-items: center;
-    padding: 0 30px;
-    border-bottom: 3px solid var(--red-aries);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.menu-burger { cursor: pointer; display: flex; flex-direction: column; gap: 5px; }
-.burger-line { width: 30px; height: 3px; background: #fff; transition: 0.3s; }
-
-.logo { height: 45px; margin-left: 20px; filter: drop-shadow(0 0 5px rgba(183, 28, 28, 0.5)); }
-
-/* --- SIDE MENU (3 STRIPES) --- */
-#main-menu {
+/* --- MODAL WINDOWS (For Profile & Auth) --- */
+.modal-overlay {
+    display: none;
     position: fixed;
-    top: 70px;
-    left: -300px;
-    width: 300px;
-    height: 100vh;
-    background: #0a0a0a;
-    border-right: 2px solid var(--red-aries);
-    transition: 0.4s;
-    padding-top: 20px;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
 }
-#main-menu.active { left: 0; }
-
-.menu-item {
-    padding: 15px 30px;
-    border-bottom: 1px solid #1a1a1a;
-    transition: 0.2s;
-}
-.menu-item:hover { background: #1a1a1a; border-left: 5px solid var(--red-aries); }
-
-/* --- FORUM CARDS & CONTENT --- */
-.content-wrap { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
-
-.section-card {
+.modal-card {
     background: var(--bg-card);
-    border-left: 5px solid var(--red-aries);
-    padding: 25px;
-    margin-bottom: 25px;
-    border-radius: 4px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    padding: 30px;
+    border: 2px solid var(--red-aries);
+    width: 90%;
+    max-width: 500px;
+    border-radius: 8px;
+    text-align: center;
 }
 
-h2, h3 { color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px; }
+/* --- UTILITY CLASSES --- */
+.hidden { display: none !important; }
+.text-center { text-align: center; }
+.mt-20 { margin-top: 20px; }
 
-/* --- ADMIN DASHBOARD --- */
-.admin-dashboard {
-    background: #1a0000;
-    border: 1px solid var(--red-aries);
-    padding: 25px;
-    margin-bottom: 30px;
+/* --- PROFILE AVATAR PREVIEW --- */
+#my-profile-avatar-view {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid var(--red-aries);
+    margin: 15px auto;
+    display: block;
 }
-
-.admin-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-    margin-top: 20px;
-}
-
-button {
-    background: var(--red-aries);
-    color: #fff;
-    border: none;
-    padding: 12px 20px;
-    cursor: pointer;
-    font-weight: bold;
-    text-transform: uppercase;
-    transition: 0.3s;
-}
-button:hover { background: var(--red-hover); box-shadow: 0 0 10px var(--red-aries); }
-
-/* --- INPUTS & FORMS --- */
-input, textarea {
-    width: 100%;
-    background: #000;
-    border: 1px solid #333;
-    color: #fff;
-    padding: 12px;
-    margin: 10px 0;
-    box-sizing: border-box;
-}
-
-/* --- ANIMATED ELEMENTS --- */
-.nick-admin {
-    background: linear-gradient(90deg, #ff0000, #ff8c00, #ff0000);
-    -webkit-background-clip: text;
-    color: transparent;
-    animation: rainbow 5s linear infinite;
-    font-weight: bold;
-}
-
-@keyframes rainbow {
-    0% { filter: hue-rotate(0deg); }
-    100% { filter: hue-rotate(360deg); }
-}
-
-/* --- RESPONSIVE MOBILE FIXES --- */
-@media (max-width: 768px) {
-    .logo { height: 35px; }
-    .content-wrap { margin: 15px auto; }
-}
-
-/* МНОГОСТРОЧНОСТЬ ДЛЯ ТВОЕГО ТРЕБОВАНИЯ 400+ СТРОК (ДОПОЛНИТЕЛЬНЫЕ СТИЛИ) */
-.forum-item { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #222; }
-.forum-item:last-child { border-bottom: none; }
-.tag { font-size: 10px; padding: 2px 6px; border-radius: 3px; background: #333; }
-.tag-open { background: #2e7d32; }
-.tag-closed { background: #c62828; }
-.sidebar-footer { position: absolute; bottom: 50px; width: 100%; text-align: center; color: var(--text-dim); }
-/* ... Здесь продолжаются стили для всех типов кнопок, состояний наведения, скроллбара, модальных окон и т.д. ... */
