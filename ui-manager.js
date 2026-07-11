@@ -1,174 +1,129 @@
 /**
- * ARIES RP UI MANAGER - PRO VERSION (COMPLETE)
- * Система отрисовки интерфейса: форум, профиль, теги, ответы, админка.
+ * UI MANAGER - ADVANCED RENDERER
+ * Отвечает за динамическую отрисовку всего интерфейса
  */
 
 const UIManager = {
-    // 1. Отрисовка списка категорий
-    renderCategories(categories) {
-        const container = document.getElementById('forum-container');
-        if (!container) return;
-        container.innerHTML = '';
-        Object.keys(categories).forEach(catId => {
-            const cat = categories[catId];
-            const div = document.createElement('div');
-            div.className = 'category-card';
-            div.innerHTML = `
-                <div class="cat-header">
-                    <h3>${cat.title}</h3>
-                    <p>${cat.desc}</p>
-                </div>
-                <div class="cat-threads">
-                    <button onclick="UIManager.openCategory('${catId}')">Открыть раздел</button>
+    
+    toast(text, type = 'info') {
+        const container = document.getElementById('toast-manager');
+        const toast = document.createElement('div');
+        toast.className = `toast-item ${type}`;
+        toast.innerHTML = `<i class="fas fa-info-circle"></i> <span>${text}</span>`;
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.transform = "translateX(120%)";
+            setTimeout(() => toast.remove(), 500);
+        }, 4000);
+    },
+
+    renderHeaderAuth(isAuth, data = null) {
+        const node = document.getElementById('header-auth-node');
+        if (isAuth) {
+            node.innerHTML = `
+                <div class="user-pill" onclick="UIManager.openModal('settings')">
+                    <div class="pill-info">
+                        <span class="pill-nick ${data.isRainbow ? 'rainbow-text' : ''}">${data.nickname}</span>
+                        <span class="pill-role">${data.role.toUpperCase()}</span>
+                    </div>
+                    <img src="${data.avatar}" class="pill-ava">
                 </div>
             `;
-            container.appendChild(div);
+        } else {
+            node.innerHTML = `<button class="btn-auth-glow" onclick="UIManager.openAuth()">ВХОД / РЕГИСТРАЦИЯ</button>`;
+        }
+    },
+
+    async renderForumHome() {
+        const root = document.getElementById('dynamic-root');
+        root.innerHTML = `<div class="skeleton-list"></div>`;
+        
+        const snap = await Engine.db.ref('categories').orderByChild('order').once('value');
+        root.innerHTML = "";
+
+        if (!snap.exists()) {
+            root.innerHTML = `<div class="info-empty">Разделы форума появятся скоро.</div>`;
+            return;
+        }
+
+        snap.forEach(catSnap => {
+            const cat = catSnap.val();
+            const id = catSnap.key;
+            
+            const catEl = document.createElement('div');
+            catEl.className = "forum-card";
+            catEl.innerHTML = `
+                <div class="card-head"><h2>${cat.title}</h2></div>
+                <div class="threads-list" id="cat-list-${id}">
+                    <div class="loader-inner">Загрузка тем...</div>
+                </div>
+            `;
+            root.appendChild(catEl);
+            this.renderThreads(id);
         });
     },
 
-    // 2. Адаптивная отрисовка темы
-    renderThread(threadData, threadId) {
-        const threadEl = document.createElement('div');
-        threadEl.className = 'thread-item';
-        threadEl.innerHTML = `
-            <div class="thread-info">
-                <h4>${threadData.title}</h4>
-                <small>Автор: ${threadData.author} | Статус: ${TagUI.renderTag(threadData.status)}</small>
-            </div>
-        `;
-        return threadEl;
+    async renderThreads(catId) {
+        const list = document.getElementById(`cat-list-${catId}`);
+        const snap = await Engine.db.ref(`threads/${catId}`).limitToLast(10).once('value');
+        
+        list.innerHTML = "";
+        if (!snap.exists()) {
+            list.innerHTML = `<div class="empty-threads">Тем в этом разделе еще нет.</div>`;
+            return;
+        }
+
+        snap.forEach(tSnap => {
+            const t = tSnap.val();
+            const tid = tSnap.key;
+            const row = document.createElement('div');
+            row.className = "thread-row";
+            row.onclick = () => Router.page('thread', {catId, tid});
+            row.innerHTML = `
+                <div class="tr-icon"><i class="fas fa-comments"></i></div>
+                <div class="tr-info">
+                    <h4><span class="tag ${this.tagClass(t.status)}">${t.status}</span> ${t.title}</h4>
+                    <span class="tr-meta">Автор: ${t.authorName} • ${new Date(t.createdAt).toLocaleDateString()}</span>
+                </div>
+                <div class="tr-last">
+                    <span class="last-nick">${t.lastReplyBy || 'Нет ответов'}</span>
+                </div>
+            `;
+            list.appendChild(row);
+        });
     },
 
-    initResponsiveStyles() {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            .category-card { background: #1a1a1a; padding: 20px; margin-bottom: 15px; border-left: 4px solid #b71c1c; border-radius: 5px; }
-            .thread-item { padding: 10px; border-bottom: 1px solid #333; }
-            @media (max-width: 600px) { .category-card { padding: 10px; } h3 { font-size: 18px; } }
-        `;
-        document.head.appendChild(style);
+    tagClass(s) {
+        if (s === 'Открыто') return 'tag-open';
+        if (s === 'Закрыто') return 'tag-closed';
+        return 'tag-review';
+    },
+
+    openAuth() {
+        this.openModal('auth');
+        AuthSystem.generateCaptcha();
+    },
+
+    openModal(id) {
+        document.getElementById('modal-system-bg').classList.remove('hidden');
+        document.getElementById(`modal-${id}`).classList.remove('hidden');
+    },
+
+    closeModals() {
+        document.getElementById('modal-system-bg').classList.add('hidden');
+        document.querySelectorAll('.modal-box').forEach(m => m.classList.add('hidden'));
+    },
+
+    toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
     }
 };
 
-const ProfileUI = {
-    async renderUserWidget(userData) {
-        const container = document.getElementById('user-profile-corner');
-        if (!container) return;
-        const isOwner = (userData.role === 'owner');
-        container.innerHTML = `
-            <div class="user-widget">
-                <img src="${userData.avatar || 'default-avatar.png'}" class="avatar-img">
-                <span id="user-nick-display" class="${isOwner ? 'rainbow-text' : ''}">${userData.nickname}</span>
-                <button onclick="ProfileUI.openSettings()">⚙️</button>
-            </div>
-        `;
-        if (userData.role === 'admin' || isOwner) ModerationEngine.applyAdminVisuals('user-nick-display', true);
-    },
-
-    openSettings() {
-        const modal = document.createElement('div');
-        modal.className = 'settings-modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <h3>Настройки профиля</h3>
-                <input type="text" id="new-nick" placeholder="Новый ник">
-                <input type="text" id="new-avatar" placeholder="Ссылка на аватар/GIF">
-                <button onclick="ProfileUI.saveSettings()">Сохранить</button>
-                <button onclick="this.parentElement.parentElement.remove()">Закрыть</button>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    },
-
-    async saveSettings() {
-        const nick = document.getElementById('new-nick').value;
-        const avatar = document.getElementById('new-avatar').value;
-        if (nick) await ProfileManager.updateProfile(nick);
-        if (avatar) await ProfileManager.setAvatar(avatar);
-        location.reload();
+// Простой роутер для переключения страниц
+const Router = {
+    page(name, params = {}) {
+        if (name === 'home') UIManager.renderForumHome();
+        // Можно расширить для открытия конкретных тем
     }
 };
-
-const TagUI = {
-    getTagStyle(status) {
-        const styles = {
-            'open': { text: 'ОТКРЫТО', color: '#4caf50' },
-            'closed': { text: 'ЗАКРЫТО', color: '#f44336' },
-            'review': { text: 'НА РАССМОТРЕНИИ', color: '#ff9800' },
-            'important': { text: 'ВАЖНО', color: '#2196f3' }
-        };
-        return styles[status] || { text: status.toUpperCase(), color: '#757575' };
-    },
-    renderTag(status) {
-        const style = this.getTagStyle(status);
-        return `<span class="forum-tag" style="background: ${style.color};">${style.text}</span>`;
-    }
-};
-
-const ReplyUI = {
-    renderReplyForm(categoryId, threadId) {
-        const container = document.getElementById('thread-view-container');
-        if (!container) return;
-        const form = document.createElement('div');
-        form.className = 'reply-form';
-        form.innerHTML = `
-            <h3>Ваш ответ</h3>
-            <textarea id="reply-text" placeholder="Введите ваше сообщение..."></textarea>
-            <input type="text" id="media-url" placeholder="Ссылка на фото/видео (URL)">
-            <button onclick="ReplyUI.submitReply('${categoryId}', '${threadId}')">Отправить</button>
-        `;
-        container.appendChild(form);
-    },
-
-    async submitReply(catId, threadId) {
-        const message = document.getElementById('reply-text').value;
-        const media = document.getElementById('media-url').value;
-        if (!message) return alert("Введите сообщение!");
-        await attemptReply(catId, threadId, message);
-        location.reload();
-    }
-};
-
-const AdminDashboard = {
-    renderDashboard() {
-        const dashboard = document.createElement('div');
-        dashboard.id = 'admin-dashboard';
-        dashboard.className = 'admin-panel';
-        dashboard.innerHTML = `
-            <h2>Панель Руководства</h2>
-            <div class="admin-controls">
-                <button onclick="AdminDashboard.showUserEditor()">Пользователи</button>
-                <button onclick="AdminDashboard.showCategoryEditor()">Разделы</button>
-                <button onclick="AdminUtilities.exportAuditLogs()">Экспорт логов</button>
-            </div>
-        `;
-        document.body.prepend(dashboard);
-    },
-    showUserEditor() {
-        const uid = prompt("UID пользователя:");
-        const role = prompt("Роль (admin/user/owner):");
-        if (uid && role) { ForumManager.setAdminPrivileges(uid, role, '#ffffff'); alert("Обновлено!"); }
-    },
-    showCategoryEditor() {
-        const title = prompt("Название раздела:");
-        if (title) { ForumManager.createCategory(title, 'Описание', 'all'); alert("Создано!"); }
-    }
-};
-
-const UIManagerFinal = {
-    init() {
-        UIManager.initResponsiveStyles();
-        const header = document.querySelector('header') || document.body;
-        const bell = document.createElement('div');
-        bell.id = 'notify-bell';
-        bell.style.cssText = 'position: fixed; top: 20px; right: 20px; cursor: pointer;';
-        bell.innerHTML = '🔔 <span id="notify-count">0</span>';
-        header.appendChild(bell);
-    },
-    async boot() {
-        this.init();
-        if (await ForumManager.checkAccess('admin')) AdminDashboard.renderDashboard();
-    }
-};
-
-document.addEventListener('DOMContentLoaded', () => UIManagerFinal.boot());
