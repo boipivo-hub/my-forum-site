@@ -1,66 +1,33 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Aries Role Play | Forum</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- Шапка -->
-<header class="header-wrapper">
-    <div class="logo-3d"></div>
-    <div class="brand-name">Aries Role Play</div>
-    <div id="auth-zone" style="margin-left: auto;">
-        <button id="login-trigger" class="btn-admin">Войти через Email</button>
-        <div id="user-profile" class="hidden">
-            <span id="nick-text" class="nick-admin"></span>
-            <button onclick="Auth.logout()">Выйти</button>
+    <header>
+        <div class="menu-container" onclick="toggleMenu()">
+            <div class="line"></div><div class="line"></div><div class="line"></div>
         </div>
-    </div>
-</header>
+        <img src="logo.png" class="logo-img">
+        <h1>Aries Role Play Forum</h1>
+    </header>
 
-<!-- Основное содержимое -->
-<main class="main-content">
-    <div id="admin-panel" class="admin-panel hidden">
-        <h2>Управление (Admin)</h2>
-        <div class="flex">
-            <button class="btn-admin" onclick="Admin.createCategory('Фракции', 'Раздел для фракций')">Создать раздел</button>
+    <div id="admin-panel" class="admin-panel admin-only" style="display:none;">
+        <h3>Панель руководителя</h3>
+        <button onclick="AdminPanel.createSection('Новый раздел')">Создать раздел</button>
+    </div>
+
+    <div class="main-content">
+        <div class="forum-card">
+            <h3>Новости Aries RP</h3>
+            <span class="admin-badge">Важное</span>
         </div>
     </div>
 
-    <div class="forum-grid">
-        <div id="forum-sections">
-            <!-- Здесь будут отображаться темы -->
-            <div class="forum-card">
-                <input type="text" id="new-thread-title" placeholder="Название темы...">
-                <textarea id="new-thread-content" placeholder="Ваш текст..."></textarea>
-                <button class="btn-admin" onclick="Forum.createThread('general', document.getElementById('new-thread-title').value, document.getElementById('new-thread-content').value)">Создать тему</button>
-            </div>
-        </div>
-        <aside>
-            <div class="forum-card">
-                <h3>Активность</h3>
-                <div id="notifications-list"></div>
-            </div>
-        </aside>
-    </div>
-</main>
-
-<!-- Подключение всех твоих файлов -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script src="engine.js"></script>
-<script src="admin.js"></script>
-<script src="forum.js"></script>
-
-<script>
-    // Инициализация при загрузке страницы
-    window.onload = () => {
-        console.log("Aries RP Engine Loaded.");
-        // Здесь можно вызвать функцию Forum.loadAllThreads();
-    };
-</script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="engine.js"></script>
+    <script src="admin.js"></script>
 </body>
 </html>
