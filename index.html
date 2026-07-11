@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARIES RP | OFFICIAL COMMUNITY FORUM</title>
+    <title>ARIES ROLEPLAY | OFFICIAL FORUM</title>
     
-    <!-- Стили и Шрифты -->
+    <!-- Внешние ресурсы -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
-    <!-- Firebase SDK (Compatible) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database-compat.js"></script>
 
     <script>
-        // Твоя конфигурация
         const firebaseConfig = {
             apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM",
             authDomain: "aries-forum.firebaseapp.com",
@@ -33,96 +32,130 @@
 </head>
 <body>
 
-    <!-- 3D ПРЕЛОАДЕР -->
-    <div id="app-preloader">
-        <div class="cube-container">
-            <div class="cube">
-                <div class="face front"><img src="https://i.imgur.com/8YyX29k.png"></div>
-                <div class="face back"><img src="https://i.imgur.com/8YyX29k.png"></div>
-                <div class="face left"><img src="https://i.imgur.com/8YyX29k.png"></div>
-                <div class="face right"><img src="https://i.imgur.com/8YyX29k.png"></div>
+    <!-- Уведомления -->
+    <div id="toast-container"></div>
+
+    <!-- Панель Руководства (Только для Qumestlies_Shawty) -->
+    <div id="admin-bar" class="admin-top-panel hidden">
+        <div class="container flex-sb">
+            <div class="admin-id">
+                <i class="fas fa-crown"></i> ПАНЕЛЬ РУКОВОДСТВА: <span class="rainbow-text">Qumestlies_Shawty</span>
             </div>
-            <div class="loader-text">ЗАГРУЗКА ARIES RP...</div>
+            <div class="admin-nav">
+                <button onclick="AdminPanel.open()"><i class="fas fa-users-cog"></i> Управление</button>
+                <button onclick="AdminPanel.createCategory()"><i class="fas fa-plus-square"></i> Новый раздел</button>
+            </div>
         </div>
     </div>
 
-    <!-- ТОСТ-УВЕДОМЛЕНИЯ -->
-    <div id="toast-manager"></div>
-
-    <!-- ШАПКА -->
-    <header class="main-nav">
-        <div class="container flex-nav">
-            <div class="nav-left">
-                <div class="logo-3d-box" onclick="location.reload()">
-                    <img src="https://i.imgur.com/8YyX29k.png" class="logo-main">
-                    <div class="logo-names">
-                        <span class="brand">ARIES <span>RP</span></span>
-                        <span class="slogan">OFFICIAL FORUM</span>
+    <!-- Шапка -->
+    <header class="main-header">
+        <div class="container flex-sb h-100">
+            <div class="header-left flex-center">
+                <div class="logo-3d-wrap" onclick="location.reload()">
+                    <img src="https://i.imgur.com/8YyX29k.png" alt="Aries Logo">
+                    <div class="logo-text">
+                        <span class="brand">ARIES</span>
+                        <span class="sub-brand">ROLE PLAY</span>
                     </div>
                 </div>
             </div>
-            <div class="nav-right" id="auth-node">
-                <!-- Сюда попадет профиль -->
-                <button class="btn-glow" onclick="UIManager.openModal('auth')">ВХОД</button>
+            <div class="header-right" id="user-navigation">
+                <button class="btn-auth-glow" onclick="UI.modal('auth')">ВОЙТИ / ЗАРЕГИСТРИРОВАТЬСЯ</button>
             </div>
         </div>
     </header>
 
-    <!-- ПАНЕЛЬ РУКОВОДСТВА (ТОЛЬКО ДЛЯ ТЕБЯ) -->
-    <div id="owner-strip" class="admin-strip hidden">
-        <div class="container flex-admin">
-            <span class="rainbow-text"><i class="fas fa-crown"></i> ПАНЕЛЬ РУКОВОДСТВА: Qumestlies_Shawty</span>
-            <div class="admin-btns">
-                <button onclick="UIManager.createCategory()"><i class="fas fa-folder-plus"></i> НОВЫЙ РАЗДЕЛ</button>
-                <button onclick="UIManager.openModal('admin-console')"><i class="fas fa-terminal"></i> КОНСОЛЬ</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ОСНОВНОЙ КОНТЕНТ -->
-    <main class="container app-grid">
+    <main class="container app-layout">
+        <!-- Боковое меню -->
         <aside class="sidebar">
             <div class="side-block">
-                <div class="sb-label">МЕНЮ</div>
-                <a href="#" class="sb-link active"><i class="fas fa-home"></i> Главная</a>
-                <a href="#" class="sb-link"><i class="fas fa-gavel"></i> Правила</a>
-                <a href="#" class="sb-link"><i class="fas fa-users"></i> Команда</a>
+                <div class="block-label">МЕНЮ</div>
+                <nav class="side-nav">
+                    <a href="#" class="active" onclick="Router.home()"><i class="fas fa-home"></i> Главная</a>
+                    <a href="#"><i class="fas fa-gavel"></i> Правила форума</a>
+                    <a href="#"><i class="fas fa-user-shield"></i> Команда проекта</a>
+                </nav>
+            </div>
+            <div class="side-block">
+                <div class="block-label">МОНИТОРИНГ</div>
+                <div class="server-item">
+                    <div class="sv-info">
+                        <span>Aries RP #1</span>
+                        <span class="online">842/1000</span>
+                    </div>
+                    <div class="sv-bar"><div class="fill" style="width: 84%"></div></div>
+                </div>
             </div>
         </aside>
 
-        <section class="forum-body">
-            <div id="dynamic-content">
-                <!-- Сюда грузится форум -->
+        <!-- Контент -->
+        <section class="forum-view">
+            <div id="forum-root">
+                <div class="loader-placeholder">Подключение к базе данных...</div>
             </div>
         </section>
     </main>
 
-    <!-- МОДАЛКИ -->
-    <div id="modal-overlay" class="modal-bg hidden" onclick="UIManager.closeModals()">
-        <!-- Вход -->
-        <div class="modal-box hidden" id="modal-auth" onclick="event.stopPropagation()">
+    <!-- МОДАЛЬНЫЕ ОКНА -->
+    <div id="modal-overlay" class="overlay hidden" onclick="UI.closeModals()">
+        
+        <!-- Авторизация + Регистрация -->
+        <div class="modal hidden" id="modal-auth" onclick="event.stopPropagation()">
             <div class="modal-header">АВТОРИЗАЦИЯ</div>
             <div class="modal-body">
-                <input type="email" id="login-email" placeholder="ponkc29@gamil.com">
-                <button class="btn-action" onclick="AuthSystem.sendLink()">ПОЛУЧИТЬ ССЫЛКУ</button>
+                <div class="form-group">
+                    <label>Ваш игровой ник:</label>
+                    <input type="text" id="auth-nick" placeholder="Player_Name">
+                </div>
+                <div class="form-group">
+                    <label>Электронная почта:</label>
+                    <input type="email" id="auth-email" placeholder="ponkc29@gamil.com">
+                </div>
+                <!-- Капча -->
+                <div class="captcha-box">
+                    <span id="captcha-text">4 X A 2</span>
+                    <input type="text" id="captcha-input" placeholder="Код">
+                </div>
+                <button class="btn-action" onclick="AuthSystem.startAuth()">ОТПРАВИТЬ ССЫЛКУ</button>
+            </div>
+        </div>
+
+        <!-- Профиль -->
+        <div class="modal hidden" id="modal-profile" onclick="event.stopPropagation()">
+            <div class="modal-header">НАСТРОЙКИ АККАУНТА</div>
+            <div class="modal-body">
+                <div class="profile-editor">
+                    <img id="pe-ava" src="https://i.imgur.com/6EOnf8A.png">
+                    <input type="file" id="ava-upload" hidden accept="image/*,image/gif" onchange="ProfileCore.preview(event)">
+                    <button class="btn-sm" onclick="document.getElementById('ava-upload').click()">СМЕНИТЬ GIF/ФОТО</button>
+                    <input type="text" id="pe-status" placeholder="Ваш статус...">
+                    <button class="btn-action" onclick="ProfileCore.save()">СОХРАНИТЬ</button>
+                </div>
             </div>
         </div>
 
         <!-- Создание ТЕМЫ -->
-        <div class="modal-box hidden" id="modal-create-thread" onclick="event.stopPropagation()">
+        <div class="modal wide hidden" id="modal-create-thread" onclick="event.stopPropagation()">
             <div class="modal-header">НОВАЯ ТЕМА</div>
             <div class="modal-body">
-                <input type="text" id="th-title" placeholder="Заголовок темы">
-                <textarea id="th-text" placeholder="Текст сообщения (можно ссылки на фото/видео)"></textarea>
-                <button class="btn-action" onclick="UIManager.submitThread()">ОПУБЛИКОВАТЬ</button>
+                <input type="text" id="th-title" class="title-in" placeholder="Заголовок темы...">
+                <textarea id="th-content" class="text-in" placeholder="Текст сообщения..."></textarea>
+                <button class="btn-action" onclick="ForumEngine.submitThread()">ОПУБЛИКОВАТЬ</button>
             </div>
         </div>
+
+        <!-- АДМИНКА -->
+        <div class="modal wide hidden" id="modal-admin" onclick="event.stopPropagation()">
+            <div class="modal-header">МЕНЕДЖЕР РУКОВОДСТВА</div>
+            <div class="modal-body" id="admin-user-list">
+                <!-- Сюда подгрузятся юзеры -->
+            </div>
+        </div>
+
     </div>
 
-    <!-- ПОДКЛЮЧЕНИЕ СКРИПТОВ -->
-    <script src="ui-manager.js"></script>
-    <script src="auth-system.js"></script>
-    <script src="profile-core.js"></script>
     <script src="engine.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
