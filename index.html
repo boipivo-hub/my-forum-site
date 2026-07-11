@@ -2,70 +2,28 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Aries Role Play - Login</title>
-    <!-- Firebase SDK -->
+    <title>Aries Portal</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <style>
-        body { background: #060609; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .modal { background: #11111c; padding: 30px; border-radius: 8px; border: 1px solid #1e1e30; width: 350px; }
-        .input-field { width: 100%; padding: 12px; margin: 10px 0; background: #07070b; border: 1px solid #1e1e30; color: #fff; border-radius: 4px; box-sizing: border-box; }
-        .btn-core { width: 100%; padding: 12px; background: #ff003c; border: none; color: white; cursor: pointer; font-weight: bold; text-transform: uppercase; border-radius: 4px; }
-    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
 <body>
-
-<div class="modal" id="auth-box">
-    <h3>Авторизация Aries</h3>
     <div id="recaptcha-container"></div>
-    <input type="text" id="phone" class="input-field" placeholder="+79990000000">
-    <input type="text" id="nick" class="input-field" placeholder="Ваш никнейм">
-    <button class="btn-core" onclick="Auth.sendCode()">Отправить код</button>
-    
-    <div id="verify-area" style="display:none; margin-top:20px;">
-        <input type="text" id="code" class="input-field" placeholder="Код из SMS">
-        <button class="btn-core" onclick="Auth.verify()">Подтвердить</button>
+    <div id="auth-ui">
+        <input id="phone" placeholder="+7...">
+        <input id="nick" placeholder="Ник">
+        <button onclick="AuthModule.sendSMS()">Получить код</button>
+        <input id="code" placeholder="Код">
+        <button onclick="AuthModule.verify()">Войти</button>
     </div>
-</div>
-
-<script>
-    // 1. КОНФИГ (ВСТАВЬ СЮДА СВОИ ДАННЫЕ ИЗ FIREBASE)
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "your-project.firebaseapp.com",
-        databaseURL: "https://your-project.firebaseio.com",
-        projectId: "your-project",
-        storageBucket: "your-project.appspot.com",
-        messagingSenderId: "ID",
-        appId: "APP_ID"
-    };
-    firebase.initializeApp(firebaseConfig);
-
-    // 2. ЛОГИКА АВТОРИЗАЦИИ
-    const Auth = {
-        async sendCode() {
-            const phone = document.getElementById('phone').value;
-            window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { 'size': 'invisible' });
-            try {
-                const conf = await firebase.auth().signInWithPhoneNumber(phone, window.recaptchaVerifier);
-                window.confirmationResult = conf;
-                document.getElementById('verify-area').style.display = 'block';
-                alert("Код отправлен!");
-            } catch(e) { alert(e.message); }
-        },
-        async verify() {
-            const code = document.getElementById('code').value;
-            const nick = document.getElementById('nick').value;
-            try {
-                const result = await window.confirmationResult.confirm(code);
-                // Сохраняем ник в базу
-                await firebase.database().ref('users/' + result.user.uid).set({ nickname: nick });
-                localStorage.setItem('active_session', nick);
-                window.location.reload();
-            } catch(e) { alert("Неверный код"); }
-        }
-    };
-</script>
+    
+    <script src="engine.js"></script> <!-- Твой конфиг firebase -->
+    <script src="security.js"></script>
+    <script src="auth-module.js"></script>
+    <script src="forum-nodes.js"></script>
+    <script src="admin-panel.js"></script>
+    <script src="profile-core.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
