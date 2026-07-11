@@ -8,19 +8,17 @@
 </head>
 <body>
     <div class="modal">
-        <h3>Aries Role Play</h3>
         <div id="recaptcha-container"></div>
         <div id="step1">
-            <input id="phone" class="input-field" placeholder="Номер: +7...">
-            <input id="nick" class="input-field" placeholder="Ваш Ник">
+            <input id="phone" class="input-field" placeholder="Номер +7...">
+            <input id="nick" class="input-field" placeholder="Никнейм">
             <button class="btn-core" onclick="AuthModule.sendSMS()">Получить код</button>
         </div>
         <div id="step2" class="hidden">
-            <input id="code" class="input-field" placeholder="Код из SMS">
+            <input id="code" class="input-field" placeholder="Код из СМС">
             <button class="btn-core" onclick="AuthModule.verify()">Подтвердить</button>
         </div>
     </div>
-    
     <script src="engine.js"></script>
     <script src="security.js"></script>
     <script src="auth-module.js"></script>
