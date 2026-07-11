@@ -1,35 +1,25 @@
-const AuthModule = {
-    // 1. Отправка SMS
-    async sendSMS(phoneNumber) {
-        window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { 'size': 'invisible' });
-        const appVerifier = window.recaptchaVerifier;
-        
+const Auth = {
+    async login(code, nick) {
         try {
-            const confirmationResult = await firebase.auth().signInWithPhoneNumber(phoneNumber, appVerifier);
-            window.confirmationResult = confirmationResult; // Сохраняем для проверки кода
-            alert("Код отправлен на ваш номер!");
-        } catch (error) {
-            alert("Ошибка: " + error.message);
-        }
+            const res = await window.confirmationResult.confirm(code);
+            const user = res.user;
+
+            // ШИФРУЕМ ПЕРЕД ОТПРАВКОЙ
+            const encryptedNick = Security.encrypt(nick);
+            
+            await firebase.database().ref('users/' + user.uid).set({
+                data: encryptedNick, // В базе будет лежать шифр
+                created: Date.now()
+            });
+            window.location.reload();
+        } catch(e) { alert("Ошибка!"); }
     },
 
-    // 2. Проверка кода и создание аккаунта
-    async verifyCode(code, nickname) {
-        try {
-            const result = await window.confirmationResult.confirm(code);
-            const user = result.user;
-
-            // Сохраняем ник в базу данных Firebase под UID пользователя
-            await firebase.database().ref('users/' + user.uid).set({
-                nickname: nickname,
-                phoneNumber: user.phoneNumber,
-                createdAt: Date.now()
-            });
-
-            alert("Регистрация успешна!");
-            window.location.reload();
-        } catch (error) {
-            alert("Неверный код!");
-        }
+    async getMyNick() {
+        const user = firebase.auth().currentUser;
+        const snap = await firebase.database().ref('users/' + user.uid + '/data').once('value');
+        
+        // РАСШИФРОВЫВАЕМ ПРИ ПОЛУЧЕНИИ
+        return Security.decrypt(snap.val());
     }
 };
