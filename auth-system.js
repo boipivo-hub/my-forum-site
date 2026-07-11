@@ -1,33 +1,68 @@
+/**
+ * AUTH SYSTEM V2
+ * Реализует отправку SMS/Email ссылок и проверку CAPTCHA
+ */
+
 const AuthSystem = {
-    async sendLink() {
-        const email = document.getElementById('email').value;
+    currentCaptcha: "",
+
+    generateCaptcha() {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let result = "";
+        for(let i = 0; i < 5; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        this.currentCaptcha = result;
+        const box = document.getElementById('captcha-img-gen');
+        if(box) box.innerText = result;
+    },
+
+    async initiateLogin() {
+        const email = document.getElementById('auth-email-field').value;
+        const captchaInput = document.getElementById('captcha-input').value;
+
+        if (captchaInput.toUpperCase() !== this.currentCaptcha) {
+            UIManager.toast("Неверный код с картинки!", "error");
+            this.generateCaptcha();
+            return;
+        }
+
+        if (!email || !email.includes('@')) {
+            UIManager.toast("Введите корректный Email!", "error");
+            return;
+        }
+
         const actionCodeSettings = {
-            url: window.location.href, // Возврат на эту же страницу
+            url: window.location.origin + window.location.pathname,
             handleCodeInApp: true,
         };
 
         try {
-            await firebase.auth().sendSignInLinkToEmail(email, actionCodeSettings);
-            window.localStorage.setItem('emailForSignIn', email);
-            alert("Ссылка для входа отправлена на " + email);
+            UIManager.toast("Отправка ссылки...", "info");
+            await Engine.auth.sendSignInLinkToEmail(email, actionCodeSettings);
+            window.localStorage.setItem('ariesEmailForSignIn', email);
+            
+            UIManager.toast("Ссылка отправлена на " + email, "success");
+            UIManager.closeModals();
         } catch (error) {
-            alert("Ошибка: " + error.message);
+            console.error(error);
+            UIManager.toast("Ошибка Firebase: " + error.message, "error");
         }
     },
 
-    async finishSignIn() {
-        if (firebase.auth().isSignInWithEmailLink(window.location.href)) {
-            let email = window.localStorage.getItem('emailForSignIn');
-            if (!email) email = prompt('Введите ваш Email для подтверждения:');
+    async finalizeSignIn() {
+        let email = window.localStorage.getItem('ariesEmailForSignIn');
+        if (!email) {
+            email = prompt('Пожалуйста, введите ваш Email для подтверждения входа:');
+        }
 
-            try {
-                await firebase.auth().signInWithEmailLink(email, window.location.href);
-                window.localStorage.removeItem('emailForSignIn');
-                alert("Успешный вход!");
-                window.location.href = window.location.pathname; // Очистка URL
-            } catch (error) {
-                alert("Ошибка входа: " + error.message);
-            }
+        try {
+            await Engine.auth.signInWithEmailLink(email, window.location.href);
+            window.localStorage.removeItem('ariesEmailForSignIn');
+            UIManager.toast("Добро пожаловать на Aries RP!", "success");
+            window.history.replaceState({}, null, window.location.pathname);
+        } catch (error) {
+            UIManager.toast("Ошибка входа: ссылка недействительна", "error");
         }
     }
 };
