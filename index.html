@@ -2,93 +2,70 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aries Role Play — Панель Создателя</title>
+    <title>Aries Role Play - Login</title>
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        :root {
-            --bg-main: #06060c;
-            --bg-card: #0c0c14;
-            --border-color: #1c1c30;
-            --accent: #ff0055;
-            --neon-blue: #00d2ff;
-            --neon-blue-glow: rgba(0, 210, 255, 0.4);
-            --neon-red: #ff003c;
-            --neon-red-glow: rgba(255, 0, 60, 0.6);
-        }
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-main); color: #dedee6; -webkit-tap-highlight-color: transparent; }
-        header { background: var(--bg-card); border-bottom: 1px solid var(--border-color); padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; }
-        .logo-wrapper { display: flex; align-items: center; gap: 12px; }
-        .logo-triangle { width: 28px; height: 28px; filter: drop-shadow(0 0 6px rgba(235, 15, 15, 0.7)); }
-        .logo { font-size: 20px; font-weight: 900; letter-spacing: 1px; color: #fff; line-height: 1; }
-        .logo span { color: var(--accent); }
-        .forum-container { display: grid; grid-template-columns: 280px 1fr; gap: 30px; max-width: 1400px; margin: 30px auto; padding: 0 20px; }
-        .sidebar { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 20px; height: fit-content; }
-        .sidebar-title { font-size: 12px; text-transform: uppercase; color: #555; letter-spacing: 1px; margin-bottom: 15px; font-weight: bold; }
-        .nav-link, .topic-link { display: block; color: #fff; text-decoration: none; padding: 12px 16px; border-radius: 6px; margin-bottom: 8px; font-size: 14px; font-weight: 600; background: linear-gradient(135deg, #0d1b2a, #0d1b2a); border: 1px solid var(--neon-blue); box-shadow: inset 0 0 10px rgba(0, 210, 255, 0.2), 0 0 10px var(--neon-blue-glow); transition: all 0.25s; cursor: pointer; }
-        .nav-link.active, .topic-link.active { background: linear-gradient(135deg, #b7094c, var(--neon-red)) !important; border-color: #ff4d6d !important; box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.3), 0 0 20px var(--neon-red-glow) !important; transform: scale(1.02); }
-        .main-content { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 30px; min-height: 500px; }
-        .post-row { display: grid; grid-template-columns: 190px 1fr; background: #08080d; border: 1px solid var(--border-color); border-radius: 5px; margin-bottom: 15px; overflow: hidden; }
-        .post-author-zone { background: #0b0b12; padding: 20px; text-align: center; border-right: 1px solid var(--border-color); }
-        .post-text-zone { padding: 25px; white-space: pre-wrap; color: #cdcdff; font-size: 14px; line-height: 1.6; }
-        .btn-core { background: linear-gradient(135deg, var(--accent), #9900ff); color: #fff; border: 1px solid rgba(255, 255, 255, 0.1); padding: 11px 22px; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase; transition: all 0.25s; }
-        .btn-donate-header { background: linear-gradient(135deg, #00c6ff, #0072ff) !important; }
-        .input-field { width: 100%; background: #11111e; border: 1px solid var(--border-color); padding: 12px; border-radius: 4px; color: #fff; box-sizing: border-box; margin-bottom: 15px; }
+        body { background: #060609; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .modal { background: #11111c; padding: 30px; border-radius: 8px; border: 1px solid #1e1e30; width: 350px; }
+        .input-field { width: 100%; padding: 12px; margin: 10px 0; background: #07070b; border: 1px solid #1e1e30; color: #fff; border-radius: 4px; box-sizing: border-box; }
+        .btn-core { width: 100%; padding: 12px; background: #ff003c; border: none; color: white; cursor: pointer; font-weight: bold; text-transform: uppercase; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-    <header>
-        <div class="logo-wrapper">
-            <svg class="logo-triangle" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="50,12 10,88 90,88" fill="#7a001e" />
-                <polygon points="50,15 14,85 86,85" fill="#c61030" />
-                <polygon points="50,38 30,75 70,75" fill="#0c0c14" />
-                <polygon points="50,15 50,38 30,75 14,85" fill="#e61c40" opacity="0.4" />
-            </svg>
-            <div class="logo">ARIES<span>ROLEPLAY</span></div>
-        </div>
-        
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <button class="btn-core btn-donate-header" onclick="document.getElementById('m-donate').style.display='flex'">💎 Донат</button>
-            
-            <!-- Кнопка админки (скрыта по умолчанию, появится через engine.js) -->
-            <div id="adm-controls" style="display:none;">
-                <button class="btn-core" style="background: var(--accent);" onclick="AdminPanel.open()">🛡️ Админка</button>
-            </div>
-            
-            <div id="runtime-auth-zone"></div>
-        </div>
-    </header>
-
-    <div class="forum-container">
-        <div class="sidebar" id="nodes-navigation-list">
-            <div class="sidebar-title">Навигация</div>
-            <div class="nav-link active">📢 Общий раздел</div>
-        </div>
-        
-        <div class="main-content" id="render-forum-core">
-            <div class="sidebar-title">Список тем</div>
-            <div class="post-row">
-                <div class="post-author-zone">
-                    <div style="color: #ff0055;">Makar_Aries</div>
-                    <div class="badge-role" style="background: #ff0055; color: #fff;">FOUNDER</div>
-                </div>
-                <div class="post-text-zone">Система безопасности активирована.</div>
-            </div>
-        </div>
+<div class="modal" id="auth-box">
+    <h3>Авторизация Aries</h3>
+    <div id="recaptcha-container"></div>
+    <input type="text" id="phone" class="input-field" placeholder="+79990000000">
+    <input type="text" id="nick" class="input-field" placeholder="Ваш никнейм">
+    <button class="btn-core" onclick="Auth.sendCode()">Отправить код</button>
+    
+    <div id="verify-area" style="display:none; margin-top:20px;">
+        <input type="text" id="code" class="input-field" placeholder="Код из SMS">
+        <button class="btn-core" onclick="Auth.verify()">Подтвердить</button>
     </div>
+</div>
 
-    <!-- Здесь идут остальные модалки (donate, auth, profile, admin, node) как в твоем старом коде -->
-    <div id="m-donate" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
-        <div style="background:#09090f; border:1px solid #0072ff; padding:30px; border-radius:8px; width:360px; text-align:center;">
-             <h3 style="color:#fff;">Поддержка проекта</h3>
-             <button class="btn-core" onclick="document.getElementById('m-donate').style.display='none'">Закрыть</button>
-        </div>
-    </div>
+<script>
+    // 1. КОНФИГ (ВСТАВЬ СЮДА СВОИ ДАННЫЕ ИЗ FIREBASE)
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "your-project.firebaseapp.com",
+        databaseURL: "https://your-project.firebaseio.com",
+        projectId: "your-project",
+        storageBucket: "your-project.appspot.com",
+        messagingSenderId: "ID",
+        appId: "APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
 
-    <script src="engine.js"></script>
+    // 2. ЛОГИКА АВТОРИЗАЦИИ
+    const Auth = {
+        async sendCode() {
+            const phone = document.getElementById('phone').value;
+            window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { 'size': 'invisible' });
+            try {
+                const conf = await firebase.auth().signInWithPhoneNumber(phone, window.recaptchaVerifier);
+                window.confirmationResult = conf;
+                document.getElementById('verify-area').style.display = 'block';
+                alert("Код отправлен!");
+            } catch(e) { alert(e.message); }
+        },
+        async verify() {
+            const code = document.getElementById('code').value;
+            const nick = document.getElementById('nick').value;
+            try {
+                const result = await window.confirmationResult.confirm(code);
+                // Сохраняем ник в базу
+                await firebase.database().ref('users/' + result.user.uid).set({ nickname: nick });
+                localStorage.setItem('active_session', nick);
+                window.location.reload();
+            } catch(e) { alert("Неверный код"); }
+        }
+    };
+</script>
 </body>
 </html>
