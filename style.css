@@ -1,6 +1,5 @@
-body { background: #0b0e14; color: #d1d1d1; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; padding-top: 50px; }
-.modal { background: #181c24; padding: 25px; border-radius: 10px; border: 1px solid #2a2f3a; width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-.input-field { width: 100%; padding: 10px; margin: 8px 0; background: #0f1218; border: 1px solid #333; color: white; border-radius: 5px; box-sizing: border-box; }
-.btn-core { width: 100%; padding: 10px; background: #2b5876; border: none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold; }
-.btn-core:hover { background: #4e4376; }
+body { background: #06080d; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+.modal { background: #11151c; padding: 30px; border-radius: 10px; width: 320px; border: 1px solid #2a3543; }
+.input-field { width: 100%; padding: 10px; margin: 8px 0; background: #0b0e14; border: 1px solid #333; color: white; border-radius: 5px; box-sizing: border-box; }
+.btn-core { width: 100%; padding: 10px; background: #3c5a99; border: none; color: white; border-radius: 5px; cursor: pointer; }
 .hidden { display: none; }
