@@ -1,25 +1,15 @@
-const Auth = {
-    async login(code, nick) {
-        try {
-            const res = await window.confirmationResult.confirm(code);
-            const user = res.user;
-
-            // ШИФРУЕМ ПЕРЕД ОТПРАВКОЙ
-            const encryptedNick = Security.encrypt(nick);
-            
-            await firebase.database().ref('users/' + user.uid).set({
-                data: encryptedNick, // В базе будет лежать шифр
-                created: Date.now()
-            });
-            window.location.reload();
-        } catch(e) { alert("Ошибка!"); }
+const AuthModule = {
+    async sendSMS() {
+        const phone = document.getElementById('phone').value;
+        window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { 'size': 'invisible' });
+        window.confirmationResult = await firebase.auth().signInWithPhoneNumber(phone, window.recaptchaVerifier);
     },
-
-    async getMyNick() {
-        const user = firebase.auth().currentUser;
-        const snap = await firebase.database().ref('users/' + user.uid + '/data').once('value');
-        
-        // РАСШИФРОВЫВАЕМ ПРИ ПОЛУЧЕНИИ
-        return Security.decrypt(snap.val());
+    async verify() {
+        const code = document.getElementById('code').value;
+        const nick = document.getElementById('nick').value;
+        const res = await window.confirmationResult.confirm(code);
+        const hashedNick = await Security.hash(nick);
+        await firebase.database().ref('users/' + res.user.uid).set({ id: hashedNick });
+        location.reload();
     }
 };
