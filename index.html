@@ -2,16 +2,12 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARIES RP FORUM</title>
-    
-    <!-- Используем Compat версию для работы в браузере без сборщиков -->
+    <title>ARIES RP - Login</title>
+    <!-- Firebase SDK Compat -->
     <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database-compat.js"></script>
-
     <script>
-        // КОНФИГ - Скопируй его ОЧЕНЬ внимательно из консоли Firebase (Project Settings)
         const firebaseConfig = {
             apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM",
             authDomain: "aries-forum.firebaseapp.com",
@@ -21,51 +17,20 @@
             messagingSenderId: "614643963857",
             appId: "1:614643963857:web:01f1f941c72249ac6eb2f0"
         };
-
-        // Инициализация
         firebase.initializeApp(firebaseConfig);
-        console.log("Firebase инициализирован!");
     </script>
-    
-    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="auth-box">
+        <h3>Вход без пароля</h3>
+        <input type="email" id="email" placeholder="Введите ваш Email">
+        <button onclick="AuthSystem.sendLink()">Получить ссылку для входа</button>
+    </div>
 
-    <nav>
-        <div class="nav-logo">ARIES RP FORUM</div>
-        <div id="auth-zone">
-            <!-- Эти поля будут использоваться для AuthSystem -->
-            <input type="email" id="reg-email" placeholder="Email">
-            <input type="password" id="reg-pass" placeholder="Пароль">
-            <input type="text" id="reg-nick" placeholder="Ник">
-            <button onclick="handleRegister()">Регистрация</button>
-            <button onclick="handleLogin()">Войти</button>
-        </div>
-    </nav>
-
-    <div id="forum-container"></div>
-
-    <!-- Твои скрипты -->
     <script src="auth-system.js"></script>
-    <script src="db-schema.js"></script>
-    <script src="engine.js"></script>
-    <script src="ui-manager.js"></script>
-
     <script>
-        // Простые обертки для кнопок
-        function handleRegister() {
-            AuthSystem.register(
-                document.getElementById('reg-email').value,
-                document.getElementById('reg-pass').value,
-                document.getElementById('reg-nick').value
-            );
-        }
-        function handleLogin() {
-            AuthSystem.login(
-                document.getElementById('reg-email').value,
-                document.getElementById('reg-pass').value
-            );
-        }
+        // Проверка при загрузке страницы (завершение входа)
+        document.addEventListener('DOMContentLoaded', () => AuthSystem.finishSignIn());
     </script>
 </body>
 </html>
