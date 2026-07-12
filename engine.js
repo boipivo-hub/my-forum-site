@@ -3,7 +3,7 @@
 // ==========================================================================
 
 const firebaseConfig = {
-    apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM", // Твой ключ из сообщения
+    apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM", 
     authDomain: "aries-forum.firebaseapp.com",
     databaseURL: "https://aries-forum-default-rtdb.europe-west1.firebasedatabase.app/",
     projectId: "aries-forum",
@@ -24,22 +24,21 @@ let GlobalNodes = {};
 let isFirstLoad = true;
 window.CloudFounders = []; 
 
-// ПРОВЕРКА ССЫЛКИ ИЗ ПОЧТЫ (Подтверждение входа)
+// ПРОВЕРКА ВХОДА ПО ССЫЛКЕ ИЗ EMAIL
 if (auth.isSignInWithEmailLink(window.location.href)) {
     let email = window.localStorage.getItem('emailForSignIn');
     if (!email) {
-        email = window.prompt('Пожалуйста, введите вашу почту еще раз для подтверждения:');
+        email = window.prompt('Пожалуйста, введите ваш email для подтверждения:');
     }
     auth.signInWithEmailLink(email, window.location.href)
         .then((result) => {
             window.localStorage.removeItem('emailForSignIn');
             const nick = window.localStorage.getItem('nickForSignIn') || "User_" + Math.floor(Math.random()*999);
-            const userKey = email.replace('.', ',');
+            const userKey = email.replace('.', ','); // В Firebase нельзя точки в ключах
             
-            // Если юзера нет в базе - создаем
-            firebase.database().ref('users/' + userKey).once('value', snap => {
-                if(!snap.exists()) {
-                    firebase.database().ref('users/' + userKey).set({
+            dbRef.child('users/' + userKey).once('value', s => {
+                if(!s.exists()) {
+                    dbRef.child('users/' + userKey).set({
                         nick: nick, glow: 'glow-user', badge: 'badge-user', banned: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png'
                     });
                 }
@@ -47,10 +46,9 @@ if (auth.isSignInWithEmailLink(window.location.href)) {
                 window.location.href = "/";
             });
         })
-        .catch((error) => alert('Ошибка входа: ' + error.message));
+        .catch(err => alert('Ошибка ссылки: ' + err.message));
 }
 
-// ОСНОВНОЙ ЦИКЛ СИНХРОНИЗАЦИИ
 dbRef.on('value', (snapshot) => {
     const data = snapshot.val() || {};
     GlobalUsers = data.users || {};
@@ -70,128 +68,199 @@ dbRef.on('value', (snapshot) => {
     App.syncUI();
 });
 
-// --- МОДУЛЬ 1: АВТОРИЗАЦИЯ (ПЕРЕДЕЛАН ПОД EMAIL) ---
+// --- МОДУЛЬ 1: АВТОРИЗАЦИЯ (ОБНОВЛЕНО НА EMAIL) ---
 const AuthModule = {
     open() {
-        const modal = document.getElementById('m-auth');
-        if (!modal) return;
-        modal.style.display = 'flex';
+        document.getElementById('m-auth').style.display = 'flex';
         const container = document.getElementById('auth-btn-container');
-        container.innerHTML = `<button class="btn-core" style="width:100%;" onclick="AuthModule.sendLoginLink()">Отправить ссылку на почту</button>`;
+        container.innerHTML = `<button class="btn-core" style="width:100%;" onclick="AuthModule.sendLink()">Отправить ссылку на почту</button>`;
     },
     close() { document.getElementById('m-auth').style.display = 'none'; },
     
-    sendLoginLink() {
+    sendLink() {
         const email = document.getElementById('f-email').value.trim();
-        const nick = document.getElementById('f-nick').value.trim();
-        if(!email) return alert('Введите почту!');
+        const nick = document.getElementById('f-user').value.trim();
+        if(!email || !nick) return alert('Заполните Email и Ник!');
 
-        const actionCodeSettings = {
-            url: window.location.href, // Вернуться сюда же
-            handleCodeInApp: true
-        };
-
-        auth.sendSignInLinkToEmail(email, actionCodeSettings)
+        const settings = { url: window.location.href, handleCodeInApp: true };
+        auth.sendSignInLinkToEmail(email, settings)
             .then(() => {
                 window.localStorage.setItem('emailForSignIn', email);
                 window.localStorage.setItem('nickForSignIn', nick);
-                alert('Проверьте почту! Мы отправили вам ссылку для входа.');
+                alert('Ссылка отправлена! Проверьте почту.');
                 this.close();
             })
-            .catch((error) => alert('Ошибка: ' + error.message));
+            .catch(err => alert('Ошибка: ' + err.message));
     },
     logout() {
-        auth.signOut();
         localStorage.removeItem('active_session');
+        auth.signOut();
         App.user = null;
-        window.location.reload();
+        App.syncUI();
     }
 };
 
-// --- МОДУЛЬ АДМИН-ПАНЕЛИ (ОРИГИНАЛЬНАЯ ЛОГИКА) ---
+// --- МОДУЛЬ 3: ПРОФИЛЬ ---
+const ProfileCore = {
+    open() { 
+        if(!GlobalUsers[App.user]) return;
+        document.getElementById('m-profile').style.display = 'flex'; 
+        document.getElementById('new-profile-nick').value = GlobalUsers[App.user].nick || App.user;
+        document.getElementById('my-profile-avatar-view').src = GlobalUsers[App.user].avatar || 'https://i.postimg.cc/9Q2g9g6y/user2.png'; 
+    },
+    close() { document.getElementById('m-profile').style.display = 'none'; },
+    upload(event) {
+        const file = event.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) { document.getElementById('my-profile-avatar-view').src = e.target.result; };
+        reader.readAsDataURL(file);
+    },
+    saveData() {
+        const newNick = document.getElementById('new-profile-nick').value.trim();
+        const base64Img = document.getElementById('my-profile-avatar-view').src;
+        if(!newNick) return alert('Ник не может быть пустым!');
+        firebase.database().ref('users/' + App.user).update({ nick: newNick, avatar: base64Img }).then(() => { this.close(); });
+    }
+};
+
+// --- МОДУЛЬ 4: АДМИН-ПАНЕЛЬ ---
 const AdminPanel = {
     open() {
+        const isFounder = (App.user && GlobalUsers[App.user] && (GlobalUsers[App.user].nick === 'Qumestlies_Shawtys' || window.CloudFounders.includes(GlobalUsers[App.user].nick)));
+        if(!isFounder && App.user !== 'Qumestlies_Shawtys') return alert('Вы не Создатель!');
         document.getElementById('m-admin').style.display = 'flex';
         this.loadUsersList();
+        this.renderFoundersList();
     },
     close() { document.getElementById('m-admin').style.display = 'none'; },
+    addFounder() {
+        const nick = document.getElementById('add-founder-nick').value.trim();
+        if(!nick) return alert('Введите никнейм!');
+        if(!window.CloudFounders.includes(nick)) {
+            window.CloudFounders.push(nick);
+            firebase.database().ref('founders').set(window.CloudFounders).then(() => { this.renderFoundersList(); });
+        }
+    },
+    renderFoundersList() {
+        const block = document.getElementById('cloud-founders-list');
+        if(!block) return;
+        let listHtml = '<b>Облако:</b> ';
+        window.CloudFounders.forEach(name => { listHtml += `<span>${name}</span> `; });
+        block.innerHTML = listHtml;
+    },
     loadUsersList() {
         const sel = document.getElementById('adm-target-user');
-        sel.innerHTML = '';
+        if (!sel) return; sel.innerHTML = '';
         for(let key in GlobalUsers) { sel.innerHTML += `<option value="${key}">${GlobalUsers[key].nick || key}</option>`; }
     },
     save() {
         const target = document.getElementById('adm-target-user').value;
-        const glow = document.getElementById('adm-set-glow').value;
-        firebase.database().ref('users/' + target).update({ glow: glow });
+        const glowValue = document.getElementById('adm-set-glow').value;
+        const badgeValue = document.getElementById('adm-set-badge').value;
+        const isBan = document.getElementById('adm-set-ban').value === 'yes';
+        firebase.database().ref('users/' + target).update({ glow: glowValue, badge: badgeValue, banned: isBan });
         this.close();
     }
 };
 
-// --- ДИСПЕТЧЕР ИНТЕРФЕЙСА (ОРИГИНАЛЬНАЯ ЛОГИКА + ТВОЙ СТИЛЬ) ---
+// --- МОДУЛЬ СОЗДАНИЯ РАЗДЕЛОВ ---
+const NodeManager = {
+    open() { document.getElementById('m-create-node').style.display = 'flex'; },
+    close() { document.getElementById('m-create-node').style.display = 'none'; },
+    submit() {
+        const title = document.getElementById('node-new-title').value.trim();
+        const path = document.getElementById('node-new-path').value.trim();
+        const nodeKey = 'node_' + Date.now();
+        firebase.database().ref('nodes/' + nodeKey).set({ title: title, path: path }).then(() => { this.close(); });
+    }
+};
+
+// --- МОДУЛЬ 5: ДИСПЕТЧЕР ИНТЕРФЕЙСА ---
 const App = {
     user: null,
     activeNodeKey: 'dev_news',
     activeThreadId: null,
-
+    
+    init() {},
     syncUI() {
         this.renderAuthBar();
         this.renderMenu();
+        this.checkAdminButtons();
         this.render();
     },
     renderAuthBar() {
         const bar = document.getElementById('runtime-auth-zone');
+        if(!bar) return;
         if(this.user && GlobalUsers[this.user]) {
-            const u = GlobalUsers[this.user];
-            bar.innerHTML = `
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <img class="avatar-mini" src="${u.avatar}">
-                    <span class="${u.glow}" style="font-weight:bold;">${u.nick || this.user}</span>
-                    <button class="btn-core" style="padding:5px 10px; font-size:10px;" onclick="AuthModule.logout()">Выход</button>
-                </div>
-            `;
+            const uData = GlobalUsers[this.user];
+            bar.innerHTML = `<img class="avatar-mini" src="${uData.avatar}" onclick="ProfileCore.open()"> <span class="${uData.glow}">${uData.nick}</span> <button class="btn-core" onclick="AuthModule.logout()">Выйти</button>`;
         } else {
-            bar.innerHTML = `<button class="btn-core" onclick="AuthModule.open()">Вход / Регистрация</button>`;
+            bar.innerHTML = `<button class="btn-core" onclick="AuthModule.open()">Войти</button>`;
         }
     },
     renderMenu() {
         const nav = document.getElementById('nodes-navigation-list');
+        if (!nav) return;
         nav.innerHTML = `<div class="sidebar-title">Навигация проекта</div>`;
         for(let key in GlobalNodes) {
             const activeClass = (this.activeNodeKey === key) ? 'active' : '';
-            nav.innerHTML += `<div class="nav-link ${activeClass}" onclick="App.route('${key}')">${GlobalNodes[key].title}</div>`;
+            nav.innerHTML += `<a href="javascript:void(0)" class="nav-link ${activeClass}" onclick="App.route('${key}')">${GlobalNodes[key].title}</a>`;
         }
     },
-    route(key) { this.activeNodeKey = key; this.activeThreadId = null; this.render(); this.renderMenu(); },
+    checkAdminButtons() {
+        const isFounder = (this.user && GlobalUsers[this.user] && (GlobalUsers[this.user].nick === 'Qumestlies_Shawtys' || window.CloudFounders.includes(GlobalUsers[this.user].nick)));
+        if (isFounder) {
+            if(!document.getElementById('ui-adm-btn')) {
+                const btn = document.createElement('button');
+                btn.id = 'ui-adm-btn'; btn.className = 'btn-core'; btn.style.width = '100%'; btn.innerHTML = '🛡️ Панель Создателя';
+                btn.onclick = () => AdminPanel.open();
+                document.getElementById('nodes-navigation-list').appendChild(btn);
+            }
+        }
+    },
+    route(nodeKey) { this.activeNodeKey = nodeKey; this.activeThreadId = null; this.render(); this.renderMenu(); },
     render() {
         const view = document.getElementById('render-forum-core');
         const node = GlobalNodes[this.activeNodeKey];
         if(!node) return;
-
         if(this.activeThreadId) { this.renderThread(view, node); return; }
-
-        let html = `<h2>${node.title}</h2><hr style="border:0; border-top:1px solid #1c1c30; margin-bottom:20px;">`;
+        
+        let html = `<h2>${node.title}</h2><button class="btn-core" onclick="App.openCreateThreadForm()">+ Создать тему</button><hr>`;
         if(node.threads) {
             for(let tid in node.threads) {
                 html += `<div class="topic-link" onclick="App.openThread('${tid}')">${node.threads[tid].title}</div>`;
             }
-        } else { html += `<p>Тем нет</p>`; }
+        }
         view.innerHTML = html;
     },
     openThread(id) { this.activeThreadId = id; this.render(); },
     renderThread(view, node) {
         const thread = node.threads[this.activeThreadId];
-        let html = `<button class="btn-core" style="background:#222; margin-bottom:15px;" onclick="App.route('${this.activeNodeKey}')">↩ Назад</button><h3>${thread.title}</h3>`;
+        let html = `<button class="btn-core" onclick="App.route('${this.activeNodeKey}')">Назад</button><h3>${thread.title}</h3>`;
         if(thread.posts) {
             Object.values(thread.posts).forEach(p => {
-                html += `<div class="post-row">
-                    <div class="post-author-zone"><b>${p.author}</b></div>
-                    <div class="post-text-zone">${p.text}</div>
-                </div>`;
+                html += `<div class="post-row"><div class="post-author-zone">${p.author}</div><div class="post-text-zone">${p.text}</div></div>`;
             });
         }
+        if(this.user) html += `<textarea id="post-reply-text" class="input-field"></textarea><button class="btn-core" onclick="App.sendReply()">Ответить</button>`;
         view.innerHTML = html;
+    },
+    sendReply() {
+        const text = document.getElementById('post-reply-text').value.trim();
+        const post = { author: GlobalUsers[this.user].nick, text: text };
+        firebase.database().ref('nodes/'+this.activeNodeKey+'/threads/'+this.activeThreadId+'/posts').push(post).then(() => { this.render(); });
+    },
+    openCreateThreadForm() {
+        const view = document.getElementById('render-forum-core');
+        view.innerHTML = `<input id="new-t-title" class="input-field" placeholder="Заголовок"><textarea id="new-t-text" class="input-field"></textarea><button class="btn-core" onclick="App.submitThread()">Создать</button>`;
+    },
+    submitThread() {
+        const title = document.getElementById('new-t-title').value;
+        const text = document.getElementById('new-t-text').value;
+        const tid = 't-' + Date.now();
+        firebase.database().ref('nodes/'+this.activeNodeKey+'/threads/'+tid).set({ title: title, creator: GlobalUsers[this.user].nick, posts: { "f": { author: GlobalUsers[this.user].nick, text: text } } }).then(() => { this.activeThreadId = tid; this.render(); });
     }
 };
 
-window.onload = () => { App.syncUI(); };
+window.onload = () => { App.init(); };
