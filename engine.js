@@ -1,5 +1,5 @@
 // ==========================================================================
-// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v9.8 (FULL SECURITY + EMAIL LINK)
+// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v9.9 (STABLE FULL VERSION)
 // ==========================================================================
 
 const firebaseConfig = {
@@ -22,50 +22,77 @@ let GlobalNodes = {};
 let isFirstLoad = true;
 window.CloudFounders = [];
 
-// --- ПРОВЕРКА ВХОДА ПО ССЫЛКЕ ИЗ ПОЧТЫ ---
+// --- ЛОГИКА ВХОДА ПО ССЫЛКЕ ---
 if (auth.isSignInWithEmailLink(window.location.href)) {
     let email = window.localStorage.getItem('emailForSignIn');
-    if (!email) email = window.prompt('Введите ваш Email еще раз для подтверждения:');
+    if (!email) email = window.prompt('Введите ваш Email для подтверждения:');
     
     auth.signInWithEmailLink(email, window.location.href)
         .then((result) => {
             window.localStorage.removeItem('emailForSignIn');
             const nick = window.localStorage.getItem('nickForSignIn') || "User_" + Math.floor(Math.random()*999);
-            const userKey = email.replace(/\./g, ',');
+            const userKey = email.replace(/\./g, ','); // Ключ для БД (Firebase не любит точки)
             
             dbRef.child('users/' + userKey).once('value', snap => {
                 if(!snap.exists()) {
                     dbRef.child('users/' + userKey).set({
-                        nick: nick, glow: 'glow-user', badge: 'badge-user', verify: 'none', banned: false, avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png'
+                        nick: nick, 
+                        glow: 'glow-user', 
+                        badge: 'badge-user', 
+                        verify: 'none', 
+                        banned: false, 
+                        avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png'
                     });
                 }
                 localStorage.setItem('active_session', userKey);
-                window.location.href = "/";
+                window.location.href = "/"; // Редирект на чистый URL
             });
         })
         .catch(err => alert('Ошибка входа: ' + err.message));
 }
 
-// ОСНОВНОЙ СИНХРОНИЗАТОР (БЕЗ ИЗМЕНЕНИЙ ЛОГИКИ)
+// ОСНОВНОЙ СИНХРОНИЗАТОР ДАННЫХ
 dbRef.on('value', (snapshot) => {
     const data = snapshot.val() || {};
     GlobalUsers = data.users || {};
     GlobalNodes = data.nodes || {};
     window.CloudFounders = data.founders || [];
     
+    // Инициализация стандартных узлов, если пусто
+    if (!data.nodes) {
+        firebase.database().ref('nodes/dev_news').set({
+            title: '📢 Технические обновления',
+            path: 'Официально / Разработка',
+            threads: {
+                't-1': { id: 't-1', title: 'Добро пожаловать!', creator: 'System', posts: { "f": { author: 'System', text: 'Форум запущен на Cloud Engine v9.9' } } }
+            }
+        });
+    }
+
     if (isFirstLoad) {
         const saved = localStorage.getItem('active_session');
-        if (saved && GlobalUsers[saved] && !GlobalUsers[saved].banned) App.user = saved;
-        else { localStorage.removeItem('active_session'); App.user = null; }
+        if (saved && GlobalUsers[saved] && !GlobalUsers[saved].banned) {
+            App.user = saved;
+        } else { 
+            localStorage.removeItem('active_session'); 
+            App.user = null; 
+        }
         isFirstLoad = false;
     }
     App.syncUI();
 });
 
-// --- МОДУЛЬ 1: АВТОРИЗАЦИЯ (ПЕРЕДЕЛАНО ПОД EMAIL) ---
+// --- МОДУЛЬ 1: АВТОРИЗАЦИЯ (БЕЗ ПАРОЛЕЙ - ПОЧТА) ---
 const AuthModule = {
-    open() { document.getElementById('m-auth').style.display = 'flex'; 
-             document.getElementById('auth-btn-container').innerHTML = `<button class="btn-core" style="width:100%;" onclick="AuthModule.sendLink()">Отправить ссылку на почту</button>`; },
+    open() {
+        const modal = document.getElementById('m-auth');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        document.getElementById('auth-title').innerText = "Вход / Регистрация";
+        document.getElementById('auth-btn-container').innerHTML = `
+            <button class="btn-core" style="width:100%;" onclick="AuthModule.sendLink()">Отправить ссылку на почту</button>
+        `;
+    },
     close() { document.getElementById('m-auth').style.display = 'none'; },
     sendLink() {
         const email = document.getElementById('f-email').value.trim();
@@ -76,21 +103,26 @@ const AuthModule = {
             .then(() => {
                 window.localStorage.setItem('emailForSignIn', email);
                 window.localStorage.setItem('nickForSignIn', nick);
-                alert('Проверьте почту! Мы отправили ссылку для входа.');
+                alert('Проверьте почту! Ссылка для входа отправлена.');
                 this.close();
             })
             .catch(err => alert('Ошибка: ' + err.message));
     },
-    logout() { auth.signOut(); localStorage.removeItem('active_session'); App.user = null; App.syncUI(); }
+    logout() {
+        auth.signOut();
+        localStorage.removeItem('active_session');
+        App.user = null;
+        App.syncUI();
+    }
 };
 
-// --- МОДУЛЬ 3: ПРОФИЛЬ (БЕЗ ИЗМЕНЕНИЙ) ---
+// --- МОДУЛЬ 2: ПРОФИЛЬ ---
 const ProfileCore = {
     open() { 
-        if(!GlobalUsers[App.user]) return;
+        if(!App.user || !GlobalUsers[App.user]) return;
         document.getElementById('m-profile').style.display = 'flex'; 
         document.getElementById('new-profile-nick').value = GlobalUsers[App.user].nick;
-        document.getElementById('my-profile-avatar-view').src = GlobalUsers[App.user].avatar; 
+        document.getElementById('my-profile-avatar-view').src = GlobalUsers[App.user].avatar || 'https://i.postimg.cc/9Q2g9g6y/user2.png'; 
     },
     close() { document.getElementById('m-profile').style.display = 'none'; },
     upload(event) {
@@ -101,13 +133,18 @@ const ProfileCore = {
         reader.readAsDataURL(file);
     },
     saveData() {
-        const nick = document.getElementById('new-profile-nick').value.trim();
+        const newNick = document.getElementById('new-profile-nick').value.trim();
         const avatar = document.getElementById('my-profile-avatar-view').src;
-        firebase.database().ref('users/' + App.user).update({ nick: nick, avatar: avatar }).then(() => this.close());
+        if(!newNick) return alert('Ник не может быть пустым!');
+        
+        firebase.database().ref('users/' + App.user).update({
+            nick: newNick,
+            avatar: avatar
+        }).then(() => this.close());
     }
 };
 
-// --- МОДУЛЬ 4: АДМИН-ПАНЕЛЬ (БЕЗ ИЗМЕНЕНИЙ) ---
+// --- МОДУЛЬ 3: АДМИН-ПАНЕЛЬ ---
 const AdminPanel = {
     open() {
         const u = GlobalUsers[App.user];
@@ -125,10 +162,14 @@ const AdminPanel = {
             firebase.database().ref('founders').set(window.CloudFounders).then(() => this.renderFoundersList());
         }
     },
+    removeFounder(nick) {
+        window.CloudFounders = window.CloudFounders.filter(n => n !== nick);
+        firebase.database().ref('founders').set(window.CloudFounders).then(() => this.renderFoundersList());
+    },
     renderFoundersList() {
         const block = document.getElementById('cloud-founders-list');
-        let html = '<b>Облако:</b> ';
-        window.CloudFounders.forEach(n => html += `<span>${n}</span> `);
+        let html = '<b>Основатели:</b><br>';
+        window.CloudFounders.forEach(n => html += `<span style="color:red; cursor:pointer;" onclick="AdminPanel.removeFounder('${n}')">${n}</span> `);
         block.innerHTML = html;
     },
     loadUsersList() {
@@ -141,7 +182,14 @@ const AdminPanel = {
         const glow = document.getElementById('adm-set-glow').value;
         const badge = document.getElementById('adm-set-badge').value;
         const verify = document.getElementById('adm-set-verify').value;
-        firebase.database().ref('users/' + target).update({ glow: glow, badge: badge, verify: verify });
+        const isBan = document.getElementById('adm-set-ban').value === 'yes';
+        
+        firebase.database().ref('users/' + target).update({
+            glow: isBan ? 'glow-banned' : glow,
+            badge: isBan ? 'badge-banned' : badge,
+            verify: isBan ? 'none' : verify,
+            banned: isBan
+        });
         this.close();
     }
 };
@@ -153,12 +201,13 @@ const NodeManager = {
     submit() {
         const t = document.getElementById('node-new-title').value.trim();
         const p = document.getElementById('node-new-path').value.trim();
+        if(!t || !p) return;
         const key = 'node_' + Date.now();
         firebase.database().ref('nodes/' + key).set({ title: t, path: p }).then(() => this.close());
     }
 };
 
-// --- МОДУЛЬ 5: ДИСПЕТЧЕР (ТВОЯ ЛОГИКА) ---
+// --- МОДУЛЬ 4: ДИСПЕТЧЕР (ГЛАВНЫЙ КОНТРОЛЛЕР) ---
 const App = {
     user: null,
     activeNodeKey: 'dev_news',
@@ -175,13 +224,18 @@ const App = {
         if(this.user && GlobalUsers[this.user]) {
             const u = GlobalUsers[this.user];
             let v = (u.verify && u.verify !== 'none') ? `<span class="verified-badge ${u.verify}"></span>` : '';
-            bar.innerHTML = `<img class="avatar-mini" src="${u.avatar}" onclick="ProfileCore.open()"> <span class="${u.glow}" style="font-weight:bold; cursor:pointer;" onclick="ProfileCore.open()">${u.nick}${v}</span> <button class="btn-core" style="padding:5px; font-size:10px;" onclick="AuthModule.logout()">Выход</button>`;
+            bar.innerHTML = `
+                <img class="avatar-mini" src="${u.avatar}" onclick="ProfileCore.open()"> 
+                <span class="${u.glow}" style="font-weight:bold; cursor:pointer;" onclick="ProfileCore.open()">${u.nick}${v}</span> 
+                <button class="btn-core" style="padding:5px; font-size:10px; margin-left:10px;" onclick="AuthModule.logout()">Выйти</button>
+            `;
         } else {
             bar.innerHTML = `<button class="btn-core" onclick="AuthModule.open()">Войти</button>`;
         }
     },
     renderMenu() {
         const nav = document.getElementById('nodes-navigation-list');
+        if(!nav) return;
         nav.innerHTML = `<div class="sidebar-title">Навигация проекта</div>`;
         for(let key in GlobalNodes) {
             const active = (this.activeNodeKey === key) ? 'active' : '';
@@ -190,12 +244,20 @@ const App = {
     },
     checkAdminButtons() {
         const u = GlobalUsers[this.user];
-        if (u && (u.nick === 'Qumestlies_Shawtys' || window.CloudFounders.includes(u.nick))) {
+        const isAdm = u && (u.nick === 'Qumestlies_Shawtys' || window.CloudFounders.includes(u.nick));
+        if (isAdm) {
             if(!document.getElementById('ui-adm-btn')) {
+                const nav = document.getElementById('nodes-navigation-list');
                 const btn = document.createElement('button');
-                btn.id = 'ui-adm-btn'; btn.className = 'btn-core'; btn.style.width = '100%'; btn.style.marginTop = '10px';
+                btn.id = 'ui-adm-btn'; btn.className = 'btn-core'; btn.style.width = '100%'; btn.style.marginTop = '15px';
+                btn.style.background = 'linear-gradient(135deg, #ff0055, #8a2387)';
                 btn.innerHTML = '🛡️ Админ Панель'; btn.onclick = () => AdminPanel.open();
-                document.getElementById('nodes-navigation-list').appendChild(btn);
+                nav.appendChild(btn);
+                
+                const btnNode = document.createElement('button');
+                btnNode.id = 'ui-node-btn'; btnNode.className = 'btn-core'; btnNode.style.width = '100%'; btnNode.style.marginTop = '5px';
+                btnNode.innerHTML = '➕ Создать раздел'; btnNode.onclick = () => NodeManager.open();
+                nav.appendChild(btnNode);
             }
         }
     },
@@ -206,42 +268,93 @@ const App = {
         if(!node) return;
         if(this.activeThreadId) { this.renderThread(view, node); return; }
         
-        let html = `<h2>${node.title}</h2><button class="btn-core" onclick="App.openCreateThreadForm()">+ Создать тему</button><hr style="border:0; border-top:1px solid #1c1c30; margin:20px 0;">`;
+        let html = `<div class="node-path">${node.path}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h2>${node.title}</h2>
+                        <button class="btn-core" onclick="App.openCreateThreadForm()">+ Создать тему</button>
+                    </div><hr style="border:0; border-top:1px solid #1c1c30; margin:20px 0;">`;
+        
         if(node.threads) {
-            for(let tid in node.threads) html += `<div class="topic-link" onclick="App.openThread('${tid}')">${node.threads[tid].title}</div>`;
+            for(let tid in node.threads) {
+                const t = node.threads[tid];
+                html += `<div class="topic-link" onclick="App.openThread('${tid}')">
+                            <div style="font-weight:bold;">${t.title}</div>
+                            <div style="font-size:10px; color:#555;">Автор: ${t.creator}</div>
+                         </div>`;
+            }
+        } else {
+            html += `<p style="text-align:center; color:#333;">Тем пока нет.</p>`;
         }
         view.innerHTML = html;
     },
     openThread(id) { this.activeThreadId = id; this.render(); },
     renderThread(view, node) {
         const thread = node.threads[this.activeThreadId];
-        let html = `<button class="btn-core" style="background:#222;" onclick="App.route('${this.activeNodeKey}')">Назад</button><h3>${thread.title}</h3>`;
+        let html = `<button class="btn-core" style="background:#222; margin-bottom:15px;" onclick="App.route('${this.activeNodeKey}')">Назад</button>
+                    <h3>${thread.title}</h3>`;
+        
         if(thread.posts) {
             Object.values(thread.posts).forEach(p => {
-                let authorKey = null;
-                for(let k in GlobalUsers) if(GlobalUsers[k].nick === p.author) authorKey = k;
-                const u = GlobalUsers[authorKey] || { glow: 'glow-user', badge: 'badge-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
-                html += `<div class="post-row"><div class="post-author-zone"><img src="${u.avatar}" class="avatar-round"><div class="${u.glow}">${p.author}</div></div><div class="post-text-zone">${p.text}</div></div>`;
+                // Поиск данных автора по нику
+                let u = { glow: 'glow-user', badge: 'badge-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png', verify: 'none' };
+                for(let k in GlobalUsers) { if(GlobalUsers[k].nick === p.author) u = GlobalUsers[k]; }
+                
+                let v = (u.verify && u.verify !== 'none') ? `<span class="verified-badge ${u.verify}"></span>` : '';
+                
+                html += `<div class="post-row">
+                            <div class="post-author-zone">
+                                <img src="${u.avatar}" class="avatar-round">
+                                <div class="${u.glow}" style="font-weight:bold; font-size:13px;">${p.author}${v}</div>
+                                <div class="badge-role ${u.badge}">${(u.badge || 'user').replace('badge-', '').toUpperCase()}</div>
+                            </div>
+                            <div class="post-text-zone">${p.text}</div>
+                         </div>`;
             });
         }
-        if(this.user) html += `<textarea id="reply-text" class="input-field"></textarea><button class="btn-core" onclick="App.sendReply()">Ответить</button>`;
+        
+        if(this.user) {
+            html += `<div style="margin-top:20px;">
+                        <textarea id="reply-text" class="input-field" placeholder="Ваш ответ..."></textarea>
+                        <button class="btn-core" onclick="App.sendReply()">Ответить</button>
+                     </div>`;
+        }
         view.innerHTML = html;
     },
     sendReply() {
         const text = document.getElementById('reply-text').value.trim();
+        if(!text) return;
         const post = { author: GlobalUsers[this.user].nick, text: text };
-        firebase.database().ref(`nodes/${this.activeNodeKey}/threads/${this.activeThreadId}/posts`).push(post).then(() => this.render());
+        firebase.database().ref(`nodes/${this.activeNodeKey}/threads/${this.activeThreadId}/posts`).push(post).then(() => {
+            document.getElementById('reply-text').value = '';
+        });
     },
     openCreateThreadForm() {
+        if(!this.user) return alert('Нужно войти!');
         const view = document.getElementById('render-forum-core');
-        view.innerHTML = `<input id="t-title" class="input-field" placeholder="Заголовок"><textarea id="t-text" class="input-field"></textarea><button class="btn-core" onclick="App.submitThread()">Создать</button>`;
+        view.innerHTML = `
+            <h2>Создание темы</h2>
+            <input id="t-title" class="input-field" placeholder="Заголовок темы">
+            <textarea id="t-text" class="input-field" rows="5" placeholder="Текст темы..."></textarea>
+            <button class="btn-core" onclick="App.submitThread()">Опубликовать</button>
+            <button class="btn-core" style="background:#222;" onclick="App.render()">Отмена</button>
+        `;
     },
     submitThread() {
-        const title = document.getElementById('t-title').value;
-        const text = document.getElementById('t-text').value;
+        const title = document.getElementById('t-title').value.trim();
+        const text = document.getElementById('t-text').value.trim();
+        if(!title || !text) return alert('Заполните поля!');
+        
         const tid = 't-' + Date.now();
         const nick = GlobalUsers[this.user].nick;
-        firebase.database().ref(`nodes/${this.activeNodeKey}/threads/${tid}`).set({ title: title, creator: nick, posts: { "f": { author: nick, text: text } } }).then(() => { this.activeThreadId = tid; this.render(); });
+        firebase.database().ref(`nodes/${this.activeNodeKey}/threads/${tid}`).set({
+            id: tid,
+            title: title,
+            creator: nick,
+            posts: { "first": { author: nick, text: text } }
+        }).then(() => { 
+            this.activeThreadId = tid; 
+            this.render(); 
+        });
     }
 };
 
