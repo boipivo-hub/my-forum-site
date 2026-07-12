@@ -1,1 +1,76 @@
+:root {
+    --bg-main: #060609;
+    --bg-card: #0b0b12;
+    --bg-layer: #11111c;
+    --bg-hover: #171728;
+    --border-color: #1e1e30;
+    --brand-red: #ff003c;
+    --brand-glow: rgba(255, 0, 60, 0.4);
+}
+*, *::before, *::after { box-sizing: border-box; }
+body {
+    background-color: var(--bg-main);
+    color: #dedee6;
+    font-family: system-ui, -apple-system, sans-serif;
+    margin: 0; padding: 0; overflow-y: scroll;
+}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: #2a2a40; border-radius: 3px; }
 
+.forum-layout {
+    max-width: 1500px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 30px;
+    padding: 30px 20px;
+}
+.sidebar-block {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+.nav-link {
+    display: block; padding: 12px; color: #a5a5b5; text-decoration: none;
+    border-radius: 4px; transition: 0.2s; margin-bottom: 4px;
+}
+.nav-link:hover, .nav-link.active {
+    background: var(--bg-hover); color: #fff; padding-left: 18px;
+}
+.nav-link.active { border-left: 3px solid var(--brand-red); }
+
+.content-area {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 30px;
+    min-height: 700px;
+}
+.input-field {
+    width: 100%; background: #07070b; border: 1px solid var(--border-color);
+    padding: 12px; color: #fff; border-radius: 4px; margin-bottom: 15px;
+}
+.input-field:focus { border-color: var(--brand-red); outline: none; }
+.btn-core {
+    background: var(--brand-red); color: #fff; border: none; padding: 12px 24px;
+    font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase;
+}
+.btn-core:hover { background: #ff2553; }
+
+/* Круглые аватарки */
+.avatar-round {
+    width: 90px; height: 90px; border-radius: 50%; object-fit: cover;
+    border: 2px solid var(--border-color); box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+.avatar-mini { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; vertical-align: middle; }
+
+.overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(5px);
+}
+.modal-frame {
+    background: var(--bg-layer); border: 1px solid var(--border-color);
+    width: 100%; max-width: 500px; border-radius: 6px; overflow: hidden;
+}
