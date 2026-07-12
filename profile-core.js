@@ -1,46 +1,36 @@
-/**
- * PROFILE CORE
- * Обработка ававарок, ников и личных данных
- */
-
+// Модуль настроек аккаунта и парсинга аватаров (Поддерживает анимированные GIF)
 const ProfileCore = {
-    currentBase64: null,
-
-    handleFile(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        if (file.size > 2 * 1024 * 1024) {
-            UIManager.toast("Максимальный размер файла 2MB!", "error");
-            return;
-        }
-
+    open() { document.getElementById('m-profile').style.display = 'flex'; document.getElementById('my-profile-avatar-view').src = AuthModule.getRegistry()[App.user].avatar; },
+    close() { document.getElementById('m-profile').style.display = 'none'; },
+    
+    upload(event) {
+        const file = event.target.files[0];
+        if(!file) return;
+        
+        // FileReader переводит любой файл (включая .gif) в строку Base64 для localStorage
         const reader = new FileReader();
-        reader.onload = (event) => {
-            this.currentBase64 = event.target.result;
-            document.getElementById('pe-preview').src = event.target.result;
+        reader.onload = function(e) {
+            document.getElementById('my-profile-avatar-view').src = e.target.result;
         };
         reader.readAsDataURL(file);
     },
-
-    async commit() {
-        if (!Engine.user) return;
-
-        const nick = document.getElementById('pe-nickname').value;
-        const bio = document.getElementById('pe-bio').value;
+    
+    saveData() {
+        const newNick = document.getElementById('new-profile-nick').value.trim();
+        const base64Img = document.getElementById('my-profile-avatar-view').src;
+        let db = AuthModule.getRegistry();
         
-        const updates = {};
-        if (nick) updates.nickname = nick;
-        if (bio) updates.bio = bio;
-        if (this.currentBase64) updates.avatar = this.currentBase64;
-
-        try {
-            UIManager.toast("Сохранение...", "info");
-            await Engine.db.ref(`users/${Engine.user.uid}`).update(updates);
-            UIManager.toast("Профиль успешно обновлен!", "success");
-            setTimeout(() => location.reload(), 1000);
-        } catch (error) {
-            UIManager.toast("Ошибка сохранения: " + error.message, "error");
+        if(newNick && newNick !== App.user) {
+            if(db[newNick]) return alert('Этот ник уже занят!');
+            db[newNick] = db[App.user];
+            delete db[App.user];
+            App.user = newNick;
+            localStorage.setItem('active_session', newNick);
         }
+        
+        db[App.user].avatar = base64Img;
+        AuthModule.saveRegistry(db);
+        this.close();
+        window.location.reload();
     }
 };
