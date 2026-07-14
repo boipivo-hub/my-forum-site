@@ -94,7 +94,7 @@
         <aside class="sidebar">
             <div style="font-size:11px; color:#555; margin-bottom:10px; font-weight:bold;">МЕНЮ</div>
             <div id="sidebar-nodes"></div>
-            <div id="admin-panel-btn" style="display:none; margin-top:20px; border-top: 1px solid #222; padding-top: 10px;">
+            <div id="admin-panel-btn" style="display:none; margin-top:20px; border-top: 1px solid #222; padding-top:10px;">
                 <p style="font-size:9px; color:var(--accent); margin-bottom:5px;">CONTROL:</p>
                 <button class="btn-core" style="width:100%; margin-bottom:5px; background:#111; border: 1px solid var(--accent);" onclick="Admin.open()">🛡️ Управление игроками</button>
                 <button class="btn-core" style="width:100%; background:#000;" onclick="UI.show('m-node')">➕ Создать Раздел</button>
@@ -230,10 +230,11 @@
                 const zone = document.getElementById('header-auth');
                 if (user) {
                     const glow = user.role === 'badge-founder' ? 'glow-founder' : (user.role === 'badge-admin' ? 'glow-admin' : '');
+                    const verifyClass = user.verify || 'none';
                     zone.innerHTML = `
                         <div style="display:flex; align-items:center; gap:12px;">
                             <img src="${user.avatar || 'https://via.placeholder.com/32'}" class="avatar-mini" onclick="UI.show('m-profile')">
-                            <span class="${glow}" style="font-weight:bold; cursor:pointer;" onclick="UI.show('m-profile')">${user.nick} <div class="verified-badge ${user.verify || 'none'}"></div></span>
+                            <span class="${glow}" style="font-weight:bold; cursor:pointer;" onclick="UI.show('m-profile')">${user.nick || 'Player'} <div class="verified-badge ${verifyClass}"></div></span>
                             <button class="btn-core" style="background:#222; font-size:10px;" onclick="auth.signOut().then(()=>location.reload())">Выход</button>
                         </div>
                     `;
@@ -277,23 +278,22 @@
                 db.ref('nodes').on('value', snap => {
                     const nodes = snap.val() || {};
                     let html = '';
+                    const nodeKeys = Object.keys(nodes);
                     
-                    // Если разделов в базе вообще нет - создаем дефолтные, чтобы код не ломался
-                    if (Object.keys(nodes).length === 0) {
+                    if (nodeKeys.length === 0) {
+                        // Если в базе пусто - создаем дефолтные разделы, чтобы сайт не был пустым
                         db.ref('nodes/news').set({ title: 'Новости' });
                         db.ref('nodes/general').set({ title: 'Общий раздел' });
                         return;
                     }
 
-                    Object.keys(nodes).forEach(id => {
+                    nodeKeys.forEach(id => {
                         html += `<div class="nav-link" onclick="Forum.loadTopics('${id}', '${nodes[id].title}')">${nodes[id].title}</div>`;
                     });
                     document.getElementById('sidebar-nodes').innerHTML = html;
                     
-                    // Загружаем первый доступный раздел по умолчанию при инициализации
                     if(!currentActiveNode) {
-                        const firstNodeId = Object.keys(nodes)[0];
-                        Forum.loadTopics(firstNodeId, nodes[firstNodeId].title);
+                        Forum.loadTopics(nodeKeys[0], nodes[nodeKeys[0]].title);
                     }
                 });
             },
@@ -303,7 +303,7 @@
                 const snap = await db.ref('topics/' + nodeId).once('value');
                 const data = snap.val() || {};
                 
-                // Кнопка создания тем доступна только основателю и админам
+                // Создавать темы в разделе теперь по умолчанию могут ТОЛЬКО Основатель (founder) и Админ (admin)
                 let html = (user && (user.role === 'badge-founder' || user.role === 'badge-admin')) ? 
                            `<button class="btn-core" style="width:100%; margin-bottom:20px;" onclick="UI.show('m-topic')">+ Опубликовать тему в "${title || ''}"</button>` : '';
                 
@@ -318,22 +318,22 @@
                             <div class="post-card" onclick="Forum.viewTopic('${id}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
                                 <div>
                                     <span class="status-badge ${statusClass}">${displayStatus}</span>
-                                    <span style="font-weight:bold; font-size:16px;">${t.title}</span>
-                                    <div style="font-size:11px; color:#555; margin-top:8px;">Автор: ${t.authorNick || 'Player'}</div>
+                                    <span style="font-weight:bold; font-size:16px;">${t.title || 'Без названия'}</span>
+                                    <div style="font-size:11px; color:#555; margin-top:8px;">Автор: ${t.authorNick || 'Игрок'}</div>
                                 </div>
                                 ${(user && user.role === 'badge-founder') ? `<button class="btn-core" style="background:red; font-size:9px;" onclick="event.stopPropagation(); Forum.deleteTopic('${id}')">Удалить</button>` : ''}
                             </div>
                         `;
                     });
                 } else {
-                    html += '<p style="text-align:center; padding-top: 30px;">В этом разделе ещё нет тем.</p>';
+                    html += '<p style="text-align:center; padding: 20px 0;">В этом разделе ещё нет тем.</p>';
                 }
                 document.getElementById('forum-render').innerHTML = html;
             },
             viewTopic: async (id) => {
                 const snap = await db.ref('topics/' + currentActiveNode + '/' + id).once('value');
                 const t = snap.val();
-                if (!t) return;
+                if(!t) return;
 
                 const statusClass = t.status || 'status-open';
                 const authorBadge = t.authorBadge || 'badge-user';
@@ -345,11 +345,11 @@
                         <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
                             <img src="${t.authorAvatar || 'https://via.placeholder.com/32'}" class="avatar-mini">
                             <div>
-                                <span class="${t.authorGlow || ''}">${t.authorNick || 'Player'} <div class="verified-badge ${t.authorVerify || 'none'}"></div></span><br>
+                                <span class="${t.authorGlow || ''}">${t.authorNick || 'Игрок'} <div class="verified-badge ${t.authorVerify || 'none'}"></div></span><br>
                                 <span class="badge-role ${authorBadge}">${displayBadge}</span>
                             </div>
                         </div>
-                        <div style="color:#cdcdff; line-height:1.6;">${Editor.parse(t.text)}</div>
+                        <div style="color:#cdcdff; line-height:1.6;">${Editor.parse(t.text || '')}</div>
                     </div>
                     <div id="replies-list"></div>
                     ${(user && user.sanction !== 'mute' && statusClass !== 'status-closed') ? `
@@ -397,13 +397,14 @@
                 let html = '';
                 Object.keys(data).forEach(rid => {
                     const r = data[rid];
+                    const rBadge = r.authorBadge || 'badge-user';
                     html += `
                         <div class="post-card" style="margin-left:25px; border-left:2px solid var(--accent);">
                             <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
                                 <img src="${r.authorAvatar || 'https://via.placeholder.com/24'}" class="avatar-mini" style="width:24px; height:24px;">
-                                <span class="${r.authorGlow || ''}" style="font-size:12px;">${r.authorNick || 'Player'} <div class="verified-badge ${r.authorVerify || 'none'}"></div></span>
+                                <span class="${r.authorGlow || ''}" style="font-size:12px;">${r.authorNick || 'Игрок'} <div class="verified-badge ${r.authorVerify || 'none'}"></div></span>
                             </div>
-                            <div style="font-size:13px; color:#aaa;">${Editor.parse(r.text)}</div>
+                            <div style="font-size:13px; color:#aaa;">${Editor.parse(r.text || '')}</div>
                         </div>
                     `;
                 });
@@ -423,7 +424,7 @@
                 const snap = await db.ref('users').once('value');
                 const users = snap.val() || {};
                 let html = '';
-                Object.keys(users).forEach(uid => html += `<option value="${uid}">${users[uid].nick} (${users[uid].email})</option>`);
+                Object.keys(users).forEach(uid => html += `<option value="${uid}">${users[uid].nick || 'Player'} (${users[uid].email || ''})</option>`);
                 document.getElementById('adm-user-list').innerHTML = html;
                 UI.show('m-admin');
             },
@@ -449,7 +450,10 @@
 
         const Editor = {
             tag: (s, e) => document.getElementById('t-text').value += s + e,
-            parse: (t) => t.replace(/\[img\](.*?)\[\/img\]/g, '<img src="$1" style="max-width:100%; border-radius:5px; margin:5px 0;">').replace(/\[video\](.*?)\[\/video\]/g, '<video src="$1" controls style="max-width:100%;"></video>').replace(/\[b\](.*?)\[\/b\]/g, '<b>$1</b>').replace(/\n/g, '<br>')
+            parse: (t) => {
+                if(!t) return '';
+                return t.replace(/\[img\](.*?)\[\/img\]/g, '<img src="$1" style="max-width:100%; border-radius:5px; margin:5px 0;">').replace(/\[video\](.*?)\[\/video\]/g, '<video src="$1" controls style="max-width:100%;"></video>').replace(/\[b\](.*?)\[\/b\]/g, '<b>$1</b>').replace(/\n/g, '<br>');
+            }
         };
 
         auth.onAuthStateChanged(async (u) => {
@@ -471,7 +475,7 @@
                         await db.ref('users/' + u.uid).set(dbUser);
                     }
                 } else if (!dbUser) {
-                    // Создаем профиль для Обычного зарегистрированного нового пользователя
+                    // Создаем профиль для ОБЫЧНОГО нового пользователя
                     dbUser = { 
                         nick: u.displayName || 'Player_' + Math.floor(1000 + Math.random() * 9000), 
                         role: 'badge-user', 
@@ -490,7 +494,7 @@
                     return; 
                 }
                 
-                document.getElementById('p-nick').value = user.nick;
+                document.getElementById('p-nick').value = user.nick || '';
                 document.getElementById('p-avatar-view').src = user.avatar || 'https://via.placeholder.com/90';
             } else {
                 user = null;
