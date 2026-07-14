@@ -1,7 +1,7 @@
 // ==========================================================================
-// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v19.0 (GOD MODE FULL VERSION)
+// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v20.0 (ARMORED ULTRA FULL)
 // SECURITY LEVEL: TOTAL PROTECTION (UID + SERVER RULES + ANTI-F12)
-// DEVELOPED FOR: Qumestlies_Shawty
+// DEVELOPED FOR: Qumestlies_Shawty (ariessupporttest@gmail.com)
 // ==========================================================================
 
 // --- КОНФИГУРАЦИЯ FIREBASE ---
@@ -15,9 +15,10 @@ const firebaseConfig = {
     appId: "1:614643963857:web:01f1f941c72249ac6eb2f0"
 };
 
+// Инициализация системы
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
-    console.log("Aries Engine: System Core Initialized.");
+    console.log("Aries Engine: System Core v20.0 Booted.");
 }
 
 const dbRef = firebase.database().ref();
@@ -33,15 +34,15 @@ const MASTER_EMAIL = "ariessupporttest@gmail.com";
 const MASTER_NICK = "Qumestlies_Shawty";
 
 // ==========================================================================
-// МОДУЛЬ БРАУЗЕРНОЙ ЗАЩИТЫ (ANTI-HACK)
+// МОДУЛЬ БРАУЗЕРНОЙ ЗАЩИТЫ (ANTI-F12)
 // ==========================================================================
-document.addEventListener('contextmenu', e => e.preventDefault()); // Блок правой кнопки
+document.addEventListener('contextmenu', e => e.preventDefault()); 
 document.onkeydown = function(e) {
-    if(e.keyCode == 123) return false; // Блок F12
-    if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // Ctrl+Shift+I
-    if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; // Ctrl+Shift+C
-    if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // Ctrl+Shift+J
-    if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // Ctrl+U (Исходный код)
+    if(e.keyCode == 123) return false; 
+    if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; 
+    if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; 
+    if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; 
+    if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
 };
 
 // ==========================================================================
@@ -50,18 +51,17 @@ document.onkeydown = function(e) {
 
 async function syncUserProfile(user, customNick = null) {
     if (!user) return;
-    const uid = user.uid; // Защищенный ID вместо почты
-    console.log("Aries Sync: Checking security token for UID:", uid);
-
+    const uid = user.uid; // Железный ID
+    
     try {
         const snap = await dbRef.child('users/' + uid).once('value');
         const isMaster = (user.email.toLowerCase() === MASTER_EMAIL.toLowerCase());
 
         if (!snap.exists()) {
-            console.log("Aries Sync: Initializing new secured profile...");
+            console.log("Aries Security: Initializing new UID profile...");
             await dbRef.child('users/' + uid).set({
                 uid: uid,
-                nick: isMaster ? MASTER_NICK : (customNick || user.displayName || "Player_" + Math.floor(Math.random()*9999)),
+                nick: isMaster ? MASTER_NICK : (customNick || user.displayName || "User_" + Math.floor(Math.random()*9999)),
                 email: user.email,
                 glow: isMaster ? 'glow-founder' : 'glow-user',
                 badge: isMaster ? 'badge-founder' : 'badge-user',
@@ -73,26 +73,26 @@ async function syncUserProfile(user, customNick = null) {
         }
         App.userUid = uid;
         App.syncUI();
-    } catch (e) { console.error("Database sync error (Rules block):", e); }
+    } catch (e) { console.error("Database block by Rules. Profile not synced."); }
 }
 
 async function handleEmailLinkSignIn() {
     if (auth.isSignInWithEmailLink(window.location.href)) {
-        let email = window.localStorage.getItem('emailForSignIn') || window.prompt('Для подтверждения введите ваш Email:');
+        let email = window.localStorage.getItem('emailForSignIn') || window.prompt('Для входа введите ваш Email:');
         if (email) {
             try {
                 const result = await auth.signInWithEmailLink(email, window.location.href);
-                await syncUserProfile(result.user, window.localStorage.getItem('nickForSignIn'));
+                const nick = window.localStorage.getItem('nickForSignIn');
+                await syncUserProfile(result.user, nick);
                 window.localStorage.removeItem('emailForSignIn');
                 window.localStorage.removeItem('nickForSignIn');
                 window.history.replaceState({}, document.title, window.location.pathname);
                 location.reload(); 
-            } catch (error) { alert("Ссылка просрочена или неверна."); }
+            } catch (error) { alert("Ссылка невалидна."); }
         }
     }
 }
 
-// Слушатель состояния авторизации
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         App.userUid = user.uid;
@@ -104,7 +104,7 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 // ==========================================================================
-// МОДУЛЬ 2: МОНИТОРИНГ БАЗЫ (REALTIME STREAM)
+// МОДУЛЬ 2: МОНИТОРИНГ БАЗЫ (IRON STREAM)
 // ==========================================================================
 
 dbRef.on('value', (snapshot) => {
@@ -113,14 +113,13 @@ dbRef.on('value', (snapshot) => {
     GlobalNodes = data.nodes || {};
     window.CloudFounders = data.founders || [];
 
-    // АВТО-ИНИЦИАЛИЗАЦИЯ: Если база пустая, создаем первый раздел
+    // Авто-создание структуры, если база пустая
     if (Object.keys(GlobalNodes).length === 0) {
-        console.warn("Aries Cloud: Database empty. Creating default nodes...");
         dbRef.child('nodes/main').set({
-            title: '📢 Главный раздел проекта',
+            title: '📢 Общий раздел проекта',
             path: 'Aries Role Play / Основное',
             threads: {
-                't-init': { id: 't-init', title: 'Добро пожаловать!', creator: 'System', posts: { "p1": { author: 'System', text: 'Aries Cloud Forum запущен. Версия ядра: 19.0' } } }
+                't-init': { id: 't-init', title: 'Добро пожаловать!', creator: 'System', posts: { "p1": { author: 'System', text: 'Форум онлайн. Защита активна.' } } }
             }
         });
     }
@@ -131,10 +130,10 @@ dbRef.on('value', (snapshot) => {
     }
 
     App.syncUI();
-}, (err) => { console.error("Access Denied by Iron Rules."); });
+}, (err) => { console.error("Access Refused: Iron Rules are watching."); });
 
 // ==========================================================================
-// МОДУЛЬ 3: AUTH MODULE (GOOGLE + EMAIL)
+// МОДУЛЬ 3: AUTH MODULE (GOOGLE + MAGIC LINK)
 // ==========================================================================
 
 const AuthModule = {
@@ -148,7 +147,7 @@ const AuthModule = {
                 await syncUserProfile(result.user);
                 location.reload();
             })
-            .catch((error) => alert('Ошибка Google: ' + error.message));
+            .catch((error) => alert('Google Error: ' + error.message));
     },
 
     sendLink() {
@@ -160,9 +159,9 @@ const AuthModule = {
             .then(() => {
                 window.localStorage.setItem('emailForSignIn', email);
                 window.localStorage.setItem('nickForSignIn', nick);
-                alert('Ссылка отправлена на почту: ' + email);
+                alert('Письмо отправлено на ' + email);
                 this.close();
-            }).catch((err) => alert('Ошибка Firebase: ' + err.message));
+            }).catch((err) => alert('Firebase Error: ' + err.message));
     },
     
     logout() {
@@ -173,14 +172,14 @@ const AuthModule = {
 };
 
 // ==========================================================================
-// МОДУЛЬ 4: АДМИН-ПАНЕЛЬ (ULTRA ACCESS)
+// МОДУЛЬ 4: АДМИН-ПАНЕЛЬ (SERVER-PROTECTED)
 // ==========================================================================
 
 const AdminPanel = {
     open() {
         const u = GlobalUsers[App.userUid];
         if (!(u && (u.email === MASTER_EMAIL || window.CloudFounders.includes(u.nick)))) {
-            return alert('Критическая ошибка: Доступ отклонен сервером.');
+            return alert('Access Denied.');
         }
         document.getElementById('m-admin').style.display = 'flex';
         this.renderUsers();
@@ -192,7 +191,7 @@ const AdminPanel = {
         const sel = document.getElementById('adm-target-user');
         sel.innerHTML = '';
         for (let k in GlobalUsers) {
-            sel.innerHTML += `<option value="${k}">${GlobalUsers[k].nick} (${k.substring(0,6)}...)</option>`;
+            sel.innerHTML += `<option value="${k}">${GlobalUsers[k].nick}</option>`;
         }
     },
 
@@ -211,7 +210,7 @@ const AdminPanel = {
     },
 
     removeFounder(n) {
-        if (n === MASTER_NICK) return alert("Главного удалить нельзя!");
+        if (n === MASTER_NICK) return;
         window.CloudFounders = window.CloudFounders.filter(x => x !== n);
         dbRef.child('founders').set(window.CloudFounders);
     },
@@ -224,7 +223,7 @@ const AdminPanel = {
             badge: isB ? 'badge-banned' : document.getElementById('adm-set-badge').value,
             verify: isB ? 'none' : document.getElementById('adm-set-verify').value,
             banned: isB
-        }).then(() => { alert('Данные юзера обновлены в облаке.'); this.close(); });
+        }).then(() => { alert('Обновлено!'); this.close(); });
     }
 };
 
@@ -262,7 +261,8 @@ const App = {
         if (!nav) return;
         nav.innerHTML = `<div class="sidebar-title">Навигация проекта</div>`;
         for (let k in GlobalNodes) {
-            nav.innerHTML += `<div class="nav-link ${this.activeNodeKey===k?'active':''}" onclick="App.route('${k}')">${GlobalNodes[k].title}</div>`;
+            const act = (this.activeNodeKey === k) ? 'active' : '';
+            nav.innerHTML += `<div class="nav-link ${act}" onclick="App.route('${k}')">${GlobalNodes[k].title}</div>`;
         }
     },
 
@@ -271,14 +271,10 @@ const App = {
         if (u && (u.email === MASTER_EMAIL || window.CloudFounders.includes(u.nick))) {
             if (!document.getElementById('ui-admin-btn')) {
                 const nav = document.getElementById('nodes-navigation-list');
-                const bA = document.createElement('button');
-                bA.id = 'ui-admin-btn'; bA.className = 'btn-core'; bA.style.cssText = 'width:100%; margin-top:20px; background:red;';
-                bA.innerHTML = '🛡️ Админка'; bA.onclick = () => AdminPanel.open();
-                nav.appendChild(bA);
-                const bN = document.createElement('button');
-                bN.className = 'btn-core'; bN.style.cssText = 'width:100%; margin-top:5px; background:#1c1c30';
-                bN.innerHTML = '➕ Новый раздел'; bN.onclick = () => NodeManager.open();
-                nav.appendChild(bN);
+                const b = document.createElement('button');
+                b.id = 'ui-admin-btn'; b.className = 'btn-core'; b.style.cssText = 'width:100%; margin-top:20px; background:red;';
+                b.innerHTML = '🛡️ Админка'; b.onclick = () => AdminPanel.open();
+                nav.appendChild(b);
             }
         }
     },
@@ -289,12 +285,12 @@ const App = {
         const v = document.getElementById('render-forum-core');
         if (!v) return;
         const n = GlobalNodes[this.activeNodeKey];
-        if (!n) { v.innerHTML = '<div style="padding:50px; text-align:center;"><h3>Загрузка...</h3></div>'; return; }
+        if (!n) { v.innerHTML = '<h3>Загрузка...</h3>'; return; }
         if (this.activeThreadId) { this.renderThread(v, n); return; }
 
         let h = `<h2>${n.title}</h2><button class="btn-core" onclick="App.formThread()">+ Создать тему</button><hr style="border:0; border-top:1px solid #1c1c30; margin:20px 0;">`;
         for (let tid in (n.threads || {})) {
-            h += `<div class="topic-link" onclick="App.openThread('${tid}')">${n.threads[tid].title} <br><small style="color:#555">Автор: ${n.threads[tid].creator}</small></div>`;
+            h += `<div class="topic-link" onclick="App.openThread('${tid}')">${n.threads[tid].title} <br><small>Автор: ${n.threads[tid].creator}</small></div>`;
         }
         v.innerHTML = h;
     },
@@ -311,10 +307,12 @@ const App = {
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
                     <img src="${author.avatar}" class="avatar-mini"><span class="${author.glow}" style="font-weight:bold">${p.author}</span>
                 </div>
-                <div style="color:#ccc">${p.text}</div>
+                <div style="color:#ccc;">${p.text}</div>
             </div>`;
         });
-        if (this.userUid) h += `<textarea id="reply-text" class="input-field" placeholder="Ваш ответ..."></textarea><button class="btn-core" onclick="App.sendReply()">Отправить</button>`;
+        if (this.userUid && GlobalUsers[this.userUid]?.banned === false) {
+            h += `<textarea id="reply-text" class="input-field" placeholder="Ваш ответ..."></textarea><button class="btn-core" onclick="App.sendReply()">Отправить</button>`;
+        }
         v.innerHTML = h;
     },
 
@@ -324,15 +322,13 @@ const App = {
     },
 
     formThread() {
-        if (!this.userUid) return alert('Войдите!');
+        if (!this.userUid) return alert('Залогиньтесь!');
         document.getElementById('render-forum-core').innerHTML = `<h3>Создание темы</h3><input id="nt-title" class="input-field" placeholder="Заголовок"><textarea id="nt-text" class="input-field" rows="8" placeholder="Сообщение"></textarea><button class="btn-core" onclick="App.submitThread()">Создать</button>`;
     },
 
     submitThread() {
-        const title = document.getElementById('nt-title').value;
-        const text = document.getElementById('nt-text').value;
         const tid = 't-' + Date.now();
-        dbRef.child(`nodes/${this.activeNodeKey}/threads/${tid}`).set({ id: tid, title: title, creator: GlobalUsers[this.userUid].nick, posts: { "p1": { author: GlobalUsers[this.userUid].nick, author_uid: this.userUid, text: text } } }).then(() => { this.activeThreadId = tid; this.renderContent(); });
+        dbRef.child(`nodes/${this.activeNodeKey}/threads/${tid}`).set({ id: tid, title: document.getElementById('nt-title').value, creator: GlobalUsers[this.userUid].nick, posts: { "p1": { author: GlobalUsers[this.userUid].nick, author_uid: this.userUid, text: document.getElementById('nt-text').value } } }).then(() => { this.activeThreadId = tid; this.renderContent(); });
     }
 };
 
@@ -351,7 +347,7 @@ const ProfileCore = {
         reader.readAsDataURL(e.target.files[0]);
     },
     saveData() {
-        dbRef.child('users/' + this.userUid).update({ nick: document.getElementById('new-profile-nick').value.trim(), avatar: document.getElementById('my-profile-avatar-view').src }).then(() => { alert("Обновлено!"); this.close(); });
+        dbRef.child('users/' + this.userUid).update({ nick: document.getElementById('new-profile-nick').value.trim(), avatar: document.getElementById('my-profile-avatar-view').src }).then(() => { alert("Saved."); this.close(); });
     }
 };
 
@@ -367,5 +363,5 @@ const NodeManager = {
 window.onload = () => { App.syncUI(); };
 
 // ==========================================================================
-// END OF ENGINE.JS - ARIES ROLE PLAY CLOUD v19.0 ULTRA FULL
+// END OF ENGINE.JS - ARIES ROLE PLAY CLOUD v20.0 ULTRA FULL
 // ==========================================================================
