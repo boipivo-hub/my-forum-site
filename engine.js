@@ -1,10 +1,8 @@
 // ==========================================================================
-// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v20.0 (ARMORED ULTRA FULL)
-// SECURITY LEVEL: TOTAL PROTECTION (UID + SERVER RULES + ANTI-F12)
-// DEVELOPED FOR: Qumestlies_Shawty (ariessupporttest@gmail.com)
+// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v21.0 (ARMORED ULTRA FULL PRO)
+// SECURITY LEVEL: TOTAL PROTECTION + IMAGE OPTIMIZATION + ONLINE STATUSES
 // ==========================================================================
 
-// --- КОНФИГУРАЦИЯ FIREBASE ---
 const firebaseConfig = {
     apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM", 
     authDomain: "aries-forum.firebaseapp.com",
@@ -15,16 +13,14 @@ const firebaseConfig = {
     appId: "1:614643963857:web:01f1f941c72249ac6eb2f0"
 };
 
-// Инициализация системы
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
-    console.log("Aries Engine: System Core v20.0 Booted.");
+    console.log("Aries Engine: System Core v21.0 Booted.");
 }
 
 const dbRef = firebase.database().ref();
 const auth = firebase.auth();
 
-// --- ГЛОБАЛЬНОЕ СОСТОЯНИЕ (CLOUD STATE) ---
 let GlobalUsers = {};
 let GlobalNodes = {};
 let isFirstLoad = true;
@@ -33,9 +29,7 @@ window.CloudFounders = [];
 const MASTER_EMAIL = "ariessupporttest@gmail.com";
 const MASTER_NICK = "Qumestlies_Shawty";
 
-// ==========================================================================
-// МОДУЛЬ БРАУЗЕРНОЙ ЗАЩИТЫ (ANTI-F12)
-// ==========================================================================
+// --- ANTI-F12 & ЗАЩИТА ОТ КОПИРОВАНИЯ ---
 document.addEventListener('contextmenu', e => e.preventDefault()); 
 document.onkeydown = function(e) {
     if(e.keyCode == 123) return false; 
@@ -45,13 +39,24 @@ document.onkeydown = function(e) {
     if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
 };
 
-// ==========================================================================
-// МОДУЛЬ 1: УЛЬТРА-СИНХРОНИЗАЦИЯ ПРОФИЛЯ (UID SYSTEM)
-// ==========================================================================
+// --- ПЛЮШКА №1: СИСТЕМА ОНЛАЙН СТАТУСОВ (PRESENCE) ---
+function setupOnlinePresence(uid) {
+    const userStatusRef = firebase.database().ref(`/status/${uid}`);
+    const isOfflineForDatabase = { state: 'offline', last_changed: firebase.database.ServerValue.TIMESTAMP };
+    const isOnlineForDatabase = { state: 'online', last_changed: firebase.database.ServerValue.TIMESTAMP };
 
+    firebase.database().ref('.info/connected').on('value', (snapshot) => {
+        if (snapshot.val() == false) return;
+        userStatusRef.onDisconnect().set(isOfflineForDatabase).then(() => {
+            userStatusRef.set(isOnlineForDatabase);
+        });
+    });
+}
+
+// --- СИНХРОНИЗАЦИЯ ПРОФИЛЯ ---
 async function syncUserProfile(user, customNick = null) {
     if (!user) return;
-    const uid = user.uid; // Железный ID
+    const uid = user.uid;
     
     try {
         const snap = await dbRef.child('users/' + uid).once('value');
@@ -64,16 +69,17 @@ async function syncUserProfile(user, customNick = null) {
                 nick: isMaster ? MASTER_NICK : (customNick || user.displayName || "User_" + Math.floor(Math.random()*9999)),
                 email: user.email,
                 glow: isMaster ? 'glow-founder' : 'glow-user',
-                badge: isMaster ? 'badge-founder' : 'badge-user',
+                role: isMaster ? 'badge-founder' : 'badge-user', // Исправлено под новые правила
                 verify: isMaster ? 'v-blue-fill' : 'none',
                 avatar: user.photoURL || 'https://i.postimg.cc/9Q2g9g6y/user2.png',
-                banned: false,
+                sanction: 'no', // Исправлено под новые правила
                 reg_date: Date.now()
             });
         }
+        setupOnlinePresence(uid); // Запуск мониторинга онлайна
         App.userUid = uid;
         App.syncUI();
-    } catch (e) { console.error("Database block by Rules. Profile not synced."); }
+    } catch (e) { console.error("Database block by Rules. Profile not synced.", e); }
 }
 
 async function handleEmailLinkSignIn() {
@@ -96,24 +102,26 @@ async function handleEmailLinkSignIn() {
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         App.userUid = user.uid;
-        if (!GlobalUsers[user.uid]) await syncUserProfile(user);
+        if (!GlobalUsers[user.uid]) {
+            await syncUserProfile(user);
+        } else {
+            setupOnlinePresence(user.uid);
+        }
     } else {
         App.userUid = null;
     }
     App.syncUI();
 });
 
-// ==========================================================================
-// МОДУЛЬ 2: МОНИТОРИНГ БАЗЫ (IRON STREAM)
-// ==========================================================================
-
+// --- МОНИТОРИНГ БАЗЫ (ОНЛАЙН СТАТУСЫ СЛИВАЮТСЯ С ЮЗЕРАМИ) ---
+let GlobalStatuses = {};
 dbRef.on('value', (snapshot) => {
     const data = snapshot.val() || {};
     GlobalUsers = data.users || {};
     GlobalNodes = data.nodes || {};
+    GlobalStatuses = data.status || {}; // Считываем онлайн-статусы
     window.CloudFounders = data.founders || [];
 
-    // Авто-создание структуры, если база пустая
     if (Object.keys(GlobalNodes).length === 0) {
         dbRef.child('nodes/main').set({
             title: '📢 Общий раздел проекта',
@@ -132,10 +140,7 @@ dbRef.on('value', (snapshot) => {
     App.syncUI();
 }, (err) => { console.error("Access Refused: Iron Rules are watching."); });
 
-// ==========================================================================
-// МОДУЛЬ 3: AUTH MODULE (GOOGLE + MAGIC LINK)
-// ==========================================================================
-
+// --- AUTH MODULE ---
 const AuthModule = {
     open() { document.getElementById('m-auth').style.display = 'flex'; },
     close() { document.getElementById('m-auth').style.display = 'none'; },
@@ -165,21 +170,23 @@ const AuthModule = {
     },
     
     logout() {
-        auth.signOut().then(() => {
-            location.reload();
-        });
+        // При выходе ставим офлайн принудительно
+        if (App.userUid) {
+            firebase.database().ref(`/status/${App.userUid}`).set({ state: 'offline', last_changed: firebase.database.ServerValue.TIMESTAMP })
+            .then(() => auth.signOut().then(() => location.reload()));
+        } else {
+            auth.signOut().then(() => location.reload());
+        }
     }
 };
 
-// ==========================================================================
-// МОДУЛЬ 4: АДМИН-ПАНЕЛЬ (SERVER-PROTECTED)
-// ==========================================================================
-
+// --- АДМИН-ПАНЕЛЬ ---
 const AdminPanel = {
     open() {
         const u = GlobalUsers[App.userUid];
-        if (!(u && (u.email === MASTER_EMAIL || window.CloudFounders.includes(u.nick)))) {
-            return alert('Access Denied.');
+        // Двойная проверка безопасности
+        if (!u || !auth.currentUser || (u.email !== MASTER_EMAIL && !window.CloudFounders.includes(u.nick))) {
+            return alert('Access Denied. Nice try, hacker.');
         }
         document.getElementById('m-admin').style.display = 'flex';
         this.renderUsers();
@@ -220,17 +227,14 @@ const AdminPanel = {
         const isB = document.getElementById('adm-set-ban').value === 'yes';
         dbRef.child('users/' + k).update({
             glow: isB ? 'glow-banned' : document.getElementById('adm-set-glow').value,
-            badge: isB ? 'badge-banned' : document.getElementById('adm-set-badge').value,
+            role: isB ? 'badge-banned' : document.getElementById('adm-set-badge').value, // Под новые правила (role вместо badge)
             verify: isB ? 'none' : document.getElementById('adm-set-verify').value,
-            banned: isB
+            sanction: isB ? 'yes' : 'no' // Под новые правила (sanction вместо banned)
         }).then(() => { alert('Обновлено!'); this.close(); });
     }
 };
 
-// ==========================================================================
-// МОДУЛЬ 5: ГЛАВНЫЙ ДИСПЕТЧЕР (INTERFACE CORE)
-// ==========================================================================
-
+// --- ИНТЕРФЕЙС И ОТРЕНДЕРИВАНИЕ СТАТУСОВ ---
 const App = {
     userUid: null, activeNodeKey: 'main', activeThreadId: null,
 
@@ -246,8 +250,15 @@ const App = {
         if (!zone) return;
         const u = GlobalUsers[this.userUid];
         if (u) {
+            // Добавляем зеленую точку онлайна у своего аватара
+            const isOnline = GlobalStatuses[this.userUid]?.state === 'online';
+            const statusDot = `<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${isOnline ? '#00ffcc' : '#555'}; margin-right:5px;"></span>`;
+            
             zone.innerHTML = `<div style="display:flex; align-items:center; gap:10px;">
-                <img src="${u.avatar}" class="avatar-mini" onclick="ProfileCore.open()">
+                <div style="position:relative;">
+                    <img src="${u.avatar}" class="avatar-mini" onclick="ProfileCore.open()">
+                    <span style="position:absolute; bottom:0; right:0; width:10px; height:10px; border-radius:50%; background:${isOnline ? '#00ffcc' : '#555'}; border:2px solid #000;"></span>
+                </div>
                 <span class="${u.glow}" onclick="ProfileCore.open()" style="cursor:pointer; font-weight:bold;">${u.nick}</span>
                 <button class="btn-core" style="padding:6px 10px; font-size:10px; background:#1a1a2e" onclick="AuthModule.logout()">Выйти</button>
             </div>`;
@@ -301,16 +312,25 @@ const App = {
         const t = n.threads[this.activeThreadId];
         let h = `<button class="btn-core" style="background:#222; margin-bottom:15px;" onclick="App.route('${this.activeNodeKey}')">Назад</button><h3>${t.title}</h3>`;
         Object.values(t.posts || {}).forEach(p => {
-            let author = { nick: p.author, glow: 'glow-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
+            let author = { nick: p.author, glow: 'glow-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png', uid: null };
             for(let k in GlobalUsers) if(GlobalUsers[k].nick === p.author) author = GlobalUsers[k];
+            
+            // Вычисляем онлайн ли автор поста
+            const isOnline = author.uid && GlobalStatuses[author.uid]?.state === 'online';
+            const onlineDot = author.uid ? `<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${isOnline ? '#00ffcc' : '#555'}; margin-left:6px;" title="${isOnline ? 'В сети' : 'Не в сети'}"></span>` : '';
+
             h += `<div class="post-row" style="padding:15px; border:1px solid #1c1c30; border-radius:6px; margin-bottom:10px; background:#08080d;">
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-                    <img src="${author.avatar}" class="avatar-mini"><span class="${author.glow}" style="font-weight:bold">${p.author}</span>
+                    <img src="${author.avatar}" class="avatar-mini">
+                    <span class="${author.glow}" style="font-weight:bold">${p.author}</span>
+                    ${onlineDot}
                 </div>
                 <div style="color:#ccc;">${p.text}</div>
             </div>`;
         });
-        if (this.userUid && GlobalUsers[this.userUid]?.banned === false) {
+        
+        // Кнопка ответа видна только если не забанен
+        if (this.userUid && GlobalUsers[this.userUid]?.sanction !== 'yes') {
             h += `<textarea id="reply-text" class="input-field" placeholder="Ваш ответ..."></textarea><button class="btn-core" onclick="App.sendReply()">Отправить</button>`;
         }
         v.innerHTML = h;
@@ -332,6 +352,7 @@ const App = {
     }
 };
 
+// --- ПРОФИЛЬ + СЖАТИЕ АВАТАРОК ---
 const ProfileCore = {
     open() {
         const u = GlobalUsers[this.userUid];
@@ -341,13 +362,45 @@ const ProfileCore = {
         document.getElementById('my-profile-avatar-view').src = u.avatar;
     },
     close() { document.getElementById('m-profile').style.display = 'none'; },
+    
+    // ПЛЮШКА №2: Сжатие аватара до 120х120 на Canvas (Защита базы от переполнения)
     upload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
         const reader = new FileReader();
-        reader.onload = (event) => document.getElementById('my-profile-avatar-view').src = event.target.result;
-        reader.readAsDataURL(e.target.files[0]);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 120;
+                const MAX_HEIGHT = 120;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                } else {
+                    if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Записываем сжатую в 80% JPEG картинку
+                document.getElementById('my-profile-avatar-view').src = canvas.toDataURL('image/jpeg', 0.8);
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
     },
+    
     saveData() {
-        dbRef.child('users/' + this.userUid).update({ nick: document.getElementById('new-profile-nick').value.trim(), avatar: document.getElementById('my-profile-avatar-view').src }).then(() => { alert("Saved."); this.close(); });
+        dbRef.child('users/' + this.userUid).update({ 
+            nick: document.getElementById('new-profile-nick').value.trim(), 
+            avatar: document.getElementById('my-profile-avatar-view').src 
+        }).then(() => { alert("Saved."); this.close(); });
     }
 };
 
@@ -361,7 +414,3 @@ const NodeManager = {
 };
 
 window.onload = () => { App.syncUI(); };
-
-// ==========================================================================
-// END OF ENGINE.JS - ARIES ROLE PLAY CLOUD v20.0 ULTRA FULL
-// ==========================================================================
