@@ -49,6 +49,7 @@ async function handleEmailLinkSignIn() {
         
         if (email) {
             try {
+                console.log("Попытка входа по ссылке для:", email);
                 const result = await auth.signInWithEmailLink(email, window.location.href);
                 // Очищаем временное хранилище
                 window.localStorage.removeItem('emailForSignIn');
@@ -86,20 +87,12 @@ async function handleEmailLinkSignIn() {
     }
 }
 
-// Запускаем проверку ссылки немедленно
-handleEmailLinkSignIn();
-
 // Глобальный слушатель авторизации для сохранения сессии при перезагрузке
 auth.onAuthStateChanged((user) => {
     if (user && user.email) {
         const userKey = user.email.replace(/\./g, ',');
         localStorage.setItem('active_session_key', userKey);
         App.userKey = userKey;
-        if (!isFirstLoad) App.syncUI();
-    } else {
-        // Если Firebase не видит юзера, но у нас есть ключ в localStorage — оставляем его (авто-логин)
-        const savedKey = localStorage.getItem('active_session_key');
-        if (savedKey) App.userKey = savedKey;
         if (!isFirstLoad) App.syncUI();
     }
 });
@@ -137,7 +130,6 @@ dbRef.on('value', (snapshot) => {
         if (savedKey && GlobalUsers[savedKey] && !GlobalUsers[savedKey].banned) {
             App.userKey = savedKey;
         } else {
-            // Если юзер забанен или его нет в базе — сбрасываем вход
             if (savedKey && GlobalUsers[savedKey] && GlobalUsers[savedKey].banned) {
                 localStorage.removeItem('active_session_key');
                 auth.signOut();
@@ -145,6 +137,8 @@ dbRef.on('value', (snapshot) => {
             }
         }
         isFirstLoad = false;
+        // Только когда данные загружены, проверяем ссылку на вход
+        handleEmailLinkSignIn();
     }
 
     App.syncUI();
@@ -171,7 +165,6 @@ const AuthModule = {
         
         if (!email || !nick) return alert('Введите ник и электронную почту!');
         
-        // Настройки для Firebase (фиксируем возврат на текущий домен)
         const actionCodeSettings = {
             url: window.location.origin + window.location.pathname,
             handleCodeInApp: true
@@ -355,7 +348,11 @@ const App = {
         const view = document.getElementById('render-forum-core');
         if (!view) return;
         const node = GlobalNodes[this.activeNodeKey];
-        if (!node) return;
+        
+        if (!node) {
+            view.innerHTML = `<h3>Загрузка контента...</h3>`;
+            return;
+        }
 
         if (this.activeThreadId) {
             this.renderThread(view, node);
@@ -527,6 +524,8 @@ const NodeManager = {
 
 // Запуск приложения
 window.onload = () => {
+    // Если через 5 секунд всё еще висит загрузка - форсируем обновление
+    setTimeout(() => { if(isFirstLoad) App.syncUI(); }, 5000);
     App.syncUI();
 };
 
