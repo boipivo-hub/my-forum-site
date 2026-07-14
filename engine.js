@@ -1,5 +1,5 @@
 // ==========================================================================
-// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v11.0 (STABLE FULL VERSION)
+// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v11.5 (STABLE FULL VERSION)
 // SECURITY LEVEL: ULTRA (EMAIL LINK + GOOGLE AUTHENTICATION)
 // DEVELOPED FOR: Qumestlies_Shawty
 // ==========================================================================
@@ -47,7 +47,7 @@ async function syncUserProfile(user, customNick = null) {
     if(!snap.exists()) {
         console.log("Регистрация нового профиля в Cloud Database...");
         await dbRef.child('users/' + userKey).set({
-            nick: customNick || user.displayName || "User_" + Math.floor(Math.random()*9999),
+            nick: (user.email === MASTER_EMAIL) ? MASTER_NICK : (customNick || user.displayName || "User_" + Math.floor(Math.random()*9999)),
             email: user.email,
             glow: (user.email === MASTER_EMAIL) ? 'glow-founder' : 'glow-user',
             badge: (user.email === MASTER_EMAIL) ? 'badge-founder' : 'badge-user',
@@ -60,6 +60,7 @@ async function syncUserProfile(user, customNick = null) {
     // Сохраняем ключ в локальное хранилище для моментального подхвата
     localStorage.setItem('active_session_key', userKey);
     App.userKey = userKey;
+    App.syncUI(); // Сразу обновляем интерфейс
 }
 
 // Функция обработки входящей ссылки (Magic Link)
@@ -76,13 +77,14 @@ async function handleEmailLinkSignIn() {
                 console.log("Попытка активации Magic Link для:", email);
                 const result = await auth.signInWithEmailLink(email, window.location.href);
                 
-                window.localStorage.removeItem('emailForSignIn');
                 const nick = window.localStorage.getItem('nickForSignIn');
+                window.localStorage.removeItem('emailForSignIn');
                 window.localStorage.removeItem('nickForSignIn');
 
+                // Создаем профиль в базе
                 await syncUserProfile(result.user, nick);
                 
-                // Очищаем URL и перезагружаем страницу
+                // Очищаем URL и перезагружаем страницу для чистой сессии
                 window.history.replaceState({}, document.title, window.location.pathname);
                 location.reload();
             } catch (error) {
@@ -100,20 +102,20 @@ auth.onAuthStateChanged(async (user) => {
         localStorage.setItem('active_session_key', userKey);
         App.userKey = userKey;
         
-        // Если профиля еще нет в загруженных данных, пробуем создать
-        if (!GlobalUsers[userKey]) {
+        // Если профиля еще нет в загруженных данных, пробуем создать принудительно
+        if (Object.keys(GlobalUsers).length > 0 && !GlobalUsers[userKey]) {
             await syncUserProfile(user);
         }
         
         if (!isFirstLoad) App.syncUI();
     } else {
         App.userKey = null;
-        App.syncUI();
+        if (!isFirstLoad) App.syncUI();
     }
 });
 
 // ==========================================================================
-// ОСНОВНОЙ СИНХРОНИЗАТОР ДАННЫХ (REALTIME)
+// ОСНОВНОЙ СИНХРОНИЗАТОР ДАННЫХ (REALTIME DATABASE)
 // ==========================================================================
 
 dbRef.on('value', (snapshot) => {
@@ -123,6 +125,7 @@ dbRef.on('value', (snapshot) => {
     GlobalNodes = data.nodes || {};
     window.CloudFounders = data.founders || [];
     
+    // Авто-создание структуры проекта, если база пустая
     if (!data.nodes) {
         dbRef.child('nodes/main').set({
             title: '📢 Общий раздел проекта',
@@ -132,7 +135,7 @@ dbRef.on('value', (snapshot) => {
                     id: 't-init', 
                     title: 'Добро пожаловать!', 
                     creator: 'System', 
-                    posts: { "p1": { author: 'System', text: 'Форум успешно запущен на базе Cloud Engine v11.0' } } 
+                    posts: { "p1": { author: 'System', text: 'Форум успешно запущен на базе Cloud Engine v11.5' } } 
                 }
             }
         });
@@ -241,7 +244,7 @@ const AdminPanel = {
         if(!sel) return;
         sel.innerHTML = '';
         for (let key in GlobalUsers) {
-            sel.innerHTML += `<option value="${key}">${GlobalUsers[key].nick}</option>`;
+            sel.innerHTML += `<option value="${key}">${GlobalUsers[key].nick} (${GlobalUsers[key].email})</option>`;
         }
     },
 
@@ -268,7 +271,7 @@ const AdminPanel = {
         if(!block) return;
         let html = '<b>Founders:</b><br>';
         window.CloudFounders.forEach(n => {
-            html += `<span style="color:var(--accent); cursor:pointer; margin-right:8px;" onclick="AdminPanel.removeFounder('${n}')">${n}</span> `;
+            html += `<span style="color:red; cursor:pointer; margin-right:8px;" onclick="AdminPanel.removeFounder('${n}')">${n}</span> `;
         });
         block.innerHTML = html;
     },
@@ -319,7 +322,7 @@ const App = {
                 <div style="display:flex; align-items:center; gap:10px;">
                     <img src="${u.avatar}" class="avatar-mini" onclick="ProfileCore.open()">
                     <span class="${u.glow}" style="font-weight:bold; cursor:pointer;" onclick="ProfileCore.open()">${u.nick}${v}</span>
-                    <button class="btn-core" style="padding:6px 10px; font-size:10px;" onclick="AuthModule.logout()">Выйти</button>
+                    <button class="btn-core" style="padding:6px 10px; font-size:10px; background:#1a1a2e;" onclick="AuthModule.logout()">Выйти</button>
                 </div>
             `;
         } else {
@@ -372,7 +375,7 @@ const App = {
         const node = GlobalNodes[this.activeNodeKey];
         
         if (!node) {
-            view.innerHTML = `<h3>Загрузка...</h3>`;
+            view.innerHTML = `<h3>Загрузка контента...</h3>`;
             return;
         }
 
@@ -381,15 +384,15 @@ const App = {
             return;
         }
 
-        let html = `<h2>${node.title}</h2><button class="btn-core" onclick="App.formCreateThread()">+ Создать тему</button><hr>`;
+        let html = `<h2>${node.title}</h2><button class="btn-core" onclick="App.formCreateThread()">+ Создать тему</button><hr style="border:0; border-top:1px solid var(--border-color); margin: 20px 0;">`;
 
         if (node.threads) {
             for (let tid in node.threads) {
                 const t = node.threads[tid];
-                html += `<div class="topic-link" onclick="App.openThread('${tid}')">${t.title} <br><small>Автор: ${t.creator}</small></div>`;
+                html += `<div class="topic-link" onclick="App.openThread('${tid}')">${t.title} <br><small style="color:#555;">Автор: ${t.creator}</small></div>`;
             }
         } else {
-            html += `<p>В этом разделе пока нет тем.</p>`;
+            html += `<p style="text-align:center; padding:40px; color:#444;">В этом разделе пока нет тем.</p>`;
         }
         view.innerHTML = html;
     },
@@ -401,16 +404,24 @@ const App = {
 
     renderThread(view, node) {
         const thread = node.threads[this.activeThreadId];
-        let html = `<button class="btn-core" onclick="App.route('${this.activeNodeKey}')">Назад</button><h3>${thread.title}</h3>`;
+        let html = `<button class="btn-core" style="background:#222; margin-bottom:15px;" onclick="App.route('${this.activeNodeKey}')">Назад</button><h3>${thread.title}</h3>`;
 
         if (thread.posts) {
             Object.values(thread.posts).forEach(p => {
-                html += `<div class="post-row"><div class="post-text-zone"><b>${p.author}:</b><br>${p.text}</div></div>`;
+                let author = { nick: p.author, glow: 'glow-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
+                for(let k in GlobalUsers) { if(GlobalUsers[k].nick === p.author) author = GlobalUsers[k]; }
+                html += `<div class="post-row" style="padding:15px; border:1px solid #1c1c30; border-radius:6px; margin-bottom:10px; background:#08080d;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                        <img src="${author.avatar}" class="avatar-mini">
+                        <span class="${author.glow}" style="font-weight:bold;">${p.author}</span>
+                    </div>
+                    <div class="post-text-zone">${p.text}</div>
+                </div>`;
             });
         }
 
         if (this.userKey) {
-            html += `<textarea id="reply-text" class="input-field" rows="4" placeholder="Ответ..."></textarea><button class="btn-core" onclick="App.sendReply()">Отправить</button>`;
+            html += `<textarea id="reply-text" class="input-field" rows="4" placeholder="Напишите ответ..."></textarea><button class="btn-core" onclick="App.sendReply()">Отправить ответ</button>`;
         }
         view.innerHTML = html;
     },
@@ -425,12 +436,12 @@ const App = {
     },
 
     formCreateThread() {
-        if (!this.userKey) return alert('Войдите!');
+        if (!this.userKey) return alert('Войдите в аккаунт!');
         document.getElementById('render-forum-core').innerHTML = `
             <h2>Новая тема</h2>
-            <input type="text" id="nt-title" class="input-field" placeholder="Заголовок">
-            <textarea id="nt-text" class="input-field" rows="8" placeholder="Текст"></textarea>
-            <button class="btn-core" onclick="App.submitThread()">Создать</button>
+            <input type="text" id="nt-title" class="input-field" placeholder="Заголовок темы">
+            <textarea id="nt-text" class="input-field" rows="8" placeholder="Текст сообщения..."></textarea>
+            <button class="btn-core" onclick="App.submitThread()">Опубликовать тему</button>
         `;
     },
 
@@ -444,10 +455,6 @@ const App = {
         }).then(() => { this.activeThreadId = tid; this.renderContent(); });
     }
 };
-
-// ==========================================================================
-// МОДУЛЬ 4: ВСПОМОГАТЕЛЬНЫЕ МОДУЛИ (PROFILE & NODES)
-// ==========================================================================
 
 const ProfileCore = {
     open() {
@@ -467,7 +474,7 @@ const ProfileCore = {
         dbRef.child('users/' + App.userKey).update({ 
             nick: document.getElementById('new-profile-nick').value.trim(), 
             avatar: document.getElementById('my-profile-avatar-view').src 
-        }).then(() => this.close());
+        }).then(() => { alert("Профиль обновлен!"); this.close(); });
     }
 };
 
@@ -483,9 +490,9 @@ const NodeManager = {
     }
 };
 
-// Инициализация
+// Инициализация при загрузке
 window.onload = () => { App.syncUI(); };
 
 // ==========================================================================
-// END OF ENGINE.JS - ARIES ROLE PLAY CLOUD v11.0 ULTRA FULL
+// END OF ENGINE.JS - ARIES ROLE PLAY CLOUD v11.5 ULTRA FULL
 // ==========================================================================
