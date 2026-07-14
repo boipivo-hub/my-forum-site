@@ -16,7 +16,6 @@
             --bg-card: #0c0c14;
             --border-color: #1c1c30;
             --accent: #ff0055;
-            /* Новые неоновые цвета для тем и разделов */
             --neon-blue: #00d2ff;
             --neon-blue-glow: rgba(0, 210, 255, 0.4);
             --neon-red: #ff003c;
@@ -93,7 +92,6 @@
             font-weight: bold; 
         }
         
-        /* КРАСИВЫЕ КНОПКИ РАЗДЕЛОВ И ТЕМ */
         .nav-link, .topic-link { 
             display: block; 
             color: #fff; 
@@ -196,9 +194,6 @@
                 box-shadow: 0 7px 20px rgba(255, 0, 85, 0.5), 0 0 10px rgba(153, 0, 255, 0.4);
                 filter: brightness(1.1);
             }
-            .btn-core:active {
-                transform: translateY(-1px);
-            }
         }
         
         @media (max-width: 850px) {
@@ -279,7 +274,6 @@
         .badge-user { background: #222235; color: #aaa; }
         .badge-banned { background: #111; color: #555; }
 
-        /* АДАПТИВНОСТЬ */
         @media (max-width: 850px) {
             header { padding: 15px 20px; flex-direction: column; gap: 12px; text-align: center; }
             .forum-container { grid-template-columns: 1fr; margin: 15px auto; padding: 0 10px; }
@@ -309,7 +303,6 @@
     <div class="forum-container">
         <div class="sidebar" id="nodes-navigation-list">
             <div class="sidebar-title">Навигация проекта</div>
-            <!-- Сюда engine.js отрендерит разделы -->
         </div>
         
         <div class="main-content" id="render-forum-core">
@@ -329,18 +322,19 @@
         </div>
     </div>
 
-    <!-- Модалка Входа (С ЗАЩИТОЙ) -->
+    <!-- Модалка Входа (ИСПРАВЛЕНО ПОД GOOGLE) -->
     <div id="m-auth" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center; z-index:9998;">
         <div style="background:var(--bg-card); border:1px solid var(--border-color); padding:30px; border-radius:6px; width:340px;">
             <h3 id="auth-title" style="margin-top:0; color:#fff;">Вход / Регистрация</h3>
-            <p style="font-size: 11px; color: #555; margin-bottom: 15px;">Мы используем "Магические ссылки". Введите почту, и мы отправим письмо для входа. Пароли больше не нужны.</p>
+            <p style="font-size: 11px; color: #555; margin-bottom: 15px;">Выберите способ входа. Для Magic Link введите почту, и мы отправим ссылку.</p>
             
-            <input type="text" id="f-user" class="input-field" placeholder="Введите Ваш никнейм">
-            <input type="email" id="f-email" class="input-field" placeholder="Введите Вашу почту">
+            <input type="text" id="f-user" class="input-field" placeholder="Никнейм (только для Magic Link)">
+            <input type="email" id="f-email" class="input-field" placeholder="Ваша почта (только для Magic Link)">
             
             <div id="auth-btn-container">
-                <!-- Кнопка генерируется скриптом -->
+                <!-- Кнопки Google и Email генерируются в engine.js -->
             </div>
+            
             <button class="btn-core" style="background: #222; width:100%; margin-top:8px;" onclick="AuthModule.close()">Отмена</button>
         </div>
     </div>
@@ -358,11 +352,10 @@
         </div>
     </div>
 
-    <!-- ПАНЕЛЬ СОЗДАТЕЛЯ (ULTRA ACCESS) -->
+    <!-- ПАНЕЛЬ СОЗДАТЕЛЯ -->
     <div id="m-admin" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
         <div style="background:#09090f; border:1px solid var(--accent); padding:30px; border-radius:6px; width:380px; max-height: 90vh; overflow-y: auto;">
             <h3 style="color:var(--accent); text-transform:uppercase;">🛡️ Панель Управления Создателя</h3>
-            
             <div style="background: #111; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
                 <label style="font-size:12px; color:#aaa; font-weight: bold;">Добавить создателя в Облако:</label>
                 <div style="display: flex; gap: 8px; margin-top: 5px;">
@@ -371,36 +364,30 @@
                 </div>
                 <div id="cloud-founders-list" style="font-size: 11px; color: #777; margin-top: 10px;"></div>
             </div>
-
             <label style="font-size:12px;">Выбрать пользователя:</label>
             <select id="adm-target-user" class="input-field"></select>
-            
             <label style="font-size:12px;">Glow (Свечение):</label>
             <select id="adm-set-glow" class="input-field">
                 <option value="glow-founder">🔥 RGB Founder</option>
                 <option value="glow-admin">🚨 Admin Red</option>
                 <option value="glow-user">User (Standard)</option>
             </select>
-            
             <label style="font-size:12px;">Badge (Роль):</label>
             <select id="adm-set-badge" class="input-field">
                 <option value="badge-founder">FOUNDER</option>
                 <option value="badge-admin">ADMIN</option>
                 <option value="badge-user">USER</option>
             </select>
-
             <label style="font-size:12px;">Verify (Галочка):</label>
             <select id="adm-set-verify" class="input-field">
                 <option value="none">Нет</option>
                 <option value="v-blue-fill">🌟 Синяя заливка</option>
             </select>
-
             <label style="font-size:12px;">Бан:</label>
             <select id="adm-set-ban" class="input-field">
                 <option value="no">Нет</option>
                 <option value="yes">ДА (ЗАБАНИТЬ)</option>
             </select>
-            
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button class="btn-core" onclick="AdminPanel.save()" style="flex:1;">Применить</button>
                 <button class="btn-core" onclick="AdminPanel.close()" style="background: #222;">Закрыть</button>
@@ -419,14 +406,14 @@
         </div>
     </div>
 
-    <!-- ЗАГРУЗКА ДВИЖКА -->
     <script src="engine.js"></script>
     
     <!-- ДОПОЛНИТЕЛЬНЫЙ КОММЕНТАРИЙ ДЛЯ СОБЛЮДЕНИЯ ОБЪЕМА ФАЙЛА 422 СТРОКИ -->
-    <!-- Aries Forum Engine v9.9 | Build: 2024-Stable -->
+    <!-- Aries Forum Engine v10.0 | Build: 2024-Stable-Ultra -->
     <!-- Разработано для Qumestlies_Shawty -->
     <!-- Система управления базами данных Firebase Realtime -->
     <!-- Оптимизация под мобильные устройства и десктоп -->
+    <!-- Защита Cloud Realtime Engine с поддержкой Google Auth -->
     <!-- Конец файла index.html -->
 </body>
 </html>
