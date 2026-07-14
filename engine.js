@@ -37,49 +37,72 @@ const MASTER_NICK = "Qumestlies_Shawty";
 // МОДУЛЬ ЗАЩИТЫ: ОБРАБОТКА ВХОДА ПО МАГИЧЕСКОЙ ССЫЛКЕ
 // ==========================================================================
 
-if (auth.isSignInWithEmailLink(window.location.href)) {
-    let email = window.localStorage.getItem('emailForSignIn');
-    
-    // Если браузер потерял почту (например, открыли в другом приложении)
-    if (!email) {
-        email = window.prompt('Для подтверждения безопасности введите ваш Email еще раз:');
-    }
-    
-    if (email) {
-        auth.signInWithEmailLink(email, window.location.href)
-            .then((result) => {
+// Функция обработки входящей ссылки (Magic Link)
+async function handleEmailLinkSignIn() {
+    if (auth.isSignInWithEmailLink(window.location.href)) {
+        let email = window.localStorage.getItem('emailForSignIn');
+        
+        // Если браузер потерял почту (например, открыли в другом приложении)
+        if (!email) {
+            email = window.prompt('Для подтверждения безопасности введите ваш Email еще раз:');
+        }
+        
+        if (email) {
+            try {
+                const result = await auth.signInWithEmailLink(email, window.location.href);
                 // Очищаем временное хранилище
                 window.localStorage.removeItem('emailForSignIn');
-                const nick = window.localStorage.getItem('nickForSignIn') || "User_" + Math.floor(Math.random()*999);
                 
+                const nick = window.localStorage.getItem('nickForSignIn') || "User_" + Math.floor(Math.random()*999);
+                window.localStorage.removeItem('nickForSignIn');
+
                 // Создаем ключ пользователя (заменяем точки на запятые для Firebase)
                 const userKey = email.replace(/\./g, ',');
                 
-                dbRef.child('users/' + userKey).once('value', snap => {
-                    if(!snap.exists()) {
-                        // Регистрация нового аккаунта в базе
-                        dbRef.child('users/' + userKey).set({
-                            nick: nick,
-                            email: email,
-                            glow: (email === MASTER_EMAIL) ? 'glow-founder' : 'glow-user',
-                            badge: (email === MASTER_EMAIL) ? 'badge-founder' : 'badge-user',
-                            verify: (email === MASTER_EMAIL) ? 'v-blue-fill' : 'none',
-                            banned: false,
-                            avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png'
-                        });
-                    }
-                    // Сохраняем сессию
-                    localStorage.setItem('active_session_key', userKey);
-                    // Убираем параметры из URL для чистоты
-                    window.location.href = window.location.origin + window.location.pathname;
-                });
-            })
-            .catch((error) => {
+                // Проверяем/создаем запись в БД
+                const snap = await dbRef.child('users/' + userKey).once('value');
+                if(!snap.exists()) {
+                    await dbRef.child('users/' + userKey).set({
+                        nick: nick,
+                        email: email,
+                        glow: (email === MASTER_EMAIL) ? 'glow-founder' : 'glow-user',
+                        badge: (email === MASTER_EMAIL) ? 'badge-founder' : 'badge-user',
+                        verify: (email === MASTER_EMAIL) ? 'v-blue-fill' : 'none',
+                        banned: false,
+                        avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png'
+                    });
+                }
+                
+                // Сохраняем сессию локально
+                localStorage.setItem('active_session_key', userKey);
+                
+                // Редирект на чистую страницу без мусора в URL
+                window.location.replace(window.location.origin + window.location.pathname);
+            } catch (error) {
                 console.error("Auth Error:", error);
-                alert("Ошибка авторизации: Ссылка невалидна или просрочена.");
-            });
+                alert("Ошибка авторизации: Ссылка невалидна или просрочена. Попробуйте запросить новую.");
+            }
+        }
     }
 }
+
+// Запускаем проверку ссылки немедленно
+handleEmailLinkSignIn();
+
+// Глобальный слушатель авторизации для сохранения сессии при перезагрузке
+auth.onAuthStateChanged((user) => {
+    if (user && user.email) {
+        const userKey = user.email.replace(/\./g, ',');
+        localStorage.setItem('active_session_key', userKey);
+        App.userKey = userKey;
+        if (!isFirstLoad) App.syncUI();
+    } else {
+        // Если Firebase не видит юзера, но у нас есть ключ в localStorage — оставляем его (авто-логин)
+        const savedKey = localStorage.getItem('active_session_key');
+        if (savedKey) App.userKey = savedKey;
+        if (!isFirstLoad) App.syncUI();
+    }
+});
 
 // ==========================================================================
 // ОСНОВНОЙ СИНХРОНИЗАТОР ДАННЫХ (REALTIME)
@@ -108,14 +131,18 @@ dbRef.on('value', (snapshot) => {
         });
     }
 
-    // Проверка активной сессии при первой загрузке
+    // Проверка активной сессии при первой загрузке данных из БД
     if (isFirstLoad) {
         const savedKey = localStorage.getItem('active_session_key');
         if (savedKey && GlobalUsers[savedKey] && !GlobalUsers[savedKey].banned) {
             App.userKey = savedKey;
         } else {
-            localStorage.removeItem('active_session_key');
-            App.userKey = null;
+            // Если юзер забанен или его нет в базе — сбрасываем вход
+            if (savedKey && GlobalUsers[savedKey] && GlobalUsers[savedKey].banned) {
+                localStorage.removeItem('active_session_key');
+                auth.signOut();
+                App.userKey = null;
+            }
         }
         isFirstLoad = false;
     }
@@ -144,15 +171,14 @@ const AuthModule = {
         
         if (!email || !nick) return alert('Введите ник и электронную почту!');
         
-        // Настройки для Firebase
+        // Настройки для Firebase (фиксируем возврат на текущий домен)
         const actionCodeSettings = {
-            url: window.location.href, // Ссылка вернет пользователя сюда же
+            url: window.location.origin + window.location.pathname,
             handleCodeInApp: true
         };
 
         auth.sendSignInLinkToEmail(email, actionCodeSettings)
             .then(() => {
-                // Сохраняем данные локально, чтобы проверить их после клика по ссылке
                 window.localStorage.setItem('emailForSignIn', email);
                 window.localStorage.setItem('nickForSignIn', nick);
                 
@@ -181,7 +207,6 @@ const AuthModule = {
 const AdminPanel = {
     open() {
         const u = GlobalUsers[App.userKey];
-        // ГЛАВНАЯ ПРОВЕРКА: Только твоя почта или список CloudFounders
         const hasAccess = u && (u.email === MASTER_EMAIL || window.CloudFounders.includes(u.nick));
         
         if (!hasAccess) return alert('Критическая ошибка доступа: Вы не являетесь Создателем проекта.');
@@ -194,6 +219,7 @@ const AdminPanel = {
 
     renderUsersSelect() {
         const sel = document.getElementById('adm-target-user');
+        if(!sel) return;
         sel.innerHTML = '';
         for (let key in GlobalUsers) {
             sel.innerHTML += `<option value="${key}">${GlobalUsers[key].nick} (${GlobalUsers[key].email})</option>`;
@@ -220,6 +246,7 @@ const AdminPanel = {
 
     renderFoundersList() {
         const block = document.getElementById('cloud-founders-list');
+        if(!block) return;
         let html = '<b>Облачные создатели:</b><br>';
         window.CloudFounders.forEach(n => {
             html += `<span style="color:var(--accent); cursor:pointer;" onclick="AdminPanel.removeFounder('${n}')">${n}</span> `;
@@ -264,6 +291,8 @@ const App = {
 
     renderAuthBar() {
         const zone = document.getElementById('runtime-auth-zone');
+        if (!zone) return;
+        
         if (this.userKey && GlobalUsers[this.userKey]) {
             const u = GlobalUsers[this.userKey];
             const v = (u.verify && u.verify !== 'none') ? `<span class="verified-badge ${u.verify}"></span>` : '';
@@ -281,6 +310,7 @@ const App = {
 
     renderSidebar() {
         const nav = document.getElementById('nodes-navigation-list');
+        if (!nav) return;
         nav.innerHTML = `<div class="sidebar-title">Навигация проекта</div>`;
         for (let key in GlobalNodes) {
             const active = (this.activeNodeKey === key) ? 'active' : '';
@@ -295,6 +325,7 @@ const App = {
         const existingBtn = document.getElementById('ui-admin-btn');
         if (isAdm && !existingBtn) {
             const nav = document.getElementById('nodes-navigation-list');
+            if (!nav) return;
             
             const btnAdm = document.createElement('button');
             btnAdm.id = 'ui-admin-btn';
@@ -322,6 +353,7 @@ const App = {
 
     renderContent() {
         const view = document.getElementById('render-forum-core');
+        if (!view) return;
         const node = GlobalNodes[this.activeNodeKey];
         if (!node) return;
 
@@ -367,27 +399,26 @@ const App = {
             <h2 style="margin-bottom:25px;">${thread.title}</h2>
         `;
 
-        const posts = Object.values(thread.posts);
-        posts.forEach(p => {
-            // Поиск данных автора для отображения ролей в посте
-            let authorData = { nick: p.author, glow: 'glow-user', badge: 'badge-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
-            for(let k in GlobalUsers) {
-                if(GlobalUsers[k].nick === p.author) authorData = GlobalUsers[k];
-            }
-
-            const v = (authorData.verify && authorData.verify !== 'none') ? `<span class="verified-badge ${authorData.verify}"></span>` : '';
-
-            html += `
-                <div class="post-row">
-                    <div class="post-author-zone">
-                        <img src="${authorData.avatar}" class="avatar-round">
-                        <div class="${authorData.glow}" style="font-size:14px; margin-top:10px;">${p.author}${v}</div>
-                        <div class="badge-role ${authorData.badge}">${(authorData.badge || 'user').replace('badge-', '').toUpperCase()}</div>
+        if (thread.posts) {
+            const posts = Object.values(thread.posts);
+            posts.forEach(p => {
+                let authorData = { nick: p.author, glow: 'glow-user', badge: 'badge-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
+                for(let k in GlobalUsers) {
+                    if(GlobalUsers[k].nick === p.author) authorData = GlobalUsers[k];
+                }
+                const v = (authorData.verify && authorData.verify !== 'none') ? `<span class="verified-badge ${authorData.verify}"></span>` : '';
+                html += `
+                    <div class="post-row">
+                        <div class="post-author-zone">
+                            <img src="${authorData.avatar}" class="avatar-round">
+                            <div class="${authorData.glow}" style="font-size:14px; margin-top:10px;">${p.author}${v}</div>
+                            <div class="badge-role ${authorData.badge}">${(authorData.badge || 'user').replace('badge-', '').toUpperCase()}</div>
+                        </div>
+                        <div class="post-text-zone">${p.text}</div>
                     </div>
-                    <div class="post-text-zone">${p.text}</div>
-                </div>
-            `;
-        });
+                `;
+            });
+        }
 
         if (this.userKey) {
             html += `
@@ -496,8 +527,7 @@ const NodeManager = {
 
 // Запуск приложения
 window.onload = () => {
-    // Инициализация интерфейса
-    if (!App.userKey) App.syncUI();
+    App.syncUI();
 };
 
 // ==========================================================================
