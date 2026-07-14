@@ -1,5 +1,5 @@
 // ==========================================================================
-// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v10.5 (STABLE FULL VERSION)
+// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v11.0 (STABLE FULL VERSION)
 // SECURITY LEVEL: ULTRA (EMAIL LINK + GOOGLE AUTHENTICATION)
 // DEVELOPED FOR: Qumestlies_Shawty
 // ==========================================================================
@@ -37,17 +37,17 @@ const MASTER_NICK = "Qumestlies_Shawty";
 // МОДУЛЬ ЗАЩИТЫ: ОБРАБОТКА ВХОДА (MAGIC LINK & GOOGLE)
 // ==========================================================================
 
-// Вспомогательная функция для синхронизации профиля с БД
+// Универсальная функция синхронизации профиля с БД
 async function syncUserProfile(user, customNick = null) {
     if (!user || !user.email) return;
     const userKey = user.email.replace(/\./g, ',');
     
-    // Проверяем существование в БД перед созданием
+    // Проверяем существование записи в БД перед созданием
     const snap = await dbRef.child('users/' + userKey).once('value');
     if(!snap.exists()) {
-        console.log("Регистрация нового профиля в Cloud DB...");
+        console.log("Регистрация нового профиля в Cloud Database...");
         await dbRef.child('users/' + userKey).set({
-            nick: customNick || user.displayName || "User_" + Math.floor(Math.random()*999),
+            nick: customNick || user.displayName || "User_" + Math.floor(Math.random()*9999),
             email: user.email,
             glow: (user.email === MASTER_EMAIL) ? 'glow-founder' : 'glow-user',
             badge: (user.email === MASTER_EMAIL) ? 'badge-founder' : 'badge-user',
@@ -57,7 +57,7 @@ async function syncUserProfile(user, customNick = null) {
         });
     }
     
-    // Фиксируем сессию
+    // Сохраняем ключ в локальное хранилище для моментального подхвата
     localStorage.setItem('active_session_key', userKey);
     App.userKey = userKey;
 }
@@ -76,15 +76,13 @@ async function handleEmailLinkSignIn() {
                 console.log("Попытка активации Magic Link для:", email);
                 const result = await auth.signInWithEmailLink(email, window.location.href);
                 
-                // Очищаем временные данные
                 window.localStorage.removeItem('emailForSignIn');
                 const nick = window.localStorage.getItem('nickForSignIn');
                 window.localStorage.removeItem('nickForSignIn');
 
-                // Создаем запись в базе
                 await syncUserProfile(result.user, nick);
                 
-                // Убираем мусор из адресной строки и перезагружаем
+                // Очищаем URL и перезагружаем страницу
                 window.history.replaceState({}, document.title, window.location.pathname);
                 location.reload();
             } catch (error) {
@@ -96,12 +94,21 @@ async function handleEmailLinkSignIn() {
 }
 
 // Глобальный слушатель авторизации
-auth.onAuthStateChanged((user) => {
+auth.onAuthStateChanged(async (user) => {
     if (user && user.email) {
         const userKey = user.email.replace(/\./g, ',');
         localStorage.setItem('active_session_key', userKey);
         App.userKey = userKey;
+        
+        // Если профиля еще нет в загруженных данных, пробуем создать
+        if (!GlobalUsers[userKey]) {
+            await syncUserProfile(user);
+        }
+        
         if (!isFirstLoad) App.syncUI();
+    } else {
+        App.userKey = null;
+        App.syncUI();
     }
 });
 
@@ -125,7 +132,7 @@ dbRef.on('value', (snapshot) => {
                     id: 't-init', 
                     title: 'Добро пожаловать!', 
                     creator: 'System', 
-                    posts: { "p1": { author: 'System', text: 'Форум успешно запущен на базе Cloud Engine v10.5' } } 
+                    posts: { "p1": { author: 'System', text: 'Форум успешно запущен на базе Cloud Engine v11.0' } } 
                 }
             }
         });
@@ -141,6 +148,8 @@ dbRef.on('value', (snapshot) => {
             App.userKey = null;
         }
         isFirstLoad = false;
+        // Проверяем ссылку на вход только после первой загрузки БД
+        handleEmailLinkSignIn();
     }
 
     App.syncUI();
@@ -156,7 +165,7 @@ const AuthModule = {
         if (modal) modal.style.display = 'flex';
         
         document.getElementById('auth-btn-container').innerHTML = `
-            <button class="btn-core" style="width:100%; background:#4285F4; margin-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px;" onclick="AuthModule.googleSignIn()">
+            <button class="btn-core" style="width:100%; background:#4285F4; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:10px;" onclick="AuthModule.googleSignIn()">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18"> Войти через Google
             </button>
             <button class="btn-core" style="width:100%;" onclick="AuthModule.sendLink()">Отправить ссылку на почту</button>
@@ -249,7 +258,7 @@ const AdminPanel = {
     },
 
     removeFounder(nick) {
-        if (nick === MASTER_NICK) return;
+        if (nick === MASTER_NICK) return alert('Главного создателя нельзя удалить!');
         window.CloudFounders = window.CloudFounders.filter(n => n !== nick);
         dbRef.child('founders').set(window.CloudFounders).then(() => this.renderFoundersList());
     },
@@ -259,7 +268,7 @@ const AdminPanel = {
         if(!block) return;
         let html = '<b>Founders:</b><br>';
         window.CloudFounders.forEach(n => {
-            html += `<span style="color:red; cursor:pointer;" onclick="AdminPanel.removeFounder('${n}')">${n}</span> `;
+            html += `<span style="color:var(--accent); cursor:pointer; margin-right:8px;" onclick="AdminPanel.removeFounder('${n}')">${n}</span> `;
         });
         block.innerHTML = html;
     },
@@ -436,6 +445,10 @@ const App = {
     }
 };
 
+// ==========================================================================
+// МОДУЛЬ 4: ВСПОМОГАТЕЛЬНЫЕ МОДУЛИ (PROFILE & NODES)
+// ==========================================================================
+
 const ProfileCore = {
     open() {
         const u = GlobalUsers[App.userKey];
@@ -470,8 +483,9 @@ const NodeManager = {
     }
 };
 
-// Инициализация при загрузке
-window.onload = () => {
-    handleEmailLinkSignIn();
-    App.syncUI();
-};
+// Инициализация
+window.onload = () => { App.syncUI(); };
+
+// ==========================================================================
+// END OF ENGINE.JS - ARIES ROLE PLAY CLOUD v11.0 ULTRA FULL
+// ==========================================================================
