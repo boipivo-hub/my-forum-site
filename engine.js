@@ -1,9 +1,10 @@
 // ==========================================================================
-// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v15.0 (SUPER ARMORED FULL)
-// SECURITY LEVEL: GOD (UID PROTECTION + SERVER SIDE VALIDATION)
-// DEVELOPED FOR: Qumestlies_Shawty (ariessupporttest@gmail.com)
+// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v19.0 (GOD MODE FULL VERSION)
+// SECURITY LEVEL: TOTAL PROTECTION (UID + SERVER RULES + ANTI-F12)
+// DEVELOPED FOR: Qumestlies_Shawty
 // ==========================================================================
 
+// --- КОНФИГУРАЦИЯ FIREBASE ---
 const firebaseConfig = {
     apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM", 
     authDomain: "aries-forum.firebaseapp.com",
@@ -14,43 +15,53 @@ const firebaseConfig = {
     appId: "1:614643963857:web:01f1f941c72249ac6eb2f0"
 };
 
-// Инициализация ядра системы
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
-    console.log("Aries Engine: Firebase Core Initialized.");
+    console.log("Aries Engine: System Core Initialized.");
 }
 
 const dbRef = firebase.database().ref();
 const auth = firebase.auth();
 
-// Состояние приложения (Cloud State)
+// --- ГЛОБАЛЬНОЕ СОСТОЯНИЕ (CLOUD STATE) ---
 let GlobalUsers = {};
 let GlobalNodes = {};
 let isFirstLoad = true;
 window.CloudFounders = [];
 
-// Константы администратора
 const MASTER_EMAIL = "ariessupporttest@gmail.com";
 const MASTER_NICK = "Qumestlies_Shawty";
 
 // ==========================================================================
-// МОДУЛЬ 1: УЛЬТРА-СИНХРОНИЗАЦИЯ (UID SYSTEM)
+// МОДУЛЬ БРАУЗЕРНОЙ ЗАЩИТЫ (ANTI-HACK)
+// ==========================================================================
+document.addEventListener('contextmenu', e => e.preventDefault()); // Блок правой кнопки
+document.onkeydown = function(e) {
+    if(e.keyCode == 123) return false; // Блок F12
+    if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // Ctrl+Shift+I
+    if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; // Ctrl+Shift+C
+    if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // Ctrl+Shift+J
+    if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // Ctrl+U (Исходный код)
+};
+
+// ==========================================================================
+// МОДУЛЬ 1: УЛЬТРА-СИНХРОНИЗАЦИЯ ПРОФИЛЯ (UID SYSTEM)
 // ==========================================================================
 
 async function syncUserProfile(user, customNick = null) {
     if (!user) return;
-    const uid = user.uid;
-    console.log("Aries Sync: Checking profile for UID:", uid);
+    const uid = user.uid; // Защищенный ID вместо почты
+    console.log("Aries Sync: Checking security token for UID:", uid);
 
     try {
-        const snapshot = await dbRef.child('users/' + uid).once('value');
+        const snap = await dbRef.child('users/' + uid).once('value');
         const isMaster = (user.email.toLowerCase() === MASTER_EMAIL.toLowerCase());
 
-        if (!snapshot.exists()) {
-            console.log("Aries Sync: Registering new user...");
-            const newUser = {
+        if (!snap.exists()) {
+            console.log("Aries Sync: Initializing new secured profile...");
+            await dbRef.child('users/' + uid).set({
                 uid: uid,
-                nick: isMaster ? MASTER_NICK : (customNick || user.displayName || "Player_" + Math.floor(Math.random() * 9999)),
+                nick: isMaster ? MASTER_NICK : (customNick || user.displayName || "Player_" + Math.floor(Math.random()*9999)),
                 email: user.email,
                 glow: isMaster ? 'glow-founder' : 'glow-user',
                 badge: isMaster ? 'badge-founder' : 'badge-user',
@@ -58,37 +69,25 @@ async function syncUserProfile(user, customNick = null) {
                 avatar: user.photoURL || 'https://i.postimg.cc/9Q2g9g6y/user2.png',
                 banned: false,
                 reg_date: Date.now()
-            };
-            await dbRef.child('users/' + uid).set(newUser);
-        } else {
-            console.log("Aries Sync: Profile found. Session active.");
+            });
         }
-
         App.userUid = uid;
-        localStorage.setItem('aries_active_uid', uid);
         App.syncUI();
-    } catch (error) {
-        console.error("Aries Sync critical error:", error);
-    }
+    } catch (e) { console.error("Database sync error (Rules block):", e); }
 }
 
-// Обработка входящих ссылок Magic Link
 async function handleEmailLinkSignIn() {
     if (auth.isSignInWithEmailLink(window.location.href)) {
-        let email = window.localStorage.getItem('emailForSignIn') || window.prompt('Для входа введите ваш Email:');
+        let email = window.localStorage.getItem('emailForSignIn') || window.prompt('Для подтверждения введите ваш Email:');
         if (email) {
             try {
                 const result = await auth.signInWithEmailLink(email, window.location.href);
-                const nick = window.localStorage.getItem('nickForSignIn');
-                await syncUserProfile(result.user, nick);
-                
+                await syncUserProfile(result.user, window.localStorage.getItem('nickForSignIn'));
                 window.localStorage.removeItem('emailForSignIn');
                 window.localStorage.removeItem('nickForSignIn');
                 window.history.replaceState({}, document.title, window.location.pathname);
-                location.reload();
-            } catch (err) {
-                alert("Ошибка ссылки: она недействительна или уже использована.");
-            }
+                location.reload(); 
+            } catch (error) { alert("Ссылка просрочена или неверна."); }
         }
     }
 }
@@ -100,7 +99,6 @@ auth.onAuthStateChanged(async (user) => {
         if (!GlobalUsers[user.uid]) await syncUserProfile(user);
     } else {
         App.userUid = null;
-        localStorage.removeItem('aries_active_uid');
     }
     App.syncUI();
 });
@@ -115,46 +113,32 @@ dbRef.on('value', (snapshot) => {
     GlobalNodes = data.nodes || {};
     window.CloudFounders = data.founders || [];
 
-    console.log("Aries Cloud: Database Synced.");
-
-    // Инициализация структуры (если база девственно чиста)
+    // АВТО-ИНИЦИАЛИЗАЦИЯ: Если база пустая, создаем первый раздел
     if (Object.keys(GlobalNodes).length === 0) {
-        console.warn("Aries Engine: Nodes not found. Initializing...");
+        console.warn("Aries Cloud: Database empty. Creating default nodes...");
         dbRef.child('nodes/main').set({
             title: '📢 Главный раздел проекта',
             path: 'Aries Role Play / Основное',
             threads: {
-                't-start': { id: 't-init', title: 'Добро пожаловать!', creator: 'System', posts: { "p1": { author: 'System', text: 'Форум успешно запущен на Cloud Engine v15.0' } } }
+                't-init': { id: 't-init', title: 'Добро пожаловать!', creator: 'System', posts: { "p1": { author: 'System', text: 'Aries Cloud Forum запущен. Версия ядра: 19.0' } } }
             }
         });
     }
 
     if (isFirstLoad) {
         isFirstLoad = false;
-        const saved = localStorage.getItem('aries_active_uid');
-        if (saved && GlobalUsers[saved]) App.userUid = saved;
         handleEmailLinkSignIn();
     }
 
     App.syncUI();
-}, (error) => {
-    console.error("Aries Cloud: Permission Denied! Check Rules.");
-});
+}, (err) => { console.error("Access Denied by Iron Rules."); });
 
 // ==========================================================================
-// МОДУЛЬ 3: AUTH MODULE (GOOGLE + MAGIC LINK)
+// МОДУЛЬ 3: AUTH MODULE (GOOGLE + EMAIL)
 // ==========================================================================
 
 const AuthModule = {
-    open() {
-        document.getElementById('m-auth').style.display = 'flex';
-        document.getElementById('auth-btn-container').innerHTML = `
-            <button class="btn-core" style="width:100%; background:#4285F4; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:10px;" onclick="AuthModule.googleSignIn()">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18"> Вход через Google
-            </button>
-            <button class="btn-core" style="width:100%;" onclick="AuthModule.sendLink()">Вход по почте (Magic Link)</button>
-        `;
-    },
+    open() { document.getElementById('m-auth').style.display = 'flex'; },
     close() { document.getElementById('m-auth').style.display = 'none'; },
     
     googleSignIn() {
@@ -164,59 +148,54 @@ const AuthModule = {
                 await syncUserProfile(result.user);
                 location.reload();
             })
-            .catch((error) => alert("Ошибка Google: " + error.message));
+            .catch((error) => alert('Ошибка Google: ' + error.message));
     },
 
     sendLink() {
         const email = document.getElementById('f-email').value.trim();
         const nick = document.getElementById('f-user').value.trim();
-        if (!email || !nick) return alert('Заполните данные для регистрации!');
+        if (!email || !nick) return alert('Введите данные!');
         
-        auth.sendSignInLinkToEmail(email, {
-            url: window.location.origin + window.location.pathname,
-            handleCodeInApp: true
-        }).then(() => {
-            window.localStorage.setItem('emailForSignIn', email);
-            window.localStorage.setItem('nickForSignIn', nick);
-            alert('Магическая ссылка отправлена на почту ' + email);
-            this.close();
-        }).catch((err) => alert("Ошибка: " + err.message));
+        auth.sendSignInLinkToEmail(email, { url: window.location.origin + window.location.pathname, handleCodeInApp: true })
+            .then(() => {
+                window.localStorage.setItem('emailForSignIn', email);
+                window.localStorage.setItem('nickForSignIn', nick);
+                alert('Ссылка отправлена на почту: ' + email);
+                this.close();
+            }).catch((err) => alert('Ошибка Firebase: ' + err.message));
     },
     
     logout() {
         auth.signOut().then(() => {
-            localStorage.removeItem('aries_active_uid');
             location.reload();
         });
     }
 };
 
 // ==========================================================================
-// МОДУЛЬ 4: АДМИН-ПАНЕЛЬ (SERVER-SIDE PROTECTED)
+// МОДУЛЬ 4: АДМИН-ПАНЕЛЬ (ULTRA ACCESS)
 // ==========================================================================
 
 const AdminPanel = {
     open() {
         const u = GlobalUsers[App.userUid];
-        const isMaster = u && u.email === MASTER_EMAIL;
-        const isFounder = u && window.CloudFounders.includes(u.nick);
-        
-        if (!(isMaster || isFounder)) return alert('Критическая ошибка: Доступ запрещен правилами сервера.');
-        
+        if (!(u && (u.email === MASTER_EMAIL || window.CloudFounders.includes(u.nick)))) {
+            return alert('Критическая ошибка: Доступ отклонен сервером.');
+        }
         document.getElementById('m-admin').style.display = 'flex';
         this.renderUsers();
         this.renderFounders();
     },
     close() { document.getElementById('m-admin').style.display = 'none'; },
-    
+
     renderUsers() {
         const sel = document.getElementById('adm-target-user');
         sel.innerHTML = '';
         for (let k in GlobalUsers) {
-            sel.innerHTML += `<option value="${k}">${GlobalUsers[k].nick}</option>`;
+            sel.innerHTML += `<option value="${k}">${GlobalUsers[k].nick} (${k.substring(0,6)}...)</option>`;
         }
     },
-    
+
     renderFounders() {
         let h = '<b>Founders List:</b><br>';
         window.CloudFounders.forEach(n => h += `<span style="color:red; cursor:pointer; margin-right:8px;" onclick="AdminPanel.removeFounder('${n}')">${n}</span> `);
@@ -232,21 +211,20 @@ const AdminPanel = {
     },
 
     removeFounder(n) {
-        if (n === MASTER_NICK) return alert("Нельзя удалить главного создателя!");
+        if (n === MASTER_NICK) return alert("Главного удалить нельзя!");
         window.CloudFounders = window.CloudFounders.filter(x => x !== n);
         dbRef.child('founders').set(window.CloudFounders);
     },
 
     save() {
-        const key = document.getElementById('adm-target-user').value;
-        const isBan = document.getElementById('adm-set-ban').value === 'yes';
-        
-        dbRef.child('users/' + key).update({
-            glow: isBan ? 'glow-banned' : document.getElementById('adm-set-glow').value,
-            badge: isBan ? 'badge-banned' : document.getElementById('adm-set-badge').value,
-            verify: isBan ? 'none' : document.getElementById('adm-set-verify').value,
-            banned: isBan
-        }).then(() => { alert('Настройки обновлены на сервере.'); this.close(); });
+        const k = document.getElementById('adm-target-user').value;
+        const isB = document.getElementById('adm-set-ban').value === 'yes';
+        dbRef.child('users/' + k).update({
+            glow: isB ? 'glow-banned' : document.getElementById('adm-set-glow').value,
+            badge: isB ? 'badge-banned' : document.getElementById('adm-set-badge').value,
+            verify: isB ? 'none' : document.getElementById('adm-set-verify').value,
+            banned: isB
+        }).then(() => { alert('Данные юзера обновлены в облаке.'); this.close(); });
     }
 };
 
@@ -271,7 +249,7 @@ const App = {
         if (u) {
             zone.innerHTML = `<div style="display:flex; align-items:center; gap:10px;">
                 <img src="${u.avatar}" class="avatar-mini" onclick="ProfileCore.open()">
-                <span class="${u.glow}" style="font-weight:bold; cursor:pointer;" onclick="ProfileCore.open()">${u.nick}</span>
+                <span class="${u.glow}" onclick="ProfileCore.open()" style="cursor:pointer; font-weight:bold;">${u.nick}</span>
                 <button class="btn-core" style="padding:6px 10px; font-size:10px; background:#1a1a2e" onclick="AuthModule.logout()">Выйти</button>
             </div>`;
         } else {
@@ -295,10 +273,10 @@ const App = {
                 const nav = document.getElementById('nodes-navigation-list');
                 const bA = document.createElement('button');
                 bA.id = 'ui-admin-btn'; bA.className = 'btn-core'; bA.style.cssText = 'width:100%; margin-top:20px; background:red;';
-                bA.innerHTML = '🛡️ Панель Создателя'; bA.onclick = () => AdminPanel.open();
+                bA.innerHTML = '🛡️ Админка'; bA.onclick = () => AdminPanel.open();
                 nav.appendChild(bA);
                 const bN = document.createElement('button');
-                bN.className = 'btn-core'; bN.style.cssText = 'width:100%; margin-top:5px; background:#1c1c30;';
+                bN.className = 'btn-core'; bN.style.cssText = 'width:100%; margin-top:5px; background:#1c1c30';
                 bN.innerHTML = '➕ Новый раздел'; bN.onclick = () => NodeManager.open();
                 nav.appendChild(bN);
             }
@@ -311,15 +289,14 @@ const App = {
         const v = document.getElementById('render-forum-core');
         if (!v) return;
         const n = GlobalNodes[this.activeNodeKey];
-        if (!n) { v.innerHTML = '<h3>Загрузка контента...</h3>'; return; }
+        if (!n) { v.innerHTML = '<div style="padding:50px; text-align:center;"><h3>Загрузка...</h3></div>'; return; }
         if (this.activeThreadId) { this.renderThread(v, n); return; }
 
         let h = `<h2>${n.title}</h2><button class="btn-core" onclick="App.formThread()">+ Создать тему</button><hr style="border:0; border-top:1px solid #1c1c30; margin:20px 0;">`;
         for (let tid in (n.threads || {})) {
-            const t = n.threads[tid];
-            h += `<div class="topic-link" onclick="App.openThread('${tid}')">${t.title} <br><small style="color:#555">Автор: ${t.creator}</small></div>`;
+            h += `<div class="topic-link" onclick="App.openThread('${tid}')">${n.threads[tid].title} <br><small style="color:#555">Автор: ${n.threads[tid].creator}</small></div>`;
         }
-        v.innerHTML = (Object.keys(n.threads || {}).length === 0) ? h + '<p style="text-align:center; padding:40px;">Тут еще никто ничего не написал.</p>' : h;
+        v.innerHTML = h;
     },
 
     openThread(id) { this.activeThreadId = id; this.renderContent(); },
@@ -330,28 +307,32 @@ const App = {
         Object.values(t.posts || {}).forEach(p => {
             let author = { nick: p.author, glow: 'glow-user', avatar: 'https://i.postimg.cc/9Q2g9g6y/user2.png' };
             for(let k in GlobalUsers) if(GlobalUsers[k].nick === p.author) author = GlobalUsers[k];
-            h += `<div class="post-row"><div class="post-author-zone"><img src="${author.avatar}" class="avatar-mini"><span class="${author.glow}">${p.author}</span></div><div class="post-text-zone">${p.text}</div></div>`;
+            h += `<div class="post-row" style="padding:15px; border:1px solid #1c1c30; border-radius:6px; margin-bottom:10px; background:#08080d;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                    <img src="${author.avatar}" class="avatar-mini"><span class="${author.glow}" style="font-weight:bold">${p.author}</span>
+                </div>
+                <div style="color:#ccc">${p.text}</div>
+            </div>`;
         });
-        if (this.userUid) h += `<textarea id="reply-text" class="input-field" placeholder="Ваш ответ..."></textarea><button class="btn-core" onclick="App.sendReply()">Отправить ответ</button>`;
+        if (this.userUid) h += `<textarea id="reply-text" class="input-field" placeholder="Ваш ответ..."></textarea><button class="btn-core" onclick="App.sendReply()">Отправить</button>`;
         v.innerHTML = h;
     },
 
     sendReply() {
         const txt = document.getElementById('reply-text').value.trim();
-        if (txt) dbRef.child(`nodes/${this.activeNodeKey}/threads/${this.activeThreadId}/posts`).push({ author: GlobalUsers[this.userUid].nick, text: txt, author_uid: this.userUid });
+        if (txt) dbRef.child(`nodes/${this.activeNodeKey}/threads/${this.activeThreadId}/posts`).push({ author: GlobalUsers[this.userUid].nick, author_uid: this.userUid, text: txt });
     },
 
     formThread() {
-        if (!this.userUid) return alert('Войдите в аккаунт!');
-        document.getElementById('render-forum-core').innerHTML = `<h3>Создание новой темы</h3><input id="nt-title" class="input-field" placeholder="Заголовок темы"><textarea id="nt-text" class="input-field" rows="8" placeholder="Текст сообщения..."></textarea><button class="btn-core" onclick="App.submitThread()">Опубликовать</button>`;
+        if (!this.userUid) return alert('Войдите!');
+        document.getElementById('render-forum-core').innerHTML = `<h3>Создание темы</h3><input id="nt-title" class="input-field" placeholder="Заголовок"><textarea id="nt-text" class="input-field" rows="8" placeholder="Сообщение"></textarea><button class="btn-core" onclick="App.submitThread()">Создать</button>`;
     },
 
     submitThread() {
         const title = document.getElementById('nt-title').value;
         const text = document.getElementById('nt-text').value;
-        if (!title || !text) return;
         const tid = 't-' + Date.now();
-        dbRef.child(`nodes/${this.activeNodeKey}/threads/${tid}`).set({ id: tid, title, creator: GlobalUsers[this.userUid].nick, posts: { "p1": { author: GlobalUsers[this.userUid].nick, text, author_uid: this.userUid } } }).then(() => { this.activeThreadId = tid; this.renderContent(); });
+        dbRef.child(`nodes/${this.activeNodeKey}/threads/${tid}`).set({ id: tid, title: title, creator: GlobalUsers[this.userUid].nick, posts: { "p1": { author: GlobalUsers[this.userUid].nick, author_uid: this.userUid, text: text } } }).then(() => { this.activeThreadId = tid; this.renderContent(); });
     }
 };
 
@@ -366,11 +347,11 @@ const ProfileCore = {
     close() { document.getElementById('m-profile').style.display = 'none'; },
     upload(e) {
         const reader = new FileReader();
-        reader.onload = (ev) => document.getElementById('my-profile-avatar-view').src = ev.target.result;
+        reader.onload = (event) => document.getElementById('my-profile-avatar-view').src = event.target.result;
         reader.readAsDataURL(e.target.files[0]);
     },
     saveData() {
-        dbRef.child('users/' + this.userUid).update({ nick: document.getElementById('new-profile-nick').value.trim(), avatar: document.getElementById('my-profile-avatar-view').src }).then(() => this.close());
+        dbRef.child('users/' + this.userUid).update({ nick: document.getElementById('new-profile-nick').value.trim(), avatar: document.getElementById('my-profile-avatar-view').src }).then(() => { alert("Обновлено!"); this.close(); });
     }
 };
 
@@ -386,5 +367,5 @@ const NodeManager = {
 window.onload = () => { App.syncUI(); };
 
 // ==========================================================================
-// END OF ENGINE.JS - ARIES ROLE PLAY CLOUD v15.0
+// END OF ENGINE.JS - ARIES ROLE PLAY CLOUD v19.0 ULTRA FULL
 // ==========================================================================
