@@ -233,7 +233,7 @@
                     zone.innerHTML = `
                         <div style="display:flex; align-items:center; gap:12px;">
                             <img src="${user.avatar || 'https://via.placeholder.com/32'}" class="avatar-mini" onclick="UI.show('m-profile')">
-                            <span class="${glow}" style="font-weight:bold; cursor:pointer;" onclick="UI.show('m-profile')">${user.nick} <div class="verified-badge ${user.verify}"></div></span>
+                            <span class="${glow}" style="font-weight:bold; cursor:pointer;" onclick="UI.show('m-profile')">${user.nick} <div class="verified-badge ${user.verify || 'none'}"></div></span>
                             <button class="btn-core" style="background:#222; font-size:10px;" onclick="auth.signOut().then(()=>location.reload())">Выход</button>
                         </div>
                     `;
@@ -265,15 +265,9 @@
                 reader.readAsDataURL(e.target.files[0]);
             },
             save: async () => {
-                const nickValue = document.getElementById('p-nick').value || user.nick;
-                const updates = { nick: nickValue };
+                const updates = { nick: document.getElementById('p-nick').value || user.nick };
                 if(user.tempAvatar) updates.avatar = user.tempAvatar;
                 await db.ref('users/' + auth.currentUser.uid).update(updates);
-                
-                // Сразу обновляем локальные данные, чтобы не ломался рендер
-                user.nick = nickValue;
-                if(user.tempAvatar) user.avatar = user.tempAvatar;
-                
                 location.reload();
             }
         };
@@ -309,20 +303,23 @@
                 const snap = await db.ref('topics/' + nodeId).once('value');
                 const data = snap.val() || {};
                 
-                // Только админ или основатель может создавать темы
+                // Кнопка создания тем доступна только основателю и админам
                 let html = (user && (user.role === 'badge-founder' || user.role === 'badge-admin')) ? 
-                           `<button class="btn-core" style="width:100%; margin-bottom:20px;" onclick="UI.show('m-topic')">+ Опубликовать тему в ${title || ''}</button>` : '';
+                           `<button class="btn-core" style="width:100%; margin-bottom:20px;" onclick="UI.show('m-topic')">+ Опубликовать тему в "${title || ''}"</button>` : '';
                 
                 const topicIds = Object.keys(data);
                 if (topicIds.length > 0) {
                     topicIds.reverse().forEach(id => {
                         const t = data[id];
+                        const statusClass = t.status || 'status-open';
+                        const displayStatus = statusClass.split('-')[1] ? statusClass.split('-')[1].toUpperCase() : 'OPEN';
+                        
                         html += `
                             <div class="post-card" onclick="Forum.viewTopic('${id}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
                                 <div>
-                                    <span class="status-badge ${t.status}">${t.status ? t.status.split('-')[1].toUpperCase() : 'OPEN'}</span>
+                                    <span class="status-badge ${statusClass}">${displayStatus}</span>
                                     <span style="font-weight:bold; font-size:16px;">${t.title}</span>
-                                    <div style="font-size:11px; color:#555; margin-top:8px;">Автор: ${t.authorNick}</div>
+                                    <div style="font-size:11px; color:#555; margin-top:8px;">Автор: ${t.authorNick || 'Player'}</div>
                                 </div>
                                 ${(user && user.role === 'badge-founder') ? `<button class="btn-core" style="background:red; font-size:9px;" onclick="event.stopPropagation(); Forum.deleteTopic('${id}')">Удалить</button>` : ''}
                             </div>
@@ -338,25 +335,29 @@
                 const t = snap.val();
                 if (!t) return;
 
+                const statusClass = t.status || 'status-open';
+                const authorBadge = t.authorBadge || 'badge-user';
+                const displayBadge = authorBadge.split('-')[1] ? authorBadge.split('-')[1].toUpperCase() : 'USER';
+
                 let html = `
                     <button class="btn-core" style="background:#222; margin-bottom:15px;" onclick="Forum.loadTopics('${currentActiveNode}', '')">❮ Назад</button>
                     <div class="post-card">
                         <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
                             <img src="${t.authorAvatar || 'https://via.placeholder.com/32'}" class="avatar-mini">
                             <div>
-                                <span class="${t.authorGlow || ''}">${t.authorNick} <div class="verified-badge ${t.authorVerify || 'none'}"></div></span><br>
-                                <span class="badge-role ${t.authorBadge || 'badge-user'}">${t.authorBadge ? t.authorBadge.split('-')[1] : 'USER'}</span>
+                                <span class="${t.authorGlow || ''}">${t.authorNick || 'Player'} <div class="verified-badge ${t.authorVerify || 'none'}"></div></span><br>
+                                <span class="badge-role ${authorBadge}">${displayBadge}</span>
                             </div>
                         </div>
                         <div style="color:#cdcdff; line-height:1.6;">${Editor.parse(t.text)}</div>
                     </div>
                     <div id="replies-list"></div>
-                    ${(user && user.sanction !== 'mute' && t.status !== 'status-closed') ? `
+                    ${(user && user.sanction !== 'mute' && statusClass !== 'status-closed') ? `
                         <div class="post-card">
                             <textarea id="reply-text" class="input-field" style="height:80px; resize:none;" placeholder="Ваш ответ игроку..."></textarea>
                             <button class="btn-core" onclick="Forum.reply('${id}')">Отправить ответ</button>
                         </div>
-                    ` : (t.status === 'status-closed' ? '<p style="color:red; text-align:center; font-weight:bold;">ТЕМА ЗАКРЫТА ДЛЯ ОТВЕТОВ</p>' : '')}
+                    ` : (statusClass === 'status-closed' ? '<p style="color:red; text-align:center; font-weight:bold;">ТЕМА ЗАКРЫТА ДЛЯ ОТВЕТОВ</p>' : '')}
                 `;
                 document.getElementById('forum-render').innerHTML = html;
                 Forum.loadReplies(id);
@@ -400,7 +401,7 @@
                         <div class="post-card" style="margin-left:25px; border-left:2px solid var(--accent);">
                             <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
                                 <img src="${r.authorAvatar || 'https://via.placeholder.com/24'}" class="avatar-mini" style="width:24px; height:24px;">
-                                <span class="${r.authorGlow || ''}" style="font-size:12px;">${r.authorNick} <div class="verified-badge ${r.authorVerify || 'none'}"></div></span>
+                                <span class="${r.authorGlow || ''}" style="font-size:12px;">${r.authorNick || 'Player'} <div class="verified-badge ${r.authorVerify || 'none'}"></div></span>
                             </div>
                             <div style="font-size:13px; color:#aaa;">${Editor.parse(r.text)}</div>
                         </div>
