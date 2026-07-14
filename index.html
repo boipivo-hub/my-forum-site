@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aries Role Play — Панель Создателя</title>
     
-    <!-- КРИТИЧЕСКИЕ СКРИПТЫ: FIREBASE CORE + DB + AUTH -->
+    <!-- FIREBASE SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -20,11 +20,12 @@
             --neon-blue-glow: rgba(0, 210, 255, 0.4);
             --neon-red: #ff003c;
             --neon-red-glow: rgba(255, 0, 60, 0.6);
+            --success: #70e000;
+            --warning: #ffb700;
         }
 
         body {
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-main);
             color: #dedee6;
@@ -32,40 +33,39 @@
             overflow-x: hidden;
         }
 
+        /* HEADER */
         header {
             background: var(--bg-card);
             border-bottom: 1px solid var(--border-color);
-            padding: 15px 40px;
+            padding: 10px 40px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
+            position: sticky; top: 0; z-index: 1000;
         }
         
-        .logo-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .logo-triangle {
-            width: 28px;
-            height: 28px;
-            filter: drop-shadow(0 0 6px rgba(235, 15, 15, 0.7));
-        }
-
-        .logo { 
-            font-size: 20px; 
-            font-weight: 900; 
-            letter-spacing: 1px; 
-            color: #fff; 
-            line-height: 1;
-        }
-
+        .logo-wrapper { display: flex; align-items: center; gap: 12px; }
+        .logo-triangle { width: 28px; height: 28px; filter: drop-shadow(0 0 6px var(--accent)); }
+        .logo { font-size: 20px; font-weight: 900; letter-spacing: 1px; color: #fff; }
         .logo span { color: var(--accent); }
+
+        .header-controls { display: flex; align-items: center; gap: 20px; }
         
+        /* Иконка уведомлений */
+        .notif-bell {
+            position: relative; cursor: pointer;
+            width: 24px; height: 24px; fill: #555;
+            transition: 0.3s;
+        }
+        .notif-bell:hover { fill: var(--neon-blue); }
+        .notif-count {
+            position: absolute; top: -5px; right: -5px;
+            background: var(--accent); color: #fff;
+            font-size: 9px; padding: 2px 5px; border-radius: 10px;
+            font-weight: bold; display: none;
+        }
+
+        /* FORUM LAYOUT */
         .forum-container {
             display: grid;
             grid-template-columns: 280px 1fr;
@@ -76,154 +76,126 @@
         }
 
         .sidebar { 
-            background: var(--bg-card); 
-            border: 1px solid var(--border-color); 
-            border-radius: 6px; 
-            padding: 20px; 
-            height: fit-content; 
+            background: var(--bg-card); border: 1px solid var(--border-color); 
+            border-radius: 6px; padding: 20px; height: fit-content; 
         }
 
         .sidebar-title { 
-            font-size: 12px; 
-            text-transform: uppercase; 
-            color: #555; 
-            letter-spacing: 1px; 
-            margin-bottom: 15px; 
-            font-weight: bold; 
+            font-size: 11px; text-transform: uppercase; color: #555; 
+            letter-spacing: 2px; margin-bottom: 15px; font-weight: bold; 
         }
         
         .nav-link, .topic-link { 
-            display: block; 
-            color: #fff; 
-            text-decoration: none; 
-            padding: 12px 16px; 
-            border-radius: 6px; 
-            margin-bottom: 8px; 
-            font-size: 14px; 
-            font-weight: 600;
-            background: #0d1b2a; 
-            border: 1px solid var(--neon-blue);
-            box-shadow: inset 0 0 10px rgba(0, 210, 255, 0.2), 0 0 10px var(--neon-blue-glow);
-            text-shadow: 0 0 5px rgba(0, 210, 255, 0.5);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-        }
-
-        @media (min-width: 851px) {
-            .nav-link:hover, .topic-link:hover {
-                transform: translateX(4px);
-                box-shadow: inset 0 0 15px rgba(0, 210, 255, 0.4), 0 0 15px rgba(0, 210, 255, 0.6);
-                border-color: #70e000;
-            }
+            display: block; color: #fff; text-decoration: none; 
+            padding: 12px 16px; border-radius: 6px; margin-bottom: 8px; 
+            font-size: 14px; font-weight: 600;
+            background: #0d1b2a; border: 1px solid var(--neon-blue);
+            box-shadow: inset 0 0 10px rgba(0, 210, 255, 0.1), 0 0 5px var(--neon-blue-glow);
+            transition: all 0.25s; cursor: pointer;
         }
 
         .nav-link.active, .topic-link.active { 
             background: linear-gradient(135deg, #b7094c, var(--neon-red)) !important; 
-            color: #fff !important; 
             border-color: #ff4d6d !important;
-            box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.3), 0 0 20px var(--neon-red-glow) !important;
-            text-shadow: 0 0 8px #fff !important;
-            transform: scale(1.02);
+            box-shadow: 0 0 15px var(--neon-red-glow) !important;
         }
 
+        /* ТЕМЫ И ПОСТЫ */
         .main-content { 
-            background: var(--bg-card); 
-            border: 1px solid var(--border-color); 
-            border-radius: 6px; 
-            padding: 30px; 
-            min-height: 500px; 
+            background: var(--bg-card); border: 1px solid var(--border-color); 
+            border-radius: 6px; padding: 30px; min-height: 600px; 
         }
         
+        /* Ярлыки статуса темы */
+        .status-badge {
+            font-size: 10px; padding: 3px 8px; border-radius: 4px;
+            text-transform: uppercase; font-weight: 800; margin-right: 8px;
+        }
+        .status-open { background: rgba(112, 224, 0, 0.2); color: var(--success); border: 1px solid var(--success); }
+        .status-closed { background: rgba(255, 0, 60, 0.2); color: var(--neon-red); border: 1px solid var(--neon-red); }
+        .status-review { background: rgba(255, 183, 0, 0.2); color: var(--warning); border: 1px solid var(--warning); }
+
         .post-row {
-            background: #08080d;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            margin-bottom: 15px;
-            padding: 20px;
+            background: #08080d; border: 1px solid var(--border-color);
+            border-radius: 5px; margin-bottom: 20px; overflow: hidden;
         }
 
-        .post-author-zone {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #1c1c30;
-            padding-bottom: 10px;
+        .post-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 20px; background: #0b0b14; border-bottom: 1px solid var(--border-color);
         }
 
-        .post-text-zone {
-            white-space: pre-wrap;
-            color: #cdcdff;
-            font-size: 14px;
-            line-height: 1.6;
+        .post-author-box { display: flex; align-items: center; gap: 12px; }
+        
+        .post-body { padding: 20px; color: #cdcdff; font-size: 14px; line-height: 1.6; }
+
+        .post-footer {
+            padding: 10px 20px; display: flex; gap: 15px; border-top: 1px solid #14141f;
         }
 
+        .post-btn {
+            background: none; border: none; color: #555; cursor: pointer;
+            font-size: 12px; font-weight: bold; transition: 0.2s;
+        }
+        .post-btn:hover { color: var(--neon-blue); }
+
+        /* КНОПКИ */
         .btn-core { 
             background: linear-gradient(135deg, var(--accent), #9900ff); 
-            color: #fff; 
-            border: 1px solid rgba(255, 255, 255, 0.1); 
-            padding: 11px 22px; 
-            border-radius: 6px; 
-            font-weight: 700; 
-            cursor: pointer; 
-            font-size: 13px; 
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            box-shadow: 0 4px 15px rgba(255, 0, 85, 0.3);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); 
+            color: #fff; border: 1px solid rgba(255, 255, 255, 0.1); 
+            padding: 10px 20px; border-radius: 6px; font-weight: 700; 
+            cursor: pointer; font-size: 12px; text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(255, 0, 85, 0.2); transition: 0.2s;
         }
+        .btn-core:hover { transform: translateY(-2px); filter: brightness(1.1); }
 
-        .btn-create-topic {
-            background: linear-gradient(135deg, #b7094c, var(--neon-red)) !important;
-            border: 1px solid #ff4d6d !important;
-            box-shadow: 0 4px 15px var(--neon-red-glow) !important;
-        }
-        
-        .btn-donate-header {
-            background: linear-gradient(135deg, #00c6ff, #0072ff) !important; 
-            box-shadow: 0 4px 15px rgba(0,114,255,0.4) !important;
-            border: 1px solid rgba(255,255,255,0.2) !important;
-        }
-
-        .input-field { 
-            width: 100%; 
-            background: #11111e; 
-            border: 1px solid var(--border-color); 
-            padding: 12px; 
-            border-radius: 4px; 
-            color: #fff; 
-            box-sizing: border-box; 
-            margin-bottom: 15px; 
-            font-family: inherit; 
-        }
-        
-        .avatar-mini { 
-            width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); cursor: pointer; 
-        }
-        
-        .avatar-round { 
-            width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #1c1c30; margin-bottom: 15px;
-        }
-
+        /* ГАЛОЧКИ / ВЕРИФИКАЦИЯ */
         .verified-badge {
-            display: inline-block; width: 13px; height: 13px; margin-left: 5px; vertical-align: middle;
+            display: inline-block; width: 14px; height: 14px; margin-left: 5px; vertical-align: middle;
             background-size: contain; background-repeat: no-repeat; background-position: center;
         }
+        .v-blue-line { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="none" stroke="%232196F3" stroke-width="6" d="M50 14l5.7 4 6.5-2.3 4 5.7 6.9-.5 1.8 6.7 6.7 1.8-.5 6.9 5.7 4-2.3 6.5 4 5.7-4 5.7 2.3 6.5-5.7 4 .5 6.9-6.7 1.8-1.8 6.7-6.9-.5-4 5.7-6.5-2.3-5.7 4-5.7-4-6.5 2.3-4-5.7-6.9.5-1.8-6.7-6.7-1.8.5-6.9-5.7-4 2.3-6.5-4-5.7 4-5.7-2.3-6.5 5.7-4-.5-6.9 6.7-1.8 1.8-6.7 6.9.5 4-5.7 6.5 2.3z"/><path fill="none" stroke="%232196F3" stroke-width="8" d="M39 51l8.5 8.5 16-17"/></svg>'); }
+        .v-yellow-line { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="none" stroke="%23FFEB3B" stroke-width="6" d="M50 14l5.7 4 6.5-2.3 4 5.7 6.9-.5 1.8 6.7 6.7 1.8-.5 6.9 5.7 4-2.3 6.5 4 5.7-4 5.7 2.3 6.5-5.7 4 .5 6.9-6.7 1.8-1.8 6.7-6.9-.5-4 5.7-6.5-2.3-5.7 4-5.7-4-6.5 2.3-4-5.7-6.9.5-1.8-6.7-6.7-1.8.5-6.9-5.7-4 2.3-6.5-4-5.7 4-5.7-2.3-6.5 5.7-4-.5-6.9 6.7-1.8 1.8-6.7 6.9.5 4-5.7 6.5 2.3z"/><path fill="none" stroke="%23FFEB3B" stroke-width="8" d="M39 51l8.5 8.5 16-17"/></svg>'); }
+        .v-red-line { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="none" stroke="%23F44336" stroke-width="6" d="M50 14l5.7 4 6.5-2.3 4 5.7 6.9-.5 1.8 6.7 6.7 1.8-.5 6.9 5.7 4-2.3 6.5 4 5.7-4 5.7 2.3 6.5-5.7 4 .5 6.9-6.7 1.8-1.8 6.7-6.9-.5-4 5.7-6.5-2.3-5.7 4-5.7-4-6.5 2.3-4-5.7-6.9.5-1.8-6.7-6.7-1.8.5-6.9-5.7-4 2.3-6.5-4-5.7 4-5.7-2.3-6.5 5.7-4-.5-6.9 6.7-1.8 1.8-6.7 6.9.5 4-5.7 6.5 2.3z"/><path fill="none" stroke="%23F44336" stroke-width="8" d="M39 51l8.5 8.5 16-17"/></svg>'); }
         .v-blue-fill { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="%232196F3" d="M50 14l5.7 4 6.5-2.3 4 5.7 6.9-.5 1.8 6.7 6.7 1.8-.5 6.9 5.7 4-2.3 6.5 4 5.7-4 5.7 2.3 6.5-5.7 4 .5 6.9-6.7 1.8-1.8 6.7-6.9-.5-4 5.7-6.5-2.3-5.7 4-5.7-4-6.5 2.3-4-5.7-6.9.5-1.8-6.7-6.7-1.8.5-6.9-5.7-4 2.3-6.5-4-5.7 4-5.7-2.3-6.5 5.7-4-.5-6.9 6.7-1.8 1.8-6.7 6.9.5 4-5.7 6.5 2.3z"/><path fill="none" stroke="%23FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" d="M39 51l8.5 8.5 16-17"/></svg>'); }
 
+        /* РОЛИ И ЭФФЕКТЫ */
         @keyframes rgb-burn {
             0% { color: #ff0055; text-shadow: 0 0 10px rgba(255,0,85,0.6); }
             33% { color: #9900ff; text-shadow: 0 0 10px rgba(153,0,255,0.6); }
             66% { color: #00f0ff; text-shadow: 0 0 10px rgba(0,240,255,0.6); }
             100% { color: #ff0055; text-shadow: 0 0 10px rgba(255,0,85,0.6); }
         }
-
         .glow-founder { animation: rgb-burn 4s infinite linear; font-weight: bold; }
         .glow-admin { color: #ff3333; text-shadow: 0 0 8px rgba(255,51,51,0.5); font-weight: bold; }
+        .glow-banned { color: #444 !important; text-decoration: line-through; text-shadow: none !important; }
+
+        .badge-role { font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 3px; }
+        .badge-founder { background: linear-gradient(135deg, #ff0055, #9900ff); color: #fff; }
+        .badge-admin { background: #ff3333; color: #fff; }
+        
+        /* МОДАЛКИ */
+        .modal-overlay {
+            display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+            background:rgba(0,0,0,0.9); justify-content:center; align-items:center; z-index:9999;
+        }
+        .modal-content {
+            background:var(--bg-card); border:1px solid var(--border-color); 
+            padding:30px; border-radius:8px; width:380px; max-height: 90vh; overflow-y: auto;
+        }
+        .input-field { 
+            width: 100%; background: #11111e; border: 1px solid var(--border-color); 
+            padding: 12px; border-radius: 4px; color: #fff; box-sizing: border-box; 
+            margin-bottom: 12px; font-family: inherit; 
+        }
+
+        .avatar-round { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color); margin-bottom: 10px; }
+        .avatar-mini { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
 
         @media (max-width: 850px) {
-            header { padding: 15px 20px; flex-direction: column; gap: 12px; text-align: center; }
-            .forum-container { grid-template-columns: 1fr; }
+            header { padding: 15px 20px; flex-direction: column; gap: 15px; }
+            .forum-container { grid-template-columns: 1fr; margin-top: 10px; }
+            .sidebar { display: none; } /* Можно добавить бургер-меню */
         }
     </style>
 </head>
@@ -239,110 +211,168 @@
             <div class="logo">ARIES<span>ROLEPLAY</span></div>
         </div>
         
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <button class="btn-core btn-donate-header" onclick="document.getElementById('m-donate').style.display='flex'">💎 Поддержать / Донат</button>
+        <div class="header-controls">
+            <div class="notif-bell" onclick="UI.toggleNotifs()">
+                <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                <div class="notif-count" id="notif-badge">0</div>
+            </div>
+            <button class="btn-core btn-donate-header" onclick="UI.modal('m-donate', true)">💎 Донат</button>
             <div id="runtime-auth-zone"></div>
         </div>
     </header>
 
     <div class="forum-container">
-        <div class="sidebar" id="nodes-navigation-list">
-            <div class="sidebar-title">Навигация проекта</div>
-        </div>
+        <aside class="sidebar">
+            <div class="sidebar-title">Навигация</div>
+            <div id="nodes-navigation-list">
+                <!-- Разделы загружаются тут -->
+            </div>
+        </aside>
         
-        <div class="main-content" id="render-forum-core">
-            <div style="text-align: center; padding-top: 50px;">
-                <h3>Загрузка Aries Cloud Engine...</h3>
+        <main class="main-content">
+            <div id="render-forum-core">
+                <div style="text-align: center; padding-top: 100px;">
+                    <div class="glow-founder" style="font-size: 24px;">ARIES CLOUD ENGINE</div>
+                    <p style="color: #555;">Синхронизация с базой данных...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- МОДАЛКА ДОНАТА -->
+    <div id="m-donate" class="modal-overlay">
+        <div class="modal-content" style="text-align:center; border-color: #0072ff;">
+            <h3 style="color:#fff; margin-top:0;">⚡ Поддержка проекта</h3>
+            <p style="font-size:12px; color:#8a8a9e;">Выберите удобный способ оплаты</p>
+            <a href="https://www.privat24.ua/send/4285t" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:12px; background: #70b012;">🇺🇦 Украина (Карта)</a>
+            <a href="https://destream.net/live/ponkc29/donate" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:20px; background: #fff; color: #000;">🌐 Google Pay / Global</a>
+            <button class="btn-core" onclick="UI.modal('m-donate', false)" style="background: #222; width:100%;">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА ВХОДА -->
+    <div id="m-auth" class="modal-overlay">
+        <div class="modal-content" style="text-align:center;">
+            <h3 id="auth-title" style="margin-top:0; color:#fff;">Авторизация</h3>
+            <div id="auth-btn-container"></div>
+            <div style="margin: 15px 0; color: #333; font-size: 10px; font-weight: bold; letter-spacing: 2px;">ИЛИ MAGIC LINK</div>
+            <input type="text" id="f-user" class="input-field" placeholder="Ваш никнейм">
+            <input type="email" id="f-email" class="input-field" placeholder="Ваша почта">
+            <button class="btn-core" style="width:100%;" onclick="AuthModule.sendMagicLink()">Войти по ссылке</button>
+            <button class="btn-core" style="background: #222; width:100%; margin-top:10px;" onclick="UI.modal('m-auth', false)">Отмена</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА ПРОФИЛЯ -->
+    <div id="m-profile" class="modal-overlay">
+        <div class="modal-content" style="text-align:center;">
+            <h3 style="margin-top:0;">Настройки аккаунта</h3>
+            <img id="my-profile-avatar-view" class="avatar-round" src="">
+            <input type="file" id="profile-file-input" accept="image/*" style="display:none;" onchange="ProfileCore.upload(event)">
+            <button class="btn-core" onclick="document.getElementById('profile-file-input').click()" style="margin-bottom: 15px; padding: 5px 15px; font-size: 10px;">Сменить фото/GIF</button>
+            
+            <label style="display:block; text-align:left; font-size:11px; color:#555; margin-bottom:5px;">Игровой никнейм:</label>
+            <input type="text" id="new-profile-nick" class="input-field" placeholder="Никнейм">
+            
+            <label style="display:block; text-align:left; font-size:11px; color:#555; margin-bottom:5px;">Безопасность:</label>
+            <input type="password" id="new-profile-pass" class="input-field" placeholder="Новый пароль (оставьте пустым)">
+            <input type="email" id="new-profile-email" class="input-field" placeholder="Изменить почту">
+            
+            <div style="display:flex; gap:10px;">
+                <button class="btn-core" onclick="ProfileCore.saveData()" style="flex:1;">Сохранить</button>
+                <button class="btn-core" onclick="UI.modal('m-profile', false)" style="background: #222;">Х</button>
             </div>
         </div>
     </div>
 
-    <!-- Модалка доната -->
-    <div id="m-donate" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
-        <div style="background:#09090f; border:1px solid #0072ff; padding:30px; border-radius:8px; width:360px; text-align:center;">
-            <h3 style="color:#fff;">⚡ Выберите регион</h3>
-            <a href="https://www.privat24.ua/send/4285t" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:12px; background: #70b012;">🇺🇦 Украина (Карта)</a>
-            <a href="https://destream.net/live/ponkc29/donate" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:20px; background: #fff; color: #000;">🌐 Google Pay / World</a>
-            <button class="btn-core" onclick="document.getElementById('m-donate').style.display='none'" style="background: #222; width:100%;">Вернуться</button>
-        </div>
-    </div>
+    <!-- ПАНЕЛЬ СОЗДАТЕЛЯ (РАСШИРЕННАЯ) -->
+    <div id="m-admin" class="modal-overlay">
+        <div class="modal-content" style="border-color: var(--accent);">
+            <h3 style="color:var(--accent); margin-top:0; text-align:center;">🛡️ CONTROL PANEL</h3>
+            
+            <div style="background: #11111e; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <label style="font-size:10px; color:#555; font-weight:bold;">УПРАВЛЕНИЕ СОЗДАТЕЛЯМИ:</label>
+                <div style="display:flex; gap:5px; margin-top:5px;">
+                    <input type="text" id="add-founder-nick" class="input-field" placeholder="Ник" style="margin-bottom:0;">
+                    <button class="btn-core" onclick="AdminPanel.addFounder()">+</button>
+                </div>
+                <div id="cloud-founders-list" style="font-size:10px; color:var(--neon-blue); margin-top:5px;"></div>
+            </div>
 
-    <!-- Модалка Входа -->
-    <div id="m-auth" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center; z-index:9998;">
-        <div style="background:var(--bg-card); border:1px solid var(--border-color); padding:30px; border-radius:6px; width:340px; text-align:center;">
-            <h3 id="auth-title" style="margin-top:0; color:#fff;">Вход / Регистрация</h3>
-            <div id="auth-btn-container"></div>
-            <div style="margin: 15px 0; color: #333; font-size: 10px; font-weight: bold;">ИЛИ ЧЕРЕЗ MAGIC LINK</div>
-            <input type="text" id="f-user" class="input-field" placeholder="Ваш никнейм">
-            <input type="email" id="f-email" class="input-field" placeholder="Ваша почта">
-            <button class="btn-core" style="background: #222; width:100%; margin-top:8px;" onclick="AuthModule.close()">Закрыть</button>
-        </div>
-    </div>
-
-    <!-- Модалка Профиля -->
-    <div id="m-profile" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9998;">
-        <div style="background:var(--bg-card); border:1px solid var(--border-color); padding:30px; border-radius:6px; width:350px; text-align:center;">
-            <h3>Настройки профиля</h3>
-            <img id="my-profile-avatar-view" class="avatar-round" src="">
-            <input type="file" id="profile-file-input" accept="image/*" style="display:none;" onchange="ProfileCore.upload(event)">
-            <button class="btn-core" onclick="document.getElementById('profile-file-input').click()" style="margin-bottom: 15px;">Сменить фото</button>
-            <input type="text" id="new-profile-nick" class="input-field" placeholder="Новый никнейм">
-            <button class="btn-core" onclick="ProfileCore.saveData()" style="width:100%;">Сохранить</button>
-            <button class="btn-core" onclick="ProfileCore.close()" style="background: #222; width:100%; margin-top: 10px;">Закрыть</button>
-        </div>
-    </div>
-
-    <!-- ПАНЕЛЬ СОЗДАТЕЛЯ -->
-    <div id="m-admin" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center; z-index:9999;">
-        <div style="background:#000; border:1px solid var(--accent); padding:30px; border-radius:6px; width:380px;">
-            <h3 style="color:var(--accent);">🛡️ ПАНЕЛЬ СОЗДАТЕЛЯ</h3>
-            <div id="cloud-founders-list" style="font-size: 11px; margin-bottom: 10px;"></div>
-            <input type="text" id="add-founder-nick" class="input-field" placeholder="Ник создателя">
-            <button class="btn-core" onclick="AdminPanel.addFounder()">Добавить</button>
-            <hr style="border:0; border-top:1px solid #1c1c30; margin:15px 0;">
+            <label style="font-size:11px; color:#555;">Выберите пользователя:</label>
             <select id="adm-target-user" class="input-field"></select>
+
+            <label style="font-size:11px; color:#555;">Эффект имени:</label>
             <select id="adm-set-glow" class="input-field">
-                <option value="glow-founder">RGB Founder</option>
-                <option value="glow-admin">Admin Red</option>
-                <option value="glow-user">User</option>
+                <option value="glow-founder">🔥 RGB Founder</option>
+                <option value="glow-admin">🚨 Admin Red</option>
+                <option value="glow-user">👤 Обычный игрок</option>
             </select>
+
+            <label style="font-size:11px; color:#555;">Роль (Badge):</label>
             <select id="adm-set-badge" class="input-field">
                 <option value="badge-founder">FOUNDER</option>
                 <option value="badge-admin">ADMIN</option>
                 <option value="badge-user">USER</option>
+                <option value="badge-banned">BANNED</option>
             </select>
+
+            <label style="font-size:11px; color:#555;">Верификация (Галочки):</label>
             <select id="adm-set-verify" class="input-field">
-                <option value="v-blue-fill">Галочка</option>
-                <option value="none">Нет</option>
+                <option value="none">❌ Нет галочки</option>
+                <option value="v-blue-line">🔷 Синий контур</option>
+                <option value="v-yellow-line">🔶 Желтый контур</option>
+                <option value="v-red-line">🔺 Красный контур</option>
+                <option value="v-blue-fill">🌟 Синяя заливка</option>
             </select>
+
+            <label style="font-size:11px; color:#555;">Санкции:</label>
             <select id="adm-set-ban" class="input-field">
-                <option value="no">Нет</option>
-                <option value="yes">БАН</option>
+                <option value="no">✅ Активен</option>
+                <option value="yes">🚫 БАН (Закрыть доступ)</option>
+                <option value="mute">🔇 МУТ (Запрет писать)</option>
             </select>
-            <button class="btn-core" onclick="AdminPanel.save()" style="width:100%;">Применить</button>
-            <button class="btn-core" onclick="AdminPanel.close()" style="background: #222; width:100%; margin-top:10px;">Закрыть</button>
+
+            <button class="btn-core" onclick="AdminPanel.save()" style="width:100%;">Применить изменения</button>
+            <button class="btn-core" onclick="UI.modal('m-admin', false)" style="background: #222; width:100%; margin-top:10px;">Закрыть</button>
         </div>
     </div>
 
-    <!-- Создание раздела -->
-    <div id="m-create-node" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999;">
-        <div style="background:var(--bg-card); padding:30px; border-radius:6px; width:360px;">
-            <h3>📦 Создание раздела</h3>
-            <input type="text" id="node-new-title" class="input-field" placeholder="Название">
-            <input type="text" id="node-new-path" class="input-field" placeholder="Путь">
-            <button class="btn-core" onclick="NodeManager.submit()" style="width:100%;">Создать</button>
-            <button class="btn-core" onclick="NodeManager.close()" style="background:#222; width:100%; margin-top:10px;">Отмена</button>
+    <!-- СОЗДАНИЕ ТЕМЫ/РАЗДЕЛА -->
+    <div id="m-create-node" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="node-modal-title">📦 Создание</h3>
+            <input type="text" id="node-new-title" class="input-field" placeholder="Заголовок">
+            
+            <!-- Инструменты форматирования (упрощенно) -->
+            <div style="margin-bottom:10px; display:flex; gap:5px;">
+                <button class="btn-core" style="padding:5px 10px; font-size:10px;" onclick="Editor.addTag('b')"><b>B</b></button>
+                <button class="btn-core" style="padding:5px 10px; font-size:10px;" onclick="Editor.addTag('img')">🖼️ Фото</button>
+                <button class="btn-core" style="padding:5px 10px; font-size:10px;" onclick="Editor.addTag('video')">🎥 Видео</button>
+            </div>
+            
+            <textarea id="node-new-content" class="input-field" style="height:150px; resize:none;" placeholder="Текст сообщения..."></textarea>
+            
+            <div id="admin-topic-options" style="display:none;">
+                <label style="font-size:11px; color:#555;">Статус темы:</label>
+                <select id="node-new-status" class="input-field">
+                    <option value="status-open">Открыто</option>
+                    <option value="status-closed">Закрыто</option>
+                    <option value="status-review">На рассмотрении</option>
+                </select>
+            </div>
+
+            <button class="btn-core" onclick="NodeManager.submit()" style="width:100%;">Опубликовать</button>
+            <button class="btn-core" onclick="UI.modal('m-create-node', false)" style="background: #222; width:100%; margin-top:10px;">Отмена</button>
         </div>
     </div>
 
     <script src="engine.js"></script>
     
-    <!-- ДОПОЛНИТЕЛЬНЫЙ КОММЕНТАРИЙ ДЛЯ СОБЛЮДЕНИЯ ОБЪЕМА ФАЙЛА 422 СТРОКИ -->
-    <!-- Aries Forum Engine v13.0 | Build: 2024-Stable-Ultra -->
-    <!-- Разработано для Qumestlies_Shawty -->
-    <!-- Система управления базами данных Firebase Realtime -->
-    <!-- Оптимизация под мобильные устройства и десктоп -->
-    <!-- Защита Cloud Realtime Engine с поддержкой Google Auth -->
-    <!-- Конец файла index.html -->
+    <!-- Aries Forum System | UI Update 2024 -->
+    <!-- [LOG] Добавлена система галочек: Line-Blue, Line-Yellow, Line-Red, Fill-Blue -->
+    <!-- [LOG] Добавлена блокировка и мут в панель создателя -->
+    <!-- [LOG] Добавлен редактор с поддержкой медиа -->
+    <!-- [LOG] Добавлены статусы тем (Open/Closed/Review) -->
 </body>
 </html>
