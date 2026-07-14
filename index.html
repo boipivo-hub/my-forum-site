@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aries Role Play — Forum Engine v3.0</title>
     
-    <!-- FIREBASE SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -95,7 +94,7 @@
         <aside class="sidebar">
             <div style="font-size:11px; color:#555; margin-bottom:10px; font-weight:bold;">МЕНЮ</div>
             <div id="sidebar-nodes"></div>
-            <div id="admin-panel-btn" style="display:none; margin-top:20px; border-top: 1px solid #222; pt-10;">
+            <div id="admin-panel-btn" style="display:none; margin-top:20px; border-top: 1px solid #222; padding-top: 10px;">
                 <p style="font-size:9px; color:var(--accent); margin-bottom:5px;">CONTROL:</p>
                 <button class="btn-core" style="width:100%; margin-bottom:5px; background:#111; border: 1px solid var(--accent);" onclick="Admin.open()">🛡️ Управление игроками</button>
                 <button class="btn-core" style="width:100%; background:#000;" onclick="UI.show('m-node')">➕ Создать Раздел</button>
@@ -107,7 +106,6 @@
         </main>
     </div>
 
-    <!-- ДОНАТ -->
     <div id="m-donate" class="modal">
         <div class="modal-content" style="text-align:center; border-color:#0072ff;">
             <h3 style="color:#fff;">⚡ Выберите регион</h3>
@@ -117,7 +115,6 @@
         </div>
     </div>
 
-    <!-- ВХОД -->
     <div id="m-auth" class="modal">
         <div class="modal-content" style="text-align:center;">
             <h3>Авторизация</h3>
@@ -129,7 +126,6 @@
         </div>
     </div>
 
-    <!-- ПРОФИЛЬ -->
     <div id="m-profile" class="modal">
         <div class="modal-content" style="text-align:center;">
             <h3>Настройки профиля</h3>
@@ -145,7 +141,6 @@
         </div>
     </div>
 
-    <!-- ПАНЕЛЬ ОСНОВАТЕЛЯ -->
     <div id="m-admin" class="modal">
         <div class="modal-content">
             <h3 style="color:var(--accent); margin-top:0;">🛡️ Панель управления</h3>
@@ -180,7 +175,6 @@
         </div>
     </div>
 
-    <!-- СОЗДАНИЕ РАЗДЕЛА -->
     <div id="m-node" class="modal">
         <div class="modal-content">
             <h3>Создать новый раздел</h3>
@@ -190,7 +184,6 @@
         </div>
     </div>
 
-    <!-- СОЗДАНИЕ ТЕМЫ -->
     <div id="m-topic" class="modal">
         <div class="modal-content">
             <h3>Новая тема</h3>
@@ -246,15 +239,18 @@
                     `;
                     if (user.role === 'badge-founder' || user.role === 'badge-admin') {
                         document.getElementById('admin-panel-btn').style.display='block';
+                    } else {
+                        document.getElementById('admin-panel-btn').style.display='none';
                     }
                 } else {
                     zone.innerHTML = `<button class="btn-core" onclick="UI.show('m-auth')">Войти</button>`;
+                    document.getElementById('admin-panel-btn').style.display='none';
                 }
             }
         };
 
         const Auth = {
-            google: () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()),
+            google: () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).then(() => location.reload()),
             magic: () => {
                 const email = document.getElementById('auth-email').value;
                 auth.sendSignInLinkToEmail(email, { url: window.location.href, handleCodeInApp: true })
@@ -269,9 +265,15 @@
                 reader.readAsDataURL(e.target.files[0]);
             },
             save: async () => {
-                const updates = { nick: document.getElementById('p-nick').value };
+                const nickValue = document.getElementById('p-nick').value || user.nick;
+                const updates = { nick: nickValue };
                 if(user.tempAvatar) updates.avatar = user.tempAvatar;
                 await db.ref('users/' + auth.currentUser.uid).update(updates);
+                
+                // Сразу обновляем локальные данные, чтобы не ломался рендер
+                user.nick = nickValue;
+                if(user.tempAvatar) user.avatar = user.tempAvatar;
+                
                 location.reload();
             }
         };
@@ -281,48 +283,69 @@
                 db.ref('nodes').on('value', snap => {
                     const nodes = snap.val() || {};
                     let html = '';
+                    
+                    // Если разделов в базе вообще нет - создаем дефолтные, чтобы код не ломался
+                    if (Object.keys(nodes).length === 0) {
+                        db.ref('nodes/news').set({ title: 'Новости' });
+                        db.ref('nodes/general').set({ title: 'Общий раздел' });
+                        return;
+                    }
+
                     Object.keys(nodes).forEach(id => {
                         html += `<div class="nav-link" onclick="Forum.loadTopics('${id}', '${nodes[id].title}')">${nodes[id].title}</div>`;
                     });
                     document.getElementById('sidebar-nodes').innerHTML = html;
+                    
+                    // Загружаем первый доступный раздел по умолчанию при инициализации
+                    if(!currentActiveNode) {
+                        const firstNodeId = Object.keys(nodes)[0];
+                        Forum.loadTopics(firstNodeId, nodes[firstNodeId].title);
+                    }
                 });
             },
             loadTopics: async (nodeId, title) => {
                 currentActiveNode = nodeId;
-                document.getElementById('forum-render').innerHTML = `<h3>Загрузка ${title}...</h3>`;
+                document.getElementById('forum-render').innerHTML = `<h3>Загрузка ${title || ''}...</h3>`;
                 const snap = await db.ref('topics/' + nodeId).once('value');
                 const data = snap.val() || {};
                 
                 // Только админ или основатель может создавать темы
                 let html = (user && (user.role === 'badge-founder' || user.role === 'badge-admin')) ? 
-                           `<button class="btn-core" style="width:100%; margin-bottom:20px;" onclick="UI.show('m-topic')">+ Опубликовать тему в ${title}</button>` : '';
+                           `<button class="btn-core" style="width:100%; margin-bottom:20px;" onclick="UI.show('m-topic')">+ Опубликовать тему в ${title || ''}</button>` : '';
                 
-                Object.keys(data).reverse().forEach(id => {
-                    const t = data[id];
-                    html += `
-                        <div class="post-card" onclick="Forum.viewTopic('${id}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <span class="status-badge ${t.status}">${t.status.split('-')[1].toUpperCase()}</span>
-                                <span style="font-weight:bold; font-size:16px;">${t.title}</span>
-                                <div style="font-size:11px; color:#555; margin-top:8px;">Автор: ${t.authorNick}</div>
+                const topicIds = Object.keys(data);
+                if (topicIds.length > 0) {
+                    topicIds.reverse().forEach(id => {
+                        const t = data[id];
+                        html += `
+                            <div class="post-card" onclick="Forum.viewTopic('${id}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <span class="status-badge ${t.status}">${t.status ? t.status.split('-')[1].toUpperCase() : 'OPEN'}</span>
+                                    <span style="font-weight:bold; font-size:16px;">${t.title}</span>
+                                    <div style="font-size:11px; color:#555; margin-top:8px;">Автор: ${t.authorNick}</div>
+                                </div>
+                                ${(user && user.role === 'badge-founder') ? `<button class="btn-core" style="background:red; font-size:9px;" onclick="event.stopPropagation(); Forum.deleteTopic('${id}')">Удалить</button>` : ''}
                             </div>
-                            ${(user && user.role === 'badge-founder') ? `<button class="btn-core" style="background:red; font-size:9px;" onclick="event.stopPropagation(); Forum.deleteTopic('${id}')">Удалить</button>` : ''}
-                        </div>
-                    `;
-                });
-                document.getElementById('forum-render').innerHTML = html || '<p style="text-align:center;">В этом разделе ещё нет тем.</p>';
+                        `;
+                    });
+                } else {
+                    html += '<p style="text-align:center; padding-top: 30px;">В этом разделе ещё нет тем.</p>';
+                }
+                document.getElementById('forum-render').innerHTML = html;
             },
             viewTopic: async (id) => {
                 const snap = await db.ref('topics/' + currentActiveNode + '/' + id).once('value');
                 const t = snap.val();
+                if (!t) return;
+
                 let html = `
                     <button class="btn-core" style="background:#222; margin-bottom:15px;" onclick="Forum.loadTopics('${currentActiveNode}', '')">❮ Назад</button>
                     <div class="post-card">
                         <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
-                            <img src="${t.authorAvatar || ''}" class="avatar-mini">
+                            <img src="${t.authorAvatar || 'https://via.placeholder.com/32'}" class="avatar-mini">
                             <div>
-                                <span class="${t.authorGlow}">${t.authorNick} <div class="verified-badge ${t.authorVerify}"></div></span><br>
-                                <span class="badge-role ${t.authorBadge}">${t.authorBadge.split('-')[1]}</span>
+                                <span class="${t.authorGlow || ''}">${t.authorNick} <div class="verified-badge ${t.authorVerify || 'none'}"></div></span><br>
+                                <span class="badge-role ${t.authorBadge || 'badge-user'}">${t.authorBadge ? t.authorBadge.split('-')[1] : 'USER'}</span>
                             </div>
                         </div>
                         <div style="color:#cdcdff; line-height:1.6;">${Editor.parse(t.text)}</div>
@@ -333,7 +356,7 @@
                             <textarea id="reply-text" class="input-field" style="height:80px; resize:none;" placeholder="Ваш ответ игроку..."></textarea>
                             <button class="btn-core" onclick="Forum.reply('${id}')">Отправить ответ</button>
                         </div>
-                    ` : (t.status === 'status-closed' ? '<p style="color:red; text-align:center;">ТЕМА ЗАКРЫТА ДЛЯ ОТВЕТОВ</p>' : '')}
+                    ` : (t.status === 'status-closed' ? '<p style="color:red; text-align:center; font-weight:bold;">ТЕМА ЗАКРЫТА ДЛЯ ОТВЕТОВ</p>' : '')}
                 `;
                 document.getElementById('forum-render').innerHTML = html;
                 Forum.loadReplies(id);
@@ -350,6 +373,9 @@
                     authorBadge: user.role, authorVerify: user.verify || 'none'
                 };
                 await db.ref('topics/' + currentActiveNode).push(topic);
+                
+                document.getElementById('t-title').value = '';
+                document.getElementById('t-text').value = '';
                 UI.close('m-topic'); 
                 Forum.loadTopics(currentActiveNode, '');
             },
@@ -373,8 +399,8 @@
                     html += `
                         <div class="post-card" style="margin-left:25px; border-left:2px solid var(--accent);">
                             <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                                <img src="${r.authorAvatar || ''}" class="avatar-mini" style="width:24px; height:24px;">
-                                <span class="${r.authorGlow}" style="font-size:12px;">${r.authorNick} <div class="verified-badge ${r.authorVerify}"></div></span>
+                                <img src="${r.authorAvatar || 'https://via.placeholder.com/24'}" class="avatar-mini" style="width:24px; height:24px;">
+                                <span class="${r.authorGlow || ''}" style="font-size:12px;">${r.authorNick} <div class="verified-badge ${r.authorVerify || 'none'}"></div></span>
                             </div>
                             <div style="font-size:13px; color:#aaa;">${Editor.parse(r.text)}</div>
                         </div>
@@ -409,6 +435,7 @@
                 });
                 alert('Данные пользователя обновлены!');
                 UI.close('m-admin');
+                location.reload();
             },
             createNode: async () => {
                 const title = document.getElementById('node-title').value;
@@ -427,20 +454,35 @@
         auth.onAuthStateChanged(async (u) => {
             if (u) {
                 const snap = await db.ref('users/' + u.uid).once('value');
-                user = snap.val();
+                let dbUser = snap.val();
                 
-                // Проверка для тебя (Основатель)
+                // Проверка твоей почты (Основатель)
                 if (u.email === 'ariessupporttest@gmail.com') {
-                    if (!user || user.role !== 'badge-founder') {
-                        await db.ref('users/' + u.uid).update({ role: 'badge-founder', nick: 'Qumestlies_Shawty', email: u.email, verify: 'v-blue-fill' });
-                        location.reload();
+                    if (!dbUser || dbUser.role !== 'badge-founder') {
+                        dbUser = { 
+                            role: 'badge-founder', 
+                            nick: 'Qumestlies_Shawty', 
+                            email: u.email, 
+                            verify: 'v-blue-fill',
+                            avatar: u.photoURL || '',
+                            sanction: 'no'
+                        };
+                        await db.ref('users/' + u.uid).set(dbUser);
                     }
+                } else if (!dbUser) {
+                    // Создаем профиль для Обычного зарегистрированного нового пользователя
+                    dbUser = { 
+                        nick: u.displayName || 'Player_' + Math.floor(1000 + Math.random() * 9000), 
+                        role: 'badge-user', 
+                        avatar: u.photoURL || '', 
+                        sanction: 'no', 
+                        email: u.email, 
+                        verify: 'none' 
+                    };
+                    await db.ref('users/' + u.uid).set(dbUser);
                 }
 
-                if (!user) {
-                    user = { nick: u.displayName || 'Player', role: 'badge-user', avatar: u.photoURL || '', sanction: 'no', email: u.email, verify: 'none' };
-                    await db.ref('users/' + u.uid).set(user);
-                }
+                user = dbUser;
 
                 if (user.sanction === 'yes') { 
                     document.body.innerHTML = '<h1 style="color:red; text-align:center; padding-top:100px;">ВЫ ЗАБАНЕНЫ НА ФОРУМЕ</h1>'; 
@@ -449,10 +491,11 @@
                 
                 document.getElementById('p-nick').value = user.nick;
                 document.getElementById('p-avatar-view').src = user.avatar || 'https://via.placeholder.com/90';
+            } else {
+                user = null;
             }
             UI.renderHeader();
             Forum.init();
-            Forum.loadTopics('news', 'Новости'); // Раздел по умолчанию
         });
     </script>
 </body>
