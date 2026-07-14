@@ -4,7 +4,7 @@
 // DEVELOPED FOR: Qumestlies_Shawty
 // ==========================================================================
 
-// Конфигурация Firebase (Данные твоего проекта)
+// Конфигурация Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM", 
     authDomain: "aries-forum.firebaseapp.com",
@@ -29,7 +29,7 @@ let GlobalNodes = {};
 let isFirstLoad = true;
 window.CloudFounders = [];
 
-// ТВОИ ДАННЫЕ (Ультра-защита)
+// ТВОИ ДАННЫЕ
 const MASTER_EMAIL = "ariessupporttest@gmail.com";
 const MASTER_NICK = "Qumestlies_Shawty";
 
@@ -37,12 +37,10 @@ const MASTER_NICK = "Qumestlies_Shawty";
 // МОДУЛЬ ЗАЩИТЫ: ОБРАБОТКА ВХОДА ПО МАГИЧЕСКОЙ ССЫЛКЕ
 // ==========================================================================
 
-// Функция обработки входящей ссылки (Magic Link)
 async function handleEmailLinkSignIn() {
     if (auth.isSignInWithEmailLink(window.location.href)) {
         let email = window.localStorage.getItem('emailForSignIn');
         
-        // Если браузер потерял почту (например, открыли в другом приложении)
         if (!email) {
             email = window.prompt('Для подтверждения безопасности введите ваш Email еще раз:');
         }
@@ -51,13 +49,12 @@ async function handleEmailLinkSignIn() {
             try {
                 console.log("Попытка входа по ссылке для:", email);
                 const result = await auth.signInWithEmailLink(email, window.location.href);
+                
                 // Очищаем временное хранилище
                 window.localStorage.removeItem('emailForSignIn');
-                
                 const nick = window.localStorage.getItem('nickForSignIn') || "User_" + Math.floor(Math.random()*999);
                 window.localStorage.removeItem('nickForSignIn');
 
-                // Создаем ключ пользователя (заменяем точки на запятые для Firebase)
                 const userKey = email.replace(/\./g, ',');
                 
                 // Проверяем/создаем запись в БД
@@ -74,11 +71,13 @@ async function handleEmailLinkSignIn() {
                     });
                 }
                 
-                // Сохраняем сессию локально
                 localStorage.setItem('active_session_key', userKey);
                 
-                // Редирект на чистую страницу без мусора в URL
-                window.location.replace(window.location.origin + window.location.pathname);
+                // ОЧИСТКА URL (чтобы не было ошибки при обновлении)
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                // Перезагрузка для применения данных
+                location.reload();
             } catch (error) {
                 console.error("Auth Error:", error);
                 alert("Ошибка авторизации: Ссылка невалидна или просрочена. Попробуйте запросить новую.");
@@ -87,7 +86,7 @@ async function handleEmailLinkSignIn() {
     }
 }
 
-// Глобальный слушатель авторизации для сохранения сессии при перезагрузке
+// Глобальный слушатель авторизации
 auth.onAuthStateChanged((user) => {
     if (user && user.email) {
         const userKey = user.email.replace(/\./g, ',');
@@ -108,7 +107,6 @@ dbRef.on('value', (snapshot) => {
     GlobalNodes = data.nodes || {};
     window.CloudFounders = data.founders || [];
     
-    // Авто-создание структуры, если база пустая
     if (!data.nodes) {
         dbRef.child('nodes/main').set({
             title: '📢 Общий раздел проекта',
@@ -124,21 +122,16 @@ dbRef.on('value', (snapshot) => {
         });
     }
 
-    // Проверка активной сессии при первой загрузке данных из БД
     if (isFirstLoad) {
         const savedKey = localStorage.getItem('active_session_key');
         if (savedKey && GlobalUsers[savedKey] && !GlobalUsers[savedKey].banned) {
             App.userKey = savedKey;
-        } else {
-            if (savedKey && GlobalUsers[savedKey] && GlobalUsers[savedKey].banned) {
-                localStorage.removeItem('active_session_key');
-                auth.signOut();
-                App.userKey = null;
-            }
+        } else if (savedKey && GlobalUsers[savedKey]?.banned) {
+            localStorage.removeItem('active_session_key');
+            auth.signOut();
+            App.userKey = null;
         }
         isFirstLoad = false;
-        // Только когда данные загружены, проверяем ссылку на вход
-        handleEmailLinkSignIn();
     }
 
     App.syncUI();
@@ -166,6 +159,7 @@ const AuthModule = {
         if (!email || !nick) return alert('Введите ник и электронную почту!');
         
         const actionCodeSettings = {
+            // Берем чистый URL без старых параметров входа
             url: window.location.origin + window.location.pathname,
             handleCodeInApp: true
         };
@@ -174,7 +168,6 @@ const AuthModule = {
             .then(() => {
                 window.localStorage.setItem('emailForSignIn', email);
                 window.localStorage.setItem('nickForSignIn', nick);
-                
                 alert('Успешно! Мы отправили письмо на почту ' + email + '. Нажми на ссылку в письме для входа.');
                 this.close();
             })
@@ -187,7 +180,6 @@ const AuthModule = {
         auth.signOut().then(() => {
             localStorage.removeItem('active_session_key');
             App.userKey = null;
-            App.syncUI();
             location.reload();
         });
     }
@@ -524,11 +516,9 @@ const NodeManager = {
 
 // Запуск приложения
 window.onload = () => {
-    // Если через 5 секунд всё еще висит загрузка - форсируем обновление
+    // 1. Проверяем магическую ссылку СРАЗУ при загрузке
+    handleEmailLinkSignIn();
+    
     setTimeout(() => { if(isFirstLoad) App.syncUI(); }, 5000);
     App.syncUI();
 };
-
-// ==========================================================================
-// END OF ENGINE.JS - ARIES ROLE PLAY CLOUD v9.9
-// ==========================================================================
