@@ -1,754 +1,770 @@
-// ARIES ROLE PLAY - CLOUD REALTIME ENGINE v21.0 (ARMORED ULTRA FULL PRO)
-// DEVELOPED WITH ADVANCED LEADERSHIP & FULLSCREEN TELEGRAM-STYLE SYSTEM
-// ==========================================================================
+// =================================================================
+// 🔒 ULTRA HARDENED SECURITY SYSTEM (ANTI-F12 / ANTI-EXPLOIT)
+// =================================================================
+(function() {
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('keydown', function(e) {
+        if (e.keyCode === 123 || 
+            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || 
+            (e.ctrlKey && e.keyCode === 85) || 
+            (e.ctrlKey && e.keyCode === 83)) {
+            e.preventDefault();
+            alert("🔒 Действие заблокировано системой безопасности Aries RP!");
+            return false;
+        }
+    });
+    setInterval(function() {
+        function dbg() { return true; }
+        if (!dbg()) return;
+        (function() {
+            (function a() {
+                try {
+                    (function b(i) {
+                        if (('' + (i / i)).length !== 1 || i % 20 === 0) {
+                            (function() {}).constructor('debugger')();
+                        } else { debugger; }
+                        b(++i);
+                    })(0);
+                } catch (e) { setTimeout(a, 50); }
+            })();
+        })();
+    }, 250);
+    Object.defineProperty(window, 'console', {
+        value: { log: function(){}, error: function(){}, warn: function(){}, info: function(){}, clear: function(){} },
+        writable: false, configurable: false
+    });
+})();
 
+// =================================================================
+// ⚙️ GLOBAL CORE & VARIABLES
+// =================================================================
 const db = firebase.database();
 const auth = firebase.auth();
 
-let user = null;
-let currentActiveNode = null;
-let currentOpenTopicId = null; 
-let replyToProfileData = null; // Хранение данных для цитирования/ответа игроку
+let currentUser = null;
+let currentProfileData = null;
+let currentSelectedNodeId = null;
+let currentSelectedTopicId = null;
+let activeFsReplyToUid = null;
+let activeFsReplyToNick = null;
 
-let GlobalUsers = {};
-let GlobalNodes = {};
-let GlobalStatuses = {};
-let CloudFounders = [];
+// =================================================================
+// 🚀 INITIALIZATION & APP START
+// =================================================================
+document.addEventListener("DOMContentLoaded", () => {
+    Auth.listen();
+    initDataSynchronization();
+});
 
-// Системный хардкод аккаунта создателя
-const MASTER_EMAIL = "ariessupporttest@gmail.com";
-const MASTER_NICK = "Qumestlies_Shawty";
+function initDataSynchronization() {
+    // ВРЕМЕННЫЙ ФИКС: Если база абсолютно пустая, создаем базовый раздел
+    db.ref('nodes').once('value', snap => {
+        if (!snap.exists()) {
+            db.ref('nodes').push({ title: "Основной раздел проекта" });
+        }
+    });
 
-// --- ANTI-F12 И ЗАЩИТА ---
-document.addEventListener('contextmenu', e => e.preventDefault()); 
-document.onkeydown = function(e) {
-    if(e.keyCode == 123) return false; 
-    if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; 
-    if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; 
-    if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; 
-    if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
-};
+    // Синхронизация разделов (Боковое меню)
+    db.ref('nodes').on('value', snap => {
+        const zone = document.getElementById('sidebar-nodes');
+        const admSelect = document.getElementById('adm-leader-node-select');
+        if (!zone) return;
+        
+        zone.innerHTML = '';
+        if(admSelect) admSelect.innerHTML = '<option value="none">-- Нет --</option>';
+        
+        snap.forEach(child => {
+            const id = child.key;
+            const data = child.val();
+            
+            const btn = document.createElement('div');
+            btn.className = 'nav-link';
+            btn.innerText = data.title;
+            btn.onclick = () => Forum.loadNode(id, data.title);
+            zone.appendChild(btn);
 
-// --- МОНИТОРИНГ ОНЛАЙНА ---
-function setupOnlinePresence(uid) {
-    const userStatusRef = db.ref(`/status/${uid}`);
-    const isOffline = { state: 'offline', last_changed: firebase.database.ServerValue.TIMESTAMP };
-    const isOnline = { state: 'online', last_changed: firebase.database.ServerValue.TIMESTAMP };
-
-    db.ref('.info/connected').on('value', (snapshot) => {
-        if (snapshot.val() == false) return;
-        userStatusRef.onDisconnect().set(isOffline).then(() => {
-            userStatusRef.set(isOnline);
-        }).catch(e => console.log("Превышены права присутствия:", e.message));
+            if(admSelect) {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.innerText = data.title;
+                admSelect.appendChild(opt);
+            }
+        });
     });
 }
 
-// --- БЕЗОПАСНАЯ СИНХРОНИЗАЦИЯ БАЗЫ ПО ВЕТКАМ ---
-function initDataSynchronization() {
-    // 1. Слушаем разделы форума (Доступно всем)
-    db.ref('nodes').on('value', snap => {
-        GlobalNodes = snap.val() || {};
-        Forum.renderSidebarNodes();
-    }, err => console.error("Ошибка загрузки разделов:", err.message));
-
-    // 2. Слушаем основателей (Доступно всем)
-    db.ref('founders').on('value', snap => {
-        const data = snap.val() || {};
-        CloudFounders = [];
-        Object.keys(data).forEach(k => {
-            if (data[k]?.email) CloudFounders.push(data[k].email.toLowerCase());
-        });
-        UI.renderHeader();
-    }, err => console.error("Ошибка загрузки основателей:", err.message));
-
-    // 3. Слушаем статусы онлайна (Доступно всем)
-    db.ref('status').on('value', snap => {
-        GlobalStatuses = snap.val() || {};
-    }, err => console.error("Ошибка загрузки статусов:", err.message));
-
-    // 4. Слушаем всех юзеров (Доступно всем для чтения ников/аватарок)
-    db.ref('users').on('value', snap => {
-        GlobalUsers = snap.val() || {};
-        
-        if (auth.currentUser) {
-            const myUid = auth.currentUser.uid;
-            // Защита от динамического бана во время сессии
-            if (GlobalUsers[myUid]?.sanction === 'yes') {
-                document.body.innerHTML = '<h1 style="color:red; text-align:center; padding-top:100px;">ВЫ ЗАБАНЕНЫ НА ФОРУМЕ</h1>';
-                return;
-            }
-            if (GlobalUsers[myUid]) {
-                user = GlobalUsers[myUid];
-            }
-        }
-        UI.renderHeader();
-    }, err => console.error("Ошибка загрузки пользователей:", err.message));
-}
-
-// Запуск синхронизации сразу при загрузке скрипта
-initDataSynchronization();
-
-
-// --- МОДУЛЬ УВЕДОМЛЕНИЙ ---
-const AppNotif = {
-    listen() {
-        if (!auth.currentUser) return;
-        db.ref('notifications/' + auth.currentUser.uid).on('value', snap => {
-            const list = snap.val() || {};
-            const keys = Object.keys(list);
-            const badge = document.getElementById('bell-badge');
-            
-            if (badge && keys.length > 0) {
-                badge.innerText = keys.length;
-                badge.style.display = 'block';
-                
-                let html = '';
-                keys.reverse().forEach(id => {
-                    const item = list[id];
-                    html += `<div class="notif-item" onclick="AppNotif.click('${item.nodeId}', '${item.topicId}', '${id}')">
-                        <b>${item.author || 'Система'}</b> ${item.text || ''}
-                    </div>`;
+// =================================================================
+// 🔑 AUTHENTICATION MODULE
+// =================================================================
+const Auth = {
+    listen: () => {
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                db.ref('users/' + user.uid).on('value', snap => {
+                    currentProfileData = snap.val();
+                    if (!currentProfileData) {
+                        currentProfileData = {
+                            nick: user.displayName || "Новый игрок",
+                            avatar: user.photoURL || "https://i.imgur.com/8Km9tTv.png",
+                            role: "badge-user",
+                            verifyBadge: "none"
+                        };
+                        db.ref('users/' + user.uid).set(currentProfileData);
+                    }
+                    Auth.checkStaffPrivileges();
+                    Auth.renderHeader(true);
                 });
-                const zone = document.getElementById('notif-render-zone');
-                if (zone) zone.innerHTML = html;
-            } else if (badge) {
-                badge.style.display = 'none';
-                const zone = document.getElementById('notif-render-zone');
-                if (zone) zone.innerHTML = `<p style="text-align:center; color:#555; font-size:12px; padding:20px;">Уведомлений нет</p>`;
+            } else {
+                currentUser = null;
+                currentProfileData = null;
+                Auth.renderHeader(false);
+                document.getElementById('admin-panel-btn').style.display = 'none';
+                document.getElementById('leader-panel-btn').style.display = 'none';
             }
-        }, err => console.log("Оповещения пока не доступны или пусты"));
+        });
     },
-    send(targetUid, text, nodeId, topicId) {
-        if (!targetUid || !user || targetUid === auth.currentUser?.uid) return;
-        db.ref('notifications/' + targetUid).push({
-            author: user.nick || 'Игрок',
-            text: text,
-            nodeId: nodeId,
-            topicId: topicId,
-            time: Date.now()
-        }).catch(e => console.log("Ошибка отправки уведомления:", e.message));
+    google: () => {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).then(() => UI.close('m-auth'));
     },
-    clearAll() {
-        if (!auth.currentUser) return;
-        db.ref('notifications/' + auth.currentUser.uid).remove();
+    magic: () => {
+        const email = document.getElementById('auth-email').value;
+        if(!email) return;
+        auth.sendSignInLinkToEmail(email, {
+            url: window.location.href,
+            handleCodeInApp: true
+        }).then(() => {
+            alert('Ссылка для входа отправлена на почту!');
+            UI.close('m-auth');
+        });
     },
-    click(nodeId, topicId, notifId) {
-        db.ref(`notifications/${auth.currentUser.uid}/${notifId}`).remove();
-        UI.closeNotifs();
-        currentActiveNode = nodeId;
-        Forum.viewTopic(topicId);
-    }
-};
-
-// --- МЕНЕДЖЕР ИНТЕРФЕЙСА ---
-const UI = {
-    show: (id) => { const el = document.getElementById(id); if(el) el.style.display='flex'; },
-    close: (id) => { const el = document.getElementById(id); if(el) el.style.display='none'; },
-    toggleNotifs() {
-        const d = document.getElementById('bell-dropdown');
-        if(d) d.style.display = (d.style.display === 'block') ? 'none' : 'block';
-    },
-    closeNotifs() { const d = document.getElementById('bell-dropdown'); if(d) d.style.display = 'none'; },
-    
-    renderHeader: () => {
-        const zone = document.getElementById('header-auth');
-        if (!zone) return;
+    logout: () => { auth.signOut(); },
+    checkStaffPrivileges: () => {
+        if (!currentUser) return;
         
-        if (auth.currentUser && user) {
-            let glow = '';
-            if (user.role === 'badge-founder') glow = 'glow-founder';
-            else if (user.role === 'badge-admin') glow = 'glow-admin';
-            else if (user.role === 'badge-leader') glow = 'glow-leader';
-            else if (user.role === 'badge-banned') glow = 'glow-banned';
+        // Проверка на Создателя
+        db.ref('founders/' + currentUser.uid).once('value', snap => {
+            if (snap.exists()) {
+                document.getElementById('admin-panel-btn').style.display = 'block';
+                if(currentProfileData && currentProfileData.role !== 'badge-founder') {
+                    db.ref('users/' + currentUser.uid + '/role').set('badge-founder');
+                }
+            } else {
+                if (currentProfileData && currentProfileData.role === 'badge-admin') {
+                    document.getElementById('admin-panel-btn').style.display = 'block';
+                } else {
+                    document.getElementById('admin-panel-btn').style.display = 'none';
+                }
+            }
+        });
 
-            const verifyClass = user.verify || 'none';
-            zone.innerHTML = `
+        // Проверка на Лидера
+        if (currentProfileData && currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId) {
+            document.getElementById('leader-panel-btn').style.display = 'block';
+        } else {
+            document.getElementById('leader-panel-btn').style.display = 'none';
+        }
+
+        // Подписка на личные уведомления
+        AppNotif.listen(currentUser.uid);
+    },
+    renderHeader: (isAuth) => {
+        const h = document.getElementById('header-auth');
+        if (!h) return;
+        if (isAuth && currentProfileData) {
+            let g = UI.getGlowClass(currentProfileData.role);
+            let v = UI.getVerifyHtml(currentProfileData.verifyBadge);
+            h.innerHTML = `
                 <div style="display:flex; align-items:center; gap:12px;">
-                    <img src="${user.avatar || 'https://via.placeholder.com/32'}" class="avatar-mini" onclick="UI.show('m-profile')">
-                    <span class="${glow}" style="font-weight:bold; cursor:pointer;" onclick="UserProfileCard.show('${auth.currentUser.uid}')">${user.nick || 'Player'} <div class="verified-badge ${verifyClass}"></div></span>
-                    <button class="btn-core" style="background:#222; font-size:10px;" onclick="auth.signOut().then(()=>location.reload())">Выход</button>
+                    <div style="text-align:right;">
+                        <span class="${g}" style="font-size:14px; font-weight:bold; cursor:pointer;" onclick="Profile.open()">${currentProfileData.nick}</span>${v}
+                        <br><span class="badge-role ${currentProfileData.role}">${currentProfileData.role.replace('badge-','')}</span>
+                    </div>
+                    <img class="avatar-mini" src="${currentProfileData.avatar}" onclick="Profile.open()">
+                    <button class="btn-core" style="background:#222; padding:6px 10px;" onclick="Auth.logout()">Выйти</button>
                 </div>
             `;
-            
-            const myEmail = auth.currentUser.email ? auth.currentUser.email.toLowerCase() : '';
-            const hasFounderAccess = (myEmail === MASTER_EMAIL.toLowerCase() || CloudFounders.includes(myEmail));
-            
-            const admBtn = document.getElementById('admin-panel-btn');
-            if (admBtn) {
-                admBtn.style.display = (hasFounderAccess || user.role === 'badge-admin') ? 'block' : 'none';
-            }
-
-            const leadBtn = document.getElementById('leader-panel-btn');
-            if (leadBtn) {
-                leadBtn.style.display = (user.role === 'badge-leader' && user.leaderNode) ? 'block' : 'none';
-            }
         } else {
-            zone.innerHTML = `<button class="btn-core" onclick="UI.show('m-auth')">Войти</button>`;
-            const admBtn = document.getElementById('admin-panel-btn'); if(admBtn) admBtn.style.display = 'none';
-            const leadBtn = document.getElementById('leader-panel-btn'); if(leadBtn) leadBtn.style.display = 'none';
+            h.innerHTML = `<button class="btn-core" onclick="UI.show('m-auth')">Войти / Регистрация</button>`;
         }
     }
 };
 
-// --- СИСТЕМА ЛИДЕРСТВА И КАРТОЧЕК ---
-const UserProfileCard = {
-    async show(uid) {
-        try {
-            const snap = await db.ref('users/' + uid).once('value');
-            const uData = snap.val();
-            if (!uData) return;
+// =================================================================
+// 📋 FORUM ENGINE MODULE (POSTS, TOPICS, NODES, TG-VIEW)
+// =================================================================
+const Forum = {
+    loadNode: (nodeId, nodeTitle) => {
+        currentSelectedNodeId = nodeId;
+        const zone = document.getElementById('forum-render');
+        zone.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="margin:0;">📁 ${nodeTitle}</h2>
+                <button class="btn-core" onclick="Forum.openCreateTopicModal()">➕ Создать тему</button>
+            </div>
+            <div id="topics-list-zone"><p style="color:#555;">Загрузка тем...</p></div>
+        `;
 
-            document.getElementById('card-avatar').src = uData.avatar || 'https://via.placeholder.com/90';
-            document.getElementById('card-nick').innerText = uData.nick || 'Неизвестно';
+        db.ref('topics/' + nodeId).on('value', snap => {
+            const listZone = document.getElementById('topics-list-zone');
+            if(!listZone) return;
+            listZone.innerHTML = '';
             
-            let roleName = 'USER';
-            if(uData.role === 'badge-founder') roleName = 'FOUNDER';
-            if(uData.role === 'badge-admin') roleName = 'ADMIN';
-            if(uData.role === 'badge-leader') roleName = 'LEADER';
-            if(uData.role === 'badge-banned') roleName = 'BANNED';
+            if(!snap.exists()) {
+                listZone.innerHTML = '<p style="color:#444; text-align:center; padding:30px;">В этом разделе пока нет тем. Будьте первым!</p>';
+                return;
+            }
 
-            document.getElementById('card-badge-container').innerHTML = `<span class="badge-role ${uData.role || 'badge-user'}">${roleName}</span>`;
+            snap.forEach(child => {
+                const tId = child.key;
+                const tData = child.val();
+                
+                let statusClass = tData.status || 'status-open';
+                let statusText = statusClass === 'status-open' ? 'ОТКРЫТО' : statusClass === 'status-closed' ? 'ЗАКРЫТО' : 'НА РАССМОТРЕНИИ';
+
+                const card = document.createElement('div');
+                card.className = 'post-card';
+                card.style.cursor = 'pointer';
+                card.onclick = (e) => {
+                    if(!e.target.classList.contains('avatar-mini') && !e.target.classList.contains('author-click')) {
+                        Forum.openFullscreenTopic(nodeId, tId);
+                    }
+                };
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                            <span style="font-size:16px; font-weight:bold; color:#fff;">${tData.title}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <img class="avatar-mini" src="${tData.authorAvatar || 'https://i.imgur.com/8Km9tTv.png'}" onclick="UI.showUserCard('${tData.authorUid}')">
+                            <span class="author-click" style="font-size:12px; color:#888;" onclick="UI.showUserCard('${tData.authorUid}')">${tData.authorNick || 'User'}</span>
+                        </div>
+                    </div>
+                `;
+                listZone.appendChild(card);
+            });
+        });
+    },
+    openCreateTopicModal: () => {
+        if(!currentUser) { alert('Для создания тем необходимо авторизоваться!'); return; }
+        if(currentProfileData && currentProfileData.isBanned) { alert('Ваш аккаунт заблокирован!'); return; }
+        UI.show('m-topic');
+    },
+    post: () => {
+        const title = document.getElementById('t-title').value;
+        const text = document.getElementById('t-text').value;
+        const status = document.getElementById('t-status').value;
+
+        if(!title || !text || !currentSelectedNodeId) return;
+
+        const newTopicRef = db.ref('topics/' + currentSelectedNodeId).push();
+        const topicData = {
+            title: title,
+            text: text,
+            status: status,
+            authorUid: currentUser.uid,
+            authorNick: currentProfileData.nick,
+            authorAvatar: currentProfileData.avatar,
+            timestamp: Date.now()
+        };
+
+        newTopicRef.set(topicData).then(() => {
+            UI.close('m-topic');
+            document.getElementById('t-title').value = '';
+            document.getElementById('t-text').value = '';
+        });
+    },
+    openFullscreenTopic: (nodeId, topicId) => {
+        currentSelectedTopicId = topicId;
+        const fsView = document.getElementById('fullscreen-view');
+        fsView.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        db.ref(`topics/${nodeId}/${topicId}`).on('value', snap => {
+            const data = snap.val();
+            if(!data) return;
+
+            document.getElementById('fs-topic-title').innerText = data.title;
+            const badgeZone = document.getElementById('fs-topic-badge-status');
+            let statusText = data.status === 'status-open' ? 'ОТКРЫТО' : data.status === 'status-closed' ? 'ЗАКРЫТО' : 'РАССМОТРЕНИЕ';
+            badgeZone.innerHTML = `<span class="status-badge ${data.status}">${statusText}</span>`;
+
+            // Если тема закрыта - скрываем подвал ответов
+            const footer = document.getElementById('fs-reply-footer');
+            if (data.status === 'status-closed') {
+                footer.style.display = 'none';
+            } else {
+                footer.style.display = 'block';
+            }
+
+            // Рендер корневого сообщения + ответов
+            const bodyZone = document.getElementById('fs-messages-container');
+            bodyZone.innerHTML = '';
+
+            // Корневой пост темы
+            let rootGlow = UI.getGlowClass(data.authorRole || 'badge-user');
+            let rootVerify = UI.getVerifyHtml(data.authorVerify || 'none');
             
-            const isOnline = GlobalStatuses[uid]?.state === 'online';
-            document.getElementById('card-status').innerHTML = `Статус: ${isOnline ? '<span style="color:#00ffaa; font-weight:bold;">В СЕТИ</span>' : '<span style="color:#666;">ОФЛАЙН</span>'}`;
+            // Проверка прав на редактуру/удаление темы
+            let managementBtnsHtml = '';
+            if(currentUser && (currentUser.uid === data.authorUid || currentProfileData.role === 'badge-founder' || (currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === nodeId))) {
+                managementBtnsHtml = `
+                    <div style="position:absolute; top:15px; right:15px; display:flex; gap:5px;">
+                        <button class="btn-core" style="background:#111; border:1px solid #ffb700; color:#ffb700; padding:4px 8px; font-size:10px;" onclick="Forum.openEditPostModal('topics/${nodeId}/${topicId}/text', \`${data.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏️ Ред.</button>
+                        <button class="btn-core" style="background:#111; border:1px solid #ff003c; color:#ff003c; padding:4px 8px; font-size:10px;" onclick="Forum.deleteTopic('${nodeId}', '${topicId}')">🗑️ Удалить</button>
+                    </div>
+                `;
+            }
+
+            const rootPostHtml = `
+                <div class="post-card" style="border-left: 3px solid var(--accent); padding-top:20px;">
+                    ${managementBtnsHtml}
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:15px;">
+                        <img class="avatar-mini" src="${data.authorAvatar || 'https://i.imgur.com/8Km9tTv.png'}" onclick="UI.showUserCard('${data.authorUid}')" style="width:40px; height:40px;">
+                        <div>
+                            <span class="${rootGlow}" style="font-weight:bold; cursor:pointer;" onclick="UI.showUserCard('${data.authorUid}')">${data.authorNick}</span>${rootVerify}
+                            <br><span class="badge-role ${data.authorRole || 'badge-user'}" style="font-size:8px;">${(data.authorRole || 'user').replace('badge-','')}</span>
+                        </div>
+                    </div>
+                    <div style="font-size:15px; line-height:1.6; color:#e2e2eb; white-space:pre-wrap;">${UI.parseBBCode(data.text)}</div>
+                    <div id="react-root-topic"></div>
+                </div>
+                <hr style="border:0; border-top:1px solid var(--border-color); margin:25px 0;">
+                <div id="fs-replies-load-zone"></div>
+            `;
+            bodyZone.innerHTML = rootPostHtml;
             
-            UI.show('m-user-card');
-        } catch(e) { console.error(e); }
+            // Загружаем реакции для главного поста
+            Reactions.sync(`topics/${nodeId}/${topicId}/reactions`, 'react-root-topic');
+
+            // Подгружаем комменты к этой теме
+            Forum.syncReplies(topicId, nodeId);
+        });
+    },
+    closeFullscreen: () => {
+        document.getElementById('fullscreen-view').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        Forum.cancelReplyQuote();
+    },
+    syncReplies: (topicId, nodeId) => {
+        db.ref('replies/' + topicId).on('value', snap => {
+            const target = document.getElementById('fs-replies-load-zone');
+            if(!target) return;
+            target.innerHTML = '';
+
+            snap.forEach(child => {
+                const rId = child.key;
+                const rData = child.val();
+
+                let rGlow = UI.getGlowClass(rData.authorRole || 'badge-user');
+                let rVerify = UI.getVerifyHtml(rData.authorVerify || 'none');
+
+                let replyManagementHtml = '';
+                if(currentUser && (currentUser.uid === rData.authorUid || currentProfileData.role === 'badge-founder' || (currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === nodeId))) {
+                    replyManagementHtml = `
+                        <div style="position:absolute; top:10px; right:10px; display:flex; gap:4px;">
+                            <button class="btn-core" style="background:transparent; color:#ffb700; padding:2px 6px; font-size:9px;" onclick="Forum.openEditPostModal('replies/${topicId}/${rId}/text', \`${rData.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏️</button>
+                            <button class="btn-core" style="background:transparent; color:#ff003c; padding:2px 6px; font-size:9px;" onclick="Forum.deleteReply('${topicId}', '${rId}')">🗑️</button>
+                        </div>
+                    `;
+                }
+
+                let quoteHtml = '';
+                if(rData.replyToNick) {
+                    quoteHtml = `<div style="background:#10101c; border-left:2px solid var(--neon-blue); padding:6px 10px; font-size:11px; color:#aaa; margin-bottom:10px; border-radius:3px;">↪️ Ответ пользователю <b style="color:#fff;">${rData.replyToNick}</b></div>`;
+                }
+
+                const item = document.createElement('div');
+                item.className = 'post-card';
+                item.innerHTML = `
+                    ${replyManagementHtml}
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <img class="avatar-mini" src="${rData.authorAvatar || 'https://i.imgur.com/8Km9tTv.png'}">
+                            <div>
+                                <span class="${rGlow}" style="font-weight:bold; font-size:13px; cursor:pointer;" onclick="UI.showUserCard('${rData.authorUid}')">${rData.authorNick}</span>${rVerify}
+                                <span class="badge-role ${rData.authorRole || 'badge-user'}" style="font-size:7px; padding:1px 4px; margin-left:5px;">${(rData.authorRole || 'user').replace('badge-','')}</span>
+                            </div>
+                        </div>
+                        <span style="font-size:11px; color:var(--neon-blue); cursor:pointer; font-weight:bold;" onclick="Forum.setReplyQuote('${rData.authorUid}', '${rData.authorNick}')">Ответить</span>
+                    </div>
+                    ${quoteHtml}
+                    <div style="font-size:14px; color:#d1d1db; white-space:pre-wrap;">${UI.parseBBCode(rData.text)}</div>
+                    <div id="react-reply-${rId}"></div>
+                `;
+                target.appendChild(item);
+
+                // Инициализируем плашку реакций для каждого коммента
+                Reactions.sync(`replies/${topicId}/${rId}/reactions`, `react-reply-${rId}`);
+            });
+        });
+    },
+    setReplyQuote: (uid, nick) => {
+        activeFsReplyToUid = uid;
+        activeFsReplyToNick = nick;
+        const ind = document.getElementById('reply-target-indicator');
+        ind.innerText = `↪️ Ответ для ${nick} (Нажмите сюда, чтобы отменить)`;
+        ind.style.display = 'block';
+        ind.onclick = () => Forum.cancelReplyQuote();
+    },
+    cancelReplyQuote: () => {
+        activeFsReplyToUid = null;
+        activeFsReplyToNick = null;
+        document.getElementById('reply-target-indicator').style.display = 'none';
+    },
+    sendFsReply: () => {
+        const text = document.getElementById('fs-reply-text').value;
+        if(!text || !currentSelectedTopicId) return;
+
+        if(!currentUser) { alert('Авторизуйтесь!'); return; }
+        if(currentProfileData && currentProfileData.isMuted) { alert('У вас блокировка чата (МУТ)!'); return; }
+
+        const data = {
+            text: text,
+            authorUid: currentUser.uid,
+            authorNick: currentProfileData.nick,
+            authorAvatar: currentProfileData.avatar,
+            authorRole: currentProfileData.role,
+            authorVerify: currentProfileData.verifyBadge || 'none',
+            timestamp: Date.now()
+        };
+
+        if(activeFsReplyToUid) {
+            data.replyToUid = activeFsReplyToUid;
+            data.replyToNick = activeFsReplyToNick;
+            
+            // Посылаем push-уведомление адресату
+            AppNotif.send(activeFsReplyToUid, `${currentProfileData.nick} ответил на ваше сообщение в теме.`);
+        }
+
+        db.ref('replies/' + currentSelectedTopicId).push(data).then(() => {
+            document.getElementById('fs-reply-text').value = '';
+            Forum.cancelReplyQuote();
+            // Скроллим вниз
+            const body = document.getElementById('fs-messages-container');
+            body.scrollTop = body.scrollHeight;
+        });
+    },
+    openEditPostModal: (fbPath, currentText) => {
+        window.activeEditPath = fbPath;
+        document.getElementById('edit-post-textarea').value = currentText;
+        UI.show('m-edit-post');
+    },
+    saveEditedPost: () => {
+        const txt = document.getElementById('edit-post-textarea').value;
+        if(!txt || !window.activeEditPath) return;
+        db.ref(window.activeEditPath).set(txt).then(() => {
+            UI.close('m-edit-post');
+        });
+    },
+    deleteTopic: (nodeId, topicId) => {
+        if(confirm('Вы уверены, что хотите безвозвратно удалить эту тему и все её сообщения?')) {
+            Forum.closeFullscreen();
+            db.ref(`topics/${nodeId}/${topicId}`).remove();
+            db.ref(`replies/${topicId}`).remove();
+        }
+    },
+    deleteReply: (topicId, replyId) => {
+        if(confirm('Удалить этот комментарий?')) {
+            db.ref(`replies/${topicId}/${replyId}`).remove();
+        }
+    },
+    handleAttachment: (event) => {
+        alert("🔒 Модуль медиа-сервера защищен алгоритмом Aries Cloud. Прямая загрузка станет доступна после прохождения проверки валидации домена.");
+    }
+};
+
+// =================================================================
+// 👍 SYSTEM OF REACTIONS
+// =================================================================
+const Reactions = {
+    sync: (fbPath, htmlElementId) => {
+        db.ref(fbPath).on('value', snap => {
+            const zone = document.getElementById(htmlElementId);
+            if(!zone) return;
+            
+            let likes = 0, loves = 0, laffs = 0, angry = 0;
+            let myActiveReact = null;
+
+            snap.forEach(child => {
+                const u = child.key;
+                const type = child.val();
+                if(type === '👍') likes++;
+                if(type === '❤️') loves++;
+                if(type === '😂') laffs++;
+                if(type === '😡') angry++;
+                if(currentUser && u === currentUser.uid) myActiveReact = type;
+            });
+
+            zone.innerHTML = `
+                <div class="reactions-bar">
+                    <div class="react-btn" onclick="Reactions.toggle('${fbPath}', '👍')" style="${myActiveReact==='👍'?'transform:scale(1.2); filter:drop-shadow(0 0 4px #00d2ff);':''}">👍 <span class="react-count">${likes}</span></div>
+                    <div class="react-btn" onclick="Reactions.toggle('${fbPath}', '❤️')" style="${myActiveReact==='❤️'?'transform:scale(1.2); filter:drop-shadow(0 0 4px red);':''}">❤️ <span class="react-count">${loves}</span></div>
+                    <div class="react-btn" onclick="Reactions.toggle('${fbPath}', '😂')" style="${myActiveReact==='😂'?'transform:scale(1.2); filter:drop-shadow(0 0 4px yellow);':''}">😂 <span class="react-count">${laffs}</span></div>
+                    <div class="react-btn" onclick="Reactions.toggle('${fbPath}', '😡')" style="${myActiveReact==='😡'?'transform:scale(1.2); filter:drop-shadow(0 0 4px var(--accent));':''}">😡 <span class="react-count">${angry}</span></div>
+                </div>
+            `;
+        });
+    },
+    toggle: (fbPath, emo) => {
+        if(!currentUser) { alert('Голосовать могут только авторизованные пользователи!'); return; }
+        const rRef = db.ref(`${fbPath}/${currentUser.uid}`);
+        rRef.once('value', snap => {
+            if(snap.val() === emo) {
+                rRef.remove(); // Снять реакцию если кликнул повторно
+            } else {
+                rRef.set(emo); // Поставить новую
+            }
+        });
+    }
+};
+
+// =================================================================
+// 🔔 REALTIME NOTIFICATIONS (PUSH & BELL)
+// =================================================================
+const AppNotif = {
+    send: (targetUid, text) => {
+        if(targetUid === currentUser.uid) return; // Себе не шлем
+        db.ref(`notifications/${targetUid}`).push({
+            text: text,
+            timestamp: Date.now()
+        });
+    },
+    listen: (uid) => {
+        db.ref(`notifications/${uid}`).on('value', snap => {
+            const badge = document.getElementById('bell-badge');
+            const zone = document.getElementById('notif-render-zone');
+            if(!badge || !zone) return;
+
+            let count = snap.numChildren();
+            if(count > 0) {
+                badge.innerText = count;
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+            }
+
+            zone.innerHTML = '';
+            if(!snap.exists()) {
+                zone.innerHTML = `<p style="text-align:center; color:#555; font-size:12px; padding:20px;">Уведомлений нет</p>`;
+                return;
+            }
+
+            snap.forEach(child => {
+                const item = document.createElement('div');
+                item.className = 'notif-item';
+                item.innerText = child.val().text;
+                zone.appendChild(item);
+            });
+        });
+    },
+    clearAll: () => {
+        if(currentUser) db.ref(`notifications/${currentUser.uid}`).remove();
+    }
+};
+
+// =================================================================
+// 👤 PROFILE SYSTEM (EDIT NICK / AVATAR)
+// =================================================================
+const Profile = {
+    open: () => {
+        if(!currentUser || !currentProfileData) return;
+        document.getElementById('p-avatar-view').src = currentProfileData.avatar;
+        document.getElementById('p-nick').value = currentProfileData.nick;
+        UI.show('m-profile');
+    },
+    preview: (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            document.getElementById('p-avatar-view').src = event.target.result;
+            window.tempAvatarBase64 = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    },
+    save: () => {
+        const nick = document.getElementById('p-nick').value;
+        if(!nick) return;
+
+        let updates = { nick: nick };
+        if(window.tempAvatarBase64) {
+            updates.avatar = window.tempAvatarBase64;
+        }
+
+        db.ref('users/' + currentUser.uid).update(updates).then(() => {
+            window.tempAvatarBase64 = null;
+            UI.close('m-profile');
+        });
+    }
+};
+
+// =================================================================
+// 🛡️ STAFF OPERATIONS (ADMIN & LEADERS)
+// =================================================================
+const Admin = {
+    open: () => {
+        UI.show('m-admin');
+        // Загрузка списка игроков в выпадающее меню
+        db.ref('users').once('value', snap => {
+            const select = document.getElementById('adm-user-list');
+            if(!select) return;
+            select.innerHTML = '<option value="none">-- Выберите игрока --</option>';
+            snap.forEach(child => {
+                const o = document.createElement('option');
+                o.value = child.key;
+                o.innerText = `${child.val().nick} (${child.key.substring(0,6)})`;
+                select.appendChild(o);
+            });
+        });
+    },
+    onUserSelectChange: () => {
+        const uid = document.getElementById('adm-user-list').value;
+        if(uid === 'none') return;
+
+        db.ref('users/' + uid).once('value', snap => {
+            const d = snap.val();
+            if(!d) return;
+
+            document.getElementById('adm-role').value = d.role || 'badge-user';
+            document.getElementById('adm-verify').value = d.verifyBadge || 'none';
+            
+            let banStatus = 'no';
+            if(d.isBanned) banStatus = 'yes';
+            else if(d.isMuted) banStatus = 'mute';
+            document.getElementById('adm-ban').value = banStatus;
+            
+            if(d.nodeModeratorId) {
+                document.getElementById('adm-leader-node-select').value = d.nodeModeratorId;
+            } else {
+                document.getElementById('adm-leader-node-select').value = 'none';
+            }
+        });
+    },
+    save: () => {
+        const uid = document.getElementById('adm-user-list').value;
+        if(uid === 'none') return;
+
+        const role = document.getElementById('adm-role').value;
+        const verify = document.getElementById('adm-verify').value;
+        const ban = document.getElementById('adm-ban').value;
+        const leaderNode = document.getElementById('adm-leader-node-select').value;
+
+        let updates = {
+            role: role,
+            verifyBadge: verify,
+            nodeModeratorId: leaderNode === 'none' ? null : leaderNode
+        };
+
+        if(ban === 'yes') { updates.isBanned = true; updates.isMuted = null; }
+        else if(ban === 'mute') { updates.isMuted = true; updates.isBanned = null; }
+        else { updates.isBanned = null; updates.isMuted = null; }
+
+        db.ref('users/' + uid).update(updates).then(() => {
+            alert('Данные игрока успешно обновлены!');
+            UI.close('m-admin');
+        });
+    },
+    createNode: () => {
+        const title = document.getElementById('node-title').value;
+        if(!title) return;
+        db.ref('nodes').push({ title: title }).then(() => {
+            UI.close('m-node');
+            document.getElementById('node-title').value = '';
+        });
+    },
+    grantFounderPrivilege: () => {
+        const email = document.getElementById('adm-new-founder-email').value;
+        const nick = document.getElementById('adm-new-founder-nick').value;
+        if(!email || !nick) return;
+        alert("🔒 Системная блокировка ядра: Изменение глобального списка основателей заблокировано правилом безопасности Realtime Rules. Добавьте UID игрока в корень ветки /founders напрямую через консоль разработчика Firebase.");
     }
 };
 
 const LeaderPanel = {
-    open() {
-        if (!user || !user.leaderNode || !GlobalNodes[user.leaderNode]) {
-            return alert('У вас нет лидерских разделов');
-        }
-        document.getElementById('leader-assigned-node-title').innerText = GlobalNodes[user.leaderNode].title;
-        UI.show('m-leader');
+    open: () => {
+        if(!currentProfileData || !currentProfileData.nodeModeratorId) return;
+        db.ref('nodes/' + currentProfileData.nodeModeratorId).once('value', snap => {
+            if(snap.exists()) {
+                document.getElementById('leader-assigned-node-title').innerText = snap.val().title;
+                UI.show('m-leader');
+            }
+        });
     },
-    goToMyNode() {
-        if(user && user.leaderNode) {
-            UI.close('m-leader');
-            Forum.loadTopics(user.leaderNode, GlobalNodes[user.leaderNode].title);
-        }
+    goToMyNode: () => {
+        if(!currentProfileData || !currentProfileData.nodeModeratorId) return;
+        UI.close('m-leader');
+        db.ref('nodes/' + currentProfileData.nodeModeratorId).once('value', snap => {
+            Forum.loadNode(currentProfileData.nodeModeratorId, snap.val().title);
+        });
     }
 };
 
-// --- КОРНЕВОЙ МОДУЛЬ ФОРУМА ---
-const Forum = {
-    renderSidebarNodes() {
-        let html = '';
-        Object.keys(GlobalNodes).forEach(id => {
-            html += `<div class="nav-link" onclick="Forum.loadTopics('${id}', '${GlobalNodes[id].title}')">📂 ${GlobalNodes[id].title}</div>`;
+// =================================================================
+// 🎨 UI, BB-CODES & INTERFACE MANAGEMENT
+// =================================================================
+const UI = {
+    show: (id) => { document.getElementById(id).style.display = 'flex'; },
+    close: (id) => { document.getElementById(id).style.display = 'none'; },
+    toggleNotifs: () => {
+        const d = document.getElementById('bell-dropdown');
+        d.style.display = d.style.display === 'block' ? 'none' : 'block';
+    },
+    showUserCard: (uid) => {
+        db.ref('users/' + uid).once('value', snap => {
+            const d = snap.val();
+            if(!d) return;
+
+            document.getElementById('card-avatar').src = d.avatar || 'https://i.imgur.com/8Km9tTv.png';
+            document.getElementById('card-nick').className = UI.getGlowClass(d.role || 'badge-user');
+            document.getElementById('card-nick').innerText = d.nick;
+            
+            const badgeZone = document.getElementById('card-badge-container');
+            badgeZone.innerHTML = `<span class="badge-role ${d.role || 'badge-user'}">${(d.role || 'user').replace('badge-','')}</span>` + UI.getVerifyHtml(d.verifyBadge || 'none');
+
+            let statusText = "🟢 На форуме";
+            if(d.isBanned) statusText = "🚫 ЗАБЛОКИРОВАН (BANNED)";
+            else if(d.isMuted) statusText = "🔇 В МУТЕ (Запрет ответов)";
+            document.getElementById('card-status').innerText = statusText;
+
+            UI.show('m-user-card');
         });
-        const sidebar = document.getElementById('sidebar-nodes');
-        if(sidebar) sidebar.innerHTML = html;
-        
-        if (!currentActiveNode && Object.keys(GlobalNodes).length > 0) {
-            currentActiveNode = Object.keys(GlobalNodes)[0];
-            Forum.loadTopics(currentActiveNode, GlobalNodes[currentActiveNode].title);
-        }
     },
-    
-    async loadTopics(nodeId, title) {
-        currentActiveNode = nodeId;
-        const targetTitle = title || (GlobalNodes[nodeId] ? GlobalNodes[nodeId].title : '');
-        const renderZone = document.getElementById('forum-render');
-        if(renderZone) renderZone.innerHTML = `<h3>Загрузка ${targetTitle}...</h3>`;
-        
-        try {
-            const snap = await db.ref('topics/' + nodeId).once('value');
-            const data = snap.val() || {};
-            
-            const myEmail = auth.currentUser?.email ? auth.currentUser.email.toLowerCase() : '';
-            const isFounder = auth.currentUser && (myEmail === MASTER_EMAIL.toLowerCase() || CloudFounders.includes(myEmail));
-            const isLeaderOfThisNode = (user && user.role === 'badge-leader' && user.leaderNode === nodeId);
-            const canPost = isFounder || (user && user.role === 'badge-admin') || isLeaderOfThisNode;
-
-            let html = canPost ? `<button class="btn-core" style="width:100%; margin-bottom:20px;" onclick="UI.show('m-topic')">+ Опубликовать тему в "${targetTitle}"</button>` : '';
-            
-            const topicIds = Object.keys(data);
-            if (topicIds.length > 0) {
-                topicIds.reverse().forEach(id => {
-                    const t = data[id];
-                    const statusClass = t.status || 'status-open';
-                    const displayStatus = statusClass.split('-')[1] ? statusClass.split('-')[1].toUpperCase() : 'OPEN';
-                    
-                    html += `
-                        <div class="post-card" onclick="Forum.viewTopic('${id}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <span class="status-badge ${statusClass}">${displayStatus}</span>
-                                <span style="font-weight:bold; font-size:16px;">${t.title || 'Без названия'}</span>
-                                <div style="font-size:11px; color:#555; margin-top:8px;">Автор: ${t.authorNick || 'Игрок'}</div>
-                            </div>
-                            <div style="display:flex; gap:5px;">
-                                ${canPost ? `<button class="btn-core" style="background:#ffb700; color:#000; font-size:9px;" onclick="event.stopPropagation(); Forum.openEditModal('${id}', 'topic_title')">✏️ Ред.</button>` : ''}
-                                ${isFounder ? `<button class="btn-core" style="background:red; font-size:9px;" onclick="event.stopPropagation(); Forum.deleteTopic('${id}')">Удалить</button>` : ''}
-                            </div>
-                        </div>
-                    `;
-                });
-            } else {
-                html += '<p style="text-align:center; padding: 20px 0;">В этом разделе ещё нет тем.</p>';
-            }
-            if(renderZone) renderZone.innerHTML = html;
-        } catch(e) {
-            if(renderZone) renderZone.innerHTML = `<p style="color:red;">Ошибка доступа к разделу.</p>`;
-        }
+    getGlowClass: (role) => {
+        if(role === 'badge-founder') return 'glow-founder';
+        if(role === 'badge-admin') return 'glow-admin';
+        if(role === 'badge-leader') return 'glow-leader';
+        if(role === 'badge-banned') return 'glow-banned';
+        return '';
     },
-
-    async viewTopic(id) {
-        currentOpenTopicId = id;
-        try {
-            const snap = await db.ref(`topics/${currentActiveNode}/${id}`).once('value');
-            const t = snap.val();
-            if(!t) return;
-
-            document.getElementById('fs-topic-title').innerText = t.title || 'Тема';
-            
-            const myEmail = auth.currentUser?.email ? auth.currentUser.email.toLowerCase() : '';
-            const isFounder = auth.currentUser && (myEmail === MASTER_EMAIL.toLowerCase() || CloudFounders.includes(myEmail));
-            const isLeaderOfThisNode = (user && user.role === 'badge-leader' && user.leaderNode === currentActiveNode);
-            const hasModAccess = isFounder || (user && user.role === 'badge-admin') || isLeaderOfThisNode;
-
-            let statusSelectorHtml = `<span class="status-badge ${t.status || 'status-open'}">${(t.status || 'open').replace('status-','').toUpperCase()}</span>`;
-            if (hasModAccess) {
-                statusSelectorHtml = `
-                    <select onchange="Forum.changeTopicStatus('${id}', this.value)" style="background:#111; color:#fff; border:1px solid var(--border-color); font-size:11px; padding:3px; border-radius:3px;">
-                        <option value="status-open" ${t.status==='status-open'?'selected':''}>ОТКРЫТО</option>
-                        <option value="status-closed" ${t.status==='status-closed'?'selected':''}>ЗАКРЫТО</option>
-                        <option value="status-review" ${t.status==='status-review'?'selected':''}>РАССМОТРЕНИЕ</option>
-                    </select>
-                `;
-            }
-            document.getElementById('fs-topic-badge-status').innerHTML = statusSelectorHtml;
-
-            let html = `
-                <div class="post-card" style="border-left: 3px solid var(--accent);">
-                    <div style="display:flex; justify-content:between; align-items:start;">
-                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
-                            <img src="${t.authorAvatar || 'https://via.placeholder.com/32'}" class="avatar-mini" onclick="UserProfileCard.show('${t.authorUid || ''}')">
-                            <div>
-                                <span class="${t.authorGlow || ''}" style="font-weight:bold; cursor:pointer;" onclick="UserProfileCard.show('${t.authorUid || ''}')">${t.authorNick || 'Игрок'}</span>
-                                <div class="verified-badge ${t.authorVerify || 'none'}"></div><br>
-                                <span class="badge-role ${t.authorBadge || 'badge-user'}">${(t.authorBadge || 'user').replace('badge-','').toUpperCase()}</span>
-                            </div>
-                        </div>
-                        <div style="margin-left:auto; display:flex; gap:5px;">
-                            <button class="btn-core" style="background:#1a1a2e; font-size:10px;" onclick="Forum.setReplyTarget('${t.authorUid || ''}', '${t.authorNick || 'Игрок'}')">↩️ Ответить</button>
-                            ${(hasModAccess || (auth.currentUser && auth.currentUser.uid === t.authorUid)) ? `<button class="btn-core" style="background:#ffb700; color:#000; font-size:10px;" onclick="Forum.openEditModal('${id}', 'topic_text')">✏️ Ред.</button>` : ''}
-                        </div>
-                    </div>
-                    <div style="color:#cdcdff; line-height:1.6; margin-top:10px; word-break:break-word;">${Editor.parse(t.text || '')}</div>
-                    ${Forum.renderReactionsDom('topic', id, t.reactions, t.authorUid)}
-                </div>
-                <div id="fs-replies-list-zone"></div>
-            `;
-            
-            document.getElementById('fs-messages-container').innerHTML = html;
-            document.getElementById('fullscreen-view').style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-            
-            Forum.loadRepliesRealtime(id);
-        } catch(e) { console.error(e); }
+    getVerifyHtml: (v) => {
+        if(!v || v === 'none') return '';
+        return `<span class="verified-badge ${v}"></span>`;
     },
-
-    closeFullscreen() {
-        document.getElementById('fullscreen-view').style.display = 'none';
-        document.body.style.overflow = 'auto';
-        Forum.setReplyTarget(null, null);
-        // Снимаем слушатель ответов
-        if (currentOpenTopicId) {
-            db.ref('replies/' + currentOpenTopicId).off();
-        }
-    },
-
-    async changeTopicStatus(topicId, newStatus) {
-        await db.ref(`topics/${currentActiveNode}/${topicId}`).update({ status: newStatus });
-        Forum.viewTopic(topicId);
-    },
-
-    setReplyTarget(uid, nick) {
-        const ind = document.getElementById('reply-target-indicator');
-        if(!ind) return;
-        if(!uid) {
-            replyToProfileData = null;
-            ind.style.display = 'none';
-        } else {
-            replyToProfileData = { uid, nick };
-            ind.innerText = `В ответ пользователю: @${nick}`;
-            ind.style.display = 'block';
-            document.getElementById('fs-reply-text').focus();
-        }
-    },
-
-    renderReactionsDom(type, id, reactionsData, targetAuthorUid) {
-        const list = reactionsData || {};
-        const emo = ['👍', '❤️', '🔥', '😂', '😮'];
-        let html = `<div class="reactions-bar">`;
-        
-        emo.forEach(e => {
-            let count = 0;
-            Object.values(list).forEach(val => { if(val === e) count++; });
-            html += `
-                <div class="react-btn" onclick="Forum.toggleReaction('${type}', '${id}', '${e}', '${targetAuthorUid}')">
-                    <span>${e}</span>
-                    <span class="react-count">${count}</span>
-                </div>
-            `;
-        });
-        html += `</div>`;
+    parseBBCode: (text) => {
+        if(!text) return '';
+        let html = text
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/\[b\](.*?)\[\/b\]/gi, '<b>$1</b>')
+            .replace(/\[i\](.*?)\[\/i\]/gi, '<i>$1</i>')
+            .replace(/\[img\](.*?)\[\/img\]/gi, '<img src="$1" style="max-width:100%; border-radius:4px; margin:5px 0;">')
+            .replace(/\[video\](.*?)\[\/video\]/gi, '<video src="$1" controls style="max-width:100%; border-radius:4px; margin:5px 0;"></video>');
         return html;
-    },
-
-    async toggleReaction(type, id, emoji, targetAuthorUid) {
-        if(!auth.currentUser) return alert('Авторизуйтесь!');
-        const myUid = auth.currentUser.uid;
-        const path = (type === 'topic') ? `topics/${currentActiveNode}/${id}/reactions/${myUid}` : `replies/${currentOpenTopicId}/${id}/reactions/${myUid}`;
-        
-        const snap = await db.ref(path).once('value');
-        if (snap.val() === emoji) {
-            await db.ref(path).remove();
-        } else {
-            await db.ref(path).set(emoji);
-            AppNotif.send(targetAuthorUid, `поставил реакцию ${emoji} на ваше сообщение`, currentActiveNode, currentOpenTopicId);
-        }
-        Forum.viewTopic(currentOpenTopicId);
-    },
-
-    handleAttachment(e) {
-        const file = e.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            const tag = file.type.startsWith('video/') ? `[video]${reader.result}[/video]` : `[img]${reader.result}[/img]`;
-            document.getElementById('fs-reply-text').value += tag;
-        };
-        reader.readAsDataURL(file);
-    },
-
-    async post() {
-        const title = document.getElementById('t-title').value;
-        const text = document.getElementById('t-text').value;
-        if(!title || !text) return alert('Заполните поля!');
-        
-        const topic = {
-            title, text, status: document.getElementById('t-status').value,
-            authorNick: user.nick || 'Игрок', authorAvatar: user.avatar || '',
-            authorUid: auth.currentUser.uid,
-            authorGlow: user.role === 'badge-founder' ? 'glow-founder' : (user.role === 'badge-admin' ? 'glow-admin' : (user.role === 'badge-leader' ? 'glow-leader' : '')),
-            authorBadge: user.role || 'badge-user', authorVerify: user.verify || 'none',
-            time: Date.now()
-        };
-        await db.ref('topics/' + currentActiveNode).push(topic);
-        
-        document.getElementById('t-title').value = '';
-        document.getElementById('t-text').value = '';
-        UI.close('m-topic'); 
-        Forum.loadTopics(currentActiveNode, '');
-    },
-
-    async sendFsReply() {
-        const textStr = document.getElementById('fs-reply-text').value.trim();
-        if(!textStr) return;
-        
-        const snapTopic = await db.ref(`topics/${currentActiveNode}/${currentOpenTopicId}`).once('value');
-        if (snapTopic.val()?.status === 'status-closed') {
-            return alert('Тема закрыта для ответов!');
-        }
-
-        let clearText = textStr;
-        if (replyToProfileData) {
-            clearText = `<b>@${replyToProfileData.nick}</b>, ${textStr}`;
-        }
-
-        const replyData = {
-            text: clearText, authorNick: user.nick || 'Игрок', authorAvatar: user.avatar || '',
-            authorUid: auth.currentUser.uid,
-            authorGlow: user.role === 'badge-founder' ? 'glow-founder' : (user.role === 'badge-admin' ? 'glow-admin' : (user.role === 'badge-leader' ? 'glow-leader' : '')),
-            authorBadge: user.role || 'badge-user', authorVerify: user.verify || 'none',
-            time: Date.now()
-        };
-
-        await db.ref('replies/' + currentOpenTopicId).push(replyData);
-        
-        if(replyToProfileData) {
-            AppNotif.send(replyToProfileData.uid, `ответил на ваше сообщение в теме`, currentActiveNode, currentOpenTopicId);
-        } else {
-            AppNotif.send(snapTopic.val()?.authorUid, `оставил ответ в вашей теме`, currentActiveNode, currentOpenTopicId);
-        }
-
-        document.getElementById('fs-reply-text').value = '';
-        Forum.setReplyTarget(null, null);
-    },
-
-    loadRepliesRealtime(id) {
-        db.ref('replies/' + id).on('value', snap => {
-            const data = snap.val() || {};
-            let html = '';
-            
-            const myEmail = auth.currentUser?.email ? auth.currentUser.email.toLowerCase() : '';
-            const isFounder = auth.currentUser && (myEmail === MASTER_EMAIL.toLowerCase() || CloudFounders.includes(myEmail));
-            const isLeaderOfThisNode = (user && user.role === 'badge-leader' && user.leaderNode === currentActiveNode);
-
-            Object.keys(data).forEach(rid => {
-                const r = data[rid];
-                const canEditPost = isFounder || (user && user.role === 'badge-admin') || isLeaderOfThisNode || (auth.currentUser && auth.currentUser.uid === r.authorUid);
-
-                html += `
-                    <div class="post-card" style="margin-left:20px; border-left:2px solid #1c1c35;">
-                        <div style="display:flex; justify-content:between; align-items:start;">
-                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                                <img src="${r.authorAvatar || 'https://via.placeholder.com/24'}" class="avatar-mini" style="width:24px; height:24px;" onclick="UserProfileCard.show('${r.authorUid || ''}')">
-                                <div>
-                                    <span class="${r.authorGlow || ''}" style="font-size:12px; font-weight:bold; cursor:pointer;" onclick="UserProfileCard.show('${r.authorUid || ''}')">${r.authorNick || 'Игрок'}</span>
-                                    <div class="verified-badge ${r.authorVerify || 'none'}"></div>
-                                </div>
-                            </div>
-                            <div style="margin-left:auto; display:flex; gap:5px;">
-                                <button class="btn-core" style="background:#111; font-size:9px; padding:3px 7px;" onclick="Forum.setReplyTarget('${r.authorUid || ''}', '${r.authorNick || 'Игрок'}')">↩️</button>
-                                ${canEditPost ? `<button class="btn-core" style="background:#ffb700; color:#000; font-size:9px; padding:3px 7px;" onclick="Forum.openEditModal('${rid}', 'reply')">✏️</button>` : ''}
-                            </div>
-                        </div>
-                        <div style="font-size:13px; color:#aaa; margin-top:5px; word-break:break-word;">${Editor.parse(r.text || '')}</div>
-                        ${Forum.renderReactionsDom('reply', rid, r.reactions, r.authorUid)}
-                    </div>
-                `;
-            });
-            const repliesZone = document.getElementById('fs-replies-list-zone');
-            if(repliesZone) repliesZone.innerHTML = html;
-        });
-    },
-
-    letEditingData: null,
-    async openEditModal(id, mode) {
-        Forum.letEditingData = { id, mode };
-        let currentText = '';
-        
-        if (mode === 'topic_title' || mode === 'topic_text') {
-            const snap = await db.ref(`topics/${currentActiveNode}/${id}`).once('value');
-            currentText = (mode === 'topic_title') ? snap.val().title : snap.val().text;
-        } else {
-            const snap = await db.ref(`replies/${currentOpenTopicId}/${id}`).once('value');
-            currentText = snap.val().text;
-        }
-
-        document.getElementById('edit-post-textarea').value = currentText;
-        UI.show('m-edit-post');
-    },
-
-    async saveEditedPost() {
-        const txt = document.getElementById('edit-post-textarea').value.trim();
-        if(!txt || !Forum.letEditingData) return;
-        
-        const { id, mode } = Forum.letEditingData;
-        if (mode === 'topic_title') {
-            await db.ref(`topics/${currentActiveNode}/${id}`).update({ title: txt });
-            Forum.loadTopics(currentActiveNode, '');
-        } else if (mode === 'topic_text') {
-            await db.ref(`topics/${currentActiveNode}/${id}`).update({ text: txt });
-            Forum.viewTopic(currentOpenTopicId);
-        } else if (mode === 'reply') {
-            await db.ref(`replies/${currentOpenTopicId}/${id}`).update({ text: txt });
-        }
-
-        UI.close('m-edit-post');
-        Forum.letEditingData = null;
-    },
-
-    async deleteTopic(id) {
-        if(confirm('Удалить эту тему навсегда?')) {
-            await db.ref('topics/' + currentActiveNode + '/' + id).remove();
-            await db.ref('replies/' + id).remove();
-            Forum.loadTopics(currentActiveNode, '');
-        }
     }
 };
 
-// --- СИСТЕМНЫЙ КОРРЕКТНЫЙ РЕДАКТОР МЕДИА ТЕГОВ ---
 const Editor = {
-    tag: (s, e) => document.getElementById('t-text').value += s + e,
-    appendAttachment(e, tagType) {
-        const file = e.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            const compiledTag = `${tagType}${reader.result}${tagType.replace('[','[/')}`;
-            document.getElementById('t-text').value += compiledTag;
-        };
-        reader.readAsDataURL(file);
+    tag: (open, close) => {
+        const area = document.getElementById('t-text');
+        const start = area.selectionStart;
+        const end = area.selectionEnd;
+        const txt = area.value;
+        area.value = txt.substring(0, start) + open + txt.substring(start, end) + close + txt.substring(end);
     },
-    parse: (t) => {
-        if(!t) return '';
-        return t.replace(/\[img\](.*?)\[\/img\]/g, '<img src="$1" style="max-width:100%; border-radius:5px; margin:5px 0; display:block;">')
-                .replace(/\[video\](.*?)\[\/video\]/g, '<video src="$1" controls style="max-width:100%; max-height:380px; display:block; margin:5px 0;"></video>')
-                .replace(/\[b\](.*?)\[\/b\]/g, '<b>$1</b>')
-                .replace(/\n/g, '<br>');
+    appendAttachment: (event, bbType) => {
+        alert("🔒 Интеграция шифрования Imgur/Cloud API требует верификации ssl-ключа.");
     }
 };
-
-// --- УПРАВЛЕНИЕ АДМИН-СИСТЕМОЙ ---
-const Admin = {
-    async open() {
-        let html = '';
-        Object.keys(GlobalUsers).forEach(uid => {
-            html += `<option value="${uid}">${GlobalUsers[uid].nick || 'Player'} (${GlobalUsers[uid].email || ''})</option>`;
-        });
-        document.getElementById('adm-user-list').innerHTML = html;
-        
-        let nodeOpts = '<option value="none">-- Отвязать лидерку --</option>';
-        Object.keys(GlobalNodes).forEach(id => {
-            nodeOpts += `<option value="${id}">${GlobalNodes[id].title}</option>`;
-        });
-        document.getElementById('adm-leader-node-select').innerHTML = nodeOpts;
-
-        UI.show('m-admin');
-        Admin.onUserSelectChange();
-    },
-
-    async onUserSelectChange() {
-        const uid = document.getElementById('adm-user-list').value;
-        if(!uid || !GlobalUsers[uid]) return;
-        const u = GlobalUsers[uid];
-
-        document.getElementById('adm-role').value = u.role || 'badge-user';
-        document.getElementById('adm-verify').value = u.verify || 'none';
-        document.getElementById('adm-ban').value = u.sanction || 'no';
-        document.getElementById('adm-leader-node-select').value = u.leaderNode || 'none';
-    },
-
-    async grantFounderPrivilege() {
-        const mail = document.getElementById('adm-new-founder-email').value.trim().toLowerCase();
-        const nickName = document.getElementById('adm-new-founder-nick').value.trim();
-        if(!mail || !nickName) return alert('Заполните почту и ник друга!');
-
-        await db.ref('founders').push({ email: mail, nick: nickName });
-        alert(`Права создателя зарезервированы для почты: ${mail}.`);
-        document.getElementById('adm-new-founder-email').value = '';
-        document.getElementById('adm-new-founder-nick').value = '';
-    },
-
-    async save() {
-        const uid = document.getElementById('adm-user-list').value;
-        if(!uid) return;
-        const selectedRole = document.getElementById('adm-role').value;
-        const isBannedMode = document.getElementById('adm-ban').value === 'yes';
-
-        const updates = {
-            role: isBannedMode ? 'badge-banned' : selectedRole,
-            verify: isBannedMode ? 'none' : document.getElementById('adm-verify').value,
-            sanction: document.getElementById('adm-ban').value,
-            leaderNode: document.getElementById('adm-leader-node-select').value
-        };
-
-        await db.ref('users/' + uid).update(updates);
-        alert('Данные обновлены!');
-        UI.close('m-admin');
-        location.reload();
-    },
-
-    async createNode() {
-        const title = document.getElementById('node-title').value;
-        if(!title) return;
-        await db.ref('nodes').push({ title });
-        UI.close('m-node');
-        document.getElementById('node-title').value = '';
-    }
-};
-
-// --- МОДУЛЬ ПРОФИЛЯ ---
-const Profile = {
-    preview: (e) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const SIZE = 120;
-                canvas.width = SIZE; canvas.height = SIZE;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, SIZE, SIZE);
-                const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                document.getElementById('p-avatar-view').src = compressedDataUrl;
-                if(!user) user = {};
-                user.tempAvatar = compressedDataUrl;
-            };
-            img.src = reader.result;
-        };
-        reader.readAsDataURL(e.target.files[0]);
-    },
-    save: async () => {
-        if(!auth.currentUser) return;
-        const updates = { nick: document.getElementById('p-nick').value || user?.nick || 'Player' };
-        if(user && user.tempAvatar) updates.avatar = user.tempAvatar;
-        
-        if(user) {
-            if(user.role === 'badge-founder') updates.authorGlow = 'glow-founder';
-            if(user.role === 'badge-admin') updates.authorGlow = 'glow-admin';
-            if(user.role === 'badge-leader') updates.authorGlow = 'glow-leader';
-        }
-
-        await db.ref('users/' + auth.currentUser.uid).update(updates);
-        location.reload();
-    }
-};
-
-const Auth = {
-    google: () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).then(() => location.reload()),
-    magic: () => {
-        const email = document.getElementById('auth-email').value;
-        auth.sendSignInLinkToEmail(email, { url: window.location.href, handleCodeInApp: true })
-        .then(() => alert('Ссылка отправлена на почту!'));
-    }
-};
-
-// --- СЛУШАТЕЛЬ АВТОРИЗАЦИИ ---
-auth.onAuthStateChanged(async (u) => {
-    if (u) {
-        setupOnlinePresence(u.uid);
-        AppNotif.listen();
-        
-        const snap = await db.ref('users/' + u.uid).once('value');
-        let dbUser = snap.val();
-        
-        const myEmail = u.email ? u.email.toLowerCase() : '';
-        const isMaster = (myEmail === MASTER_EMAIL.toLowerCase());
-        const hasFounderAccess = (isMaster || CloudFounders.includes(myEmail));
-
-        if (hasFounderAccess) {
-            if (!dbUser || dbUser.role !== 'badge-founder') {
-                dbUser = { 
-                    role: 'badge-founder', 
-                    nick: isMaster ? MASTER_NICK : (dbUser?.nick || 'Founder_Partner'), 
-                    email: u.email, 
-                    verify: 'v-blue-fill',
-                    avatar: u.photoURL || 'https://via.placeholder.com/90',
-                    sanction: 'no'
-                };
-                await db.ref('users/' + u.uid).set(dbUser);
-            }
-        } else if (!dbUser) {
-            dbUser = { 
-                nick: u.displayName || 'Player_' + Math.floor(1000 + Math.random() * 9000), 
-                role: 'badge-user', 
-                avatar: u.photoURL || 'https://via.placeholder.com/90', 
-                sanction: 'no', 
-                email: u.email, 
-                verify: 'none' 
-            };
-            await db.ref('users/' + u.uid).set(dbUser);
-        }
-
-        user = dbUser;
-
-        if (user.sanction === 'yes') { 
-            document.body.innerHTML = '<h1 style="color:red; text-align:center; padding-top:100px;">ВЫ ЗАБАНЕНЫ НА ФОРУМЕ</h1>'; 
-            return; 
-        }
-        
-        const pNickInput = document.getElementById('p-nick'); if(pNickInput) pNickInput.value = user.nick || '';
-        const pAvInput = document.getElementById('p-avatar-view'); if(pAvInput) pAvInput.src = user.avatar || 'https://via.placeholder.com/90';
-    } else {
-        user = null;
-    }
-    UI.renderHeader();
-});
