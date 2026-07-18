@@ -1,4 +1,3 @@
-// ==========================================================================
 // ARIES ROLE PLAY - CLOUD REALTIME ENGINE v21.0 (ARMORED ULTRA FULL PRO)
 // DEVELOPED WITH ADVANCED LEADERSHIP & FULLSCREEN TELEGRAM-STYLE SYSTEM
 // ==========================================================================
@@ -40,40 +39,57 @@ function setupOnlinePresence(uid) {
         if (snapshot.val() == false) return;
         userStatusRef.onDisconnect().set(isOffline).then(() => {
             userStatusRef.set(isOnline);
-        });
+        }).catch(e => console.log("Превышены права присутствия:", e.message));
     });
 }
 
-// --- СИНХРОНИЗАЦИЯ БАЗЫ ---
-db.ref().on('value', snap => {
-    const data = snap.val() || {};
-    GlobalUsers = data.users || {};
-    GlobalNodes = data.nodes || {};
-    GlobalStatuses = data.status || {};
-    
-    // Синхронизация массива основателей проекта (Пункт 2)
-    CloudFounders = [];
-    if (data.founders) {
-        Object.keys(data.founders).forEach(k => {
-            CloudFounders.push(data.founders[k].email.toLowerCase());
-        });
-    }
-    
-    // Автоматическая подгрузка структуры UI при изменениях в БД
-    if (user) {
-        // Защита от динамического бана во время сессии (Пункт 5)
-        if (GlobalUsers[auth.currentUser.uid]?.sanction === 'yes') {
-            document.body.innerHTML = '<h1 style="color:red; text-align:center; padding-top:100px;">ВЫ ЗАБАНЕНЫ НА ФОРУМЕ</h1>';
-            return;
-        }
-        user = GlobalUsers[auth.currentUser.uid] || user;
-    }
-    
-    UI.renderHeader();
-    AppNotif.listen();
-});
+// --- БЕЗОПАСНАЯ СИНХРОНИЗАЦИЯ БАЗЫ ПО ВЕТКАМ ---
+function initDataSynchronization() {
+    // 1. Слушаем разделы форума (Доступно всем)
+    db.ref('nodes').on('value', snap => {
+        GlobalNodes = snap.val() || {};
+        Forum.renderSidebarNodes();
+    }, err => console.error("Ошибка загрузки разделов:", err.message));
 
-// --- МОДУЛЬ УВЕДОМЛЕНИЙ (ПУНКТ 3) ---
+    // 2. Слушаем основателей (Доступно всем)
+    db.ref('founders').on('value', snap => {
+        const data = snap.val() || {};
+        CloudFounders = [];
+        Object.keys(data).forEach(k => {
+            if (data[k]?.email) CloudFounders.push(data[k].email.toLowerCase());
+        });
+        UI.renderHeader();
+    }, err => console.error("Ошибка загрузки основателей:", err.message));
+
+    // 3. Слушаем статусы онлайна (Доступно всем)
+    db.ref('status').on('value', snap => {
+        GlobalStatuses = snap.val() || {};
+    }, err => console.error("Ошибка загрузки статусов:", err.message));
+
+    // 4. Слушаем всех юзеров (Доступно всем для чтения ников/аватарок)
+    db.ref('users').on('value', snap => {
+        GlobalUsers = snap.val() || {};
+        
+        if (auth.currentUser) {
+            const myUid = auth.currentUser.uid;
+            // Защита от динамического бана во время сессии
+            if (GlobalUsers[myUid]?.sanction === 'yes') {
+                document.body.innerHTML = '<h1 style="color:red; text-align:center; padding-top:100px;">ВЫ ЗАБАНЕНЫ НА ФОРУМЕ</h1>';
+                return;
+            }
+            if (GlobalUsers[myUid]) {
+                user = GlobalUsers[myUid];
+            }
+        }
+        UI.renderHeader();
+    }, err => console.error("Ошибка загрузки пользователей:", err.message));
+}
+
+// Запуск синхронизации сразу при загрузке скрипта
+initDataSynchronization();
+
+
+// --- МОДУЛЬ УВЕДОМЛЕНИЙ ---
 const AppNotif = {
     listen() {
         if (!auth.currentUser) return;
@@ -82,7 +98,7 @@ const AppNotif = {
             const keys = Object.keys(list);
             const badge = document.getElementById('bell-badge');
             
-            if (keys.length > 0) {
+            if (badge && keys.length > 0) {
                 badge.innerText = keys.length;
                 badge.style.display = 'block';
                 
@@ -90,25 +106,27 @@ const AppNotif = {
                 keys.reverse().forEach(id => {
                     const item = list[id];
                     html += `<div class="notif-item" onclick="AppNotif.click('${item.nodeId}', '${item.topicId}', '${id}')">
-                        <b>${item.author}</b> ${item.text}
+                        <b>${item.author || 'Система'}</b> ${item.text || ''}
                     </div>`;
                 });
-                document.getElementById('notif-render-zone').innerHTML = html;
-            } else {
+                const zone = document.getElementById('notif-render-zone');
+                if (zone) zone.innerHTML = html;
+            } else if (badge) {
                 badge.style.display = 'none';
-                document.getElementById('notif-render-zone').innerHTML = `<p style="text-align:center; color:#555; font-size:12px; padding:20px;">Уведомлений нет</p>`;
+                const zone = document.getElementById('notif-render-zone');
+                if (zone) zone.innerHTML = `<p style="text-align:center; color:#555; font-size:12px; padding:20px;">Уведомлений нет</p>`;
             }
-        });
+        }, err => console.log("Оповещения пока не доступны или пусты"));
     },
     send(targetUid, text, nodeId, topicId) {
-        if (!targetUid || targetUid === auth.currentUser.uid) return;
+        if (!targetUid || !user || targetUid === auth.currentUser?.uid) return;
         db.ref('notifications/' + targetUid).push({
-            author: user.nick,
+            author: user.nick || 'Игрок',
             text: text,
             nodeId: nodeId,
             topicId: topicId,
             time: Date.now()
-        });
+        }).catch(e => console.log("Ошибка отправки уведомления:", e.message));
     },
     clearAll() {
         if (!auth.currentUser) return;
@@ -124,20 +142,19 @@ const AppNotif = {
 
 // --- МЕНЕДЖЕР ИНТЕРФЕЙСА ---
 const UI = {
-    show: (id) => document.getElementById(id).style.display='flex',
-    close: (id) => document.getElementById(id).style.display='none',
+    show: (id) => { const el = document.getElementById(id); if(el) el.style.display='flex'; },
+    close: (id) => { const el = document.getElementById(id); if(el) el.style.display='none'; },
     toggleNotifs() {
         const d = document.getElementById('bell-dropdown');
-        d.style.display = (d.style.display === 'block') ? 'none' : 'block';
+        if(d) d.style.display = (d.style.display === 'block') ? 'none' : 'block';
     },
-    closeNotifs() { document.getElementById('bell-dropdown').style.display = 'none'; },
+    closeNotifs() { const d = document.getElementById('bell-dropdown'); if(d) d.style.display = 'none'; },
     
     renderHeader: () => {
         const zone = document.getElementById('header-auth');
         if (!zone) return;
         
         if (auth.currentUser && user) {
-            // Проверка роли для красивой подсветки ника
             let glow = '';
             if (user.role === 'badge-founder') glow = 'glow-founder';
             else if (user.role === 'badge-admin') glow = 'glow-admin';
@@ -153,52 +170,50 @@ const UI = {
                 </div>
             `;
             
-            // Видимость панели админа/основателя (Пункт 2 - проверка по email в CloudFounders)
-            const hasFounderAccess = (auth.currentUser.email.toLowerCase() === MASTER_EMAIL.toLowerCase() || CloudFounders.includes(auth.currentUser.email.toLowerCase()));
-            if (hasFounderAccess || user.role === 'badge-admin') {
-                document.getElementById('admin-panel-btn').style.display = 'block';
-            } else {
-                document.getElementById('admin-panel-btn').style.display = 'none';
+            const myEmail = auth.currentUser.email ? auth.currentUser.email.toLowerCase() : '';
+            const hasFounderAccess = (myEmail === MASTER_EMAIL.toLowerCase() || CloudFounders.includes(myEmail));
+            
+            const admBtn = document.getElementById('admin-panel-btn');
+            if (admBtn) {
+                admBtn.style.display = (hasFounderAccess || user.role === 'badge-admin') ? 'block' : 'none';
             }
 
-            // Видимость лидерской панели (Пункт 1)
-            if (user.role === 'badge-leader' && user.leaderNode) {
-                document.getElementById('leader-panel-btn').style.display = 'block';
-            } else {
-                document.getElementById('leader-panel-btn').style.display = 'none';
+            const leadBtn = document.getElementById('leader-panel-btn');
+            if (leadBtn) {
+                leadBtn.style.display = (user.role === 'badge-leader' && user.leaderNode) ? 'block' : 'none';
             }
         } else {
             zone.innerHTML = `<button class="btn-core" onclick="UI.show('m-auth')">Войти</button>`;
-            document.getElementById('admin-panel-btn').style.display = 'none';
-            document.getElementById('leader-panel-btn').style.display = 'none';
+            const admBtn = document.getElementById('admin-panel-btn'); if(admBtn) admBtn.style.display = 'none';
+            const leadBtn = document.getElementById('leader-panel-btn'); if(leadBtn) leadBtn.style.display = 'none';
         }
-        Forum.renderSidebarNodes();
     }
 };
 
-// --- СИСТЕМА ЛИДЕРСТВА И КАРТОЧЕК (ПУНКТ 1 И 7) ---
+// --- СИСТЕМА ЛИДЕРСТВА И КАРТОЧЕК ---
 const UserProfileCard = {
     async show(uid) {
-        const snap = await db.ref('users/' + uid).once('value');
-        const uData = snap.val();
-        if (!uData) return;
+        try {
+            const snap = await db.ref('users/' + uid).once('value');
+            const uData = snap.val();
+            if (!uData) return;
 
-        document.getElementById('card-avatar').src = uData.avatar || 'https://via.placeholder.com/90';
-        document.getElementById('card-nick').innerText = uData.nick || 'Неизвестно';
-        
-        // Рендер тега роли
-        let roleName = 'USER';
-        if(uData.role === 'badge-founder') roleName = 'FOUNDER';
-        if(uData.role === 'badge-admin') roleName = 'ADMIN';
-        if(uData.role === 'badge-leader') roleName = 'LEADER';
-        if(uData.role === 'badge-banned') roleName = 'BANNED';
+            document.getElementById('card-avatar').src = uData.avatar || 'https://via.placeholder.com/90';
+            document.getElementById('card-nick').innerText = uData.nick || 'Неизвестно';
+            
+            let roleName = 'USER';
+            if(uData.role === 'badge-founder') roleName = 'FOUNDER';
+            if(uData.role === 'badge-admin') roleName = 'ADMIN';
+            if(uData.role === 'badge-leader') roleName = 'LEADER';
+            if(uData.role === 'badge-banned') roleName = 'BANNED';
 
-        document.getElementById('card-badge-container').innerHTML = `<span class="badge-role ${uData.role || 'badge-user'}">${roleName}</span>`;
-        
-        const isOnline = GlobalStatuses[uid]?.state === 'online';
-        document.getElementById('card-status').innerHTML = `Статус: ${isOnline ? '<span style="color:#00ffaa; font-weight:bold;">В СЕТИ</span>' : '<span style="color:#666;">ОФЛАЙН</span>'}`;
-        
-        UI.show('m-user-card');
+            document.getElementById('card-badge-container').innerHTML = `<span class="badge-role ${uData.role || 'badge-user'}">${roleName}</span>`;
+            
+            const isOnline = GlobalStatuses[uid]?.state === 'online';
+            document.getElementById('card-status').innerHTML = `Статус: ${isOnline ? '<span style="color:#00ffaa; font-weight:bold;">В СЕТИ</span>' : '<span style="color:#666;">ОФЛАЙН</span>'}`;
+            
+            UI.show('m-user-card');
+        } catch(e) { console.error(e); }
     }
 };
 
@@ -225,7 +240,9 @@ const Forum = {
         Object.keys(GlobalNodes).forEach(id => {
             html += `<div class="nav-link" onclick="Forum.loadTopics('${id}', '${GlobalNodes[id].title}')">📂 ${GlobalNodes[id].title}</div>`;
         });
-        document.getElementById('sidebar-nodes').innerHTML = html;
+        const sidebar = document.getElementById('sidebar-nodes');
+        if(sidebar) sidebar.innerHTML = html;
+        
         if (!currentActiveNode && Object.keys(GlobalNodes).length > 0) {
             currentActiveNode = Object.keys(GlobalNodes)[0];
             Forum.loadTopics(currentActiveNode, GlobalNodes[currentActiveNode].title);
@@ -235,105 +252,114 @@ const Forum = {
     async loadTopics(nodeId, title) {
         currentActiveNode = nodeId;
         const targetTitle = title || (GlobalNodes[nodeId] ? GlobalNodes[nodeId].title : '');
-        document.getElementById('forum-render').innerHTML = `<h3>Загрузка ${targetTitle}...</h3>`;
+        const renderZone = document.getElementById('forum-render');
+        if(renderZone) renderZone.innerHTML = `<h3>Загрузка ${targetTitle}...</h3>`;
         
-        const snap = await db.ref('topics/' + nodeId).once('value');
-        const data = snap.val() || {};
-        
-        // Разрешение на создание тем: Админ, Основатель или Лидер этого раздела (Пункт 1)
-        const isFounder = auth.currentUser && (auth.currentUser.email.toLowerCase() === MASTER_EMAIL.toLowerCase() || CloudFounders.includes(auth.currentUser.email.toLowerCase()));
-        const isLeaderOfThisNode = (user && user.role === 'badge-leader' && user.leaderNode === nodeId);
-        const canPost = isFounder || (user && user.role === 'badge-admin') || isLeaderOfThisNode;
+        try {
+            const snap = await db.ref('topics/' + nodeId).once('value');
+            const data = snap.val() || {};
+            
+            const myEmail = auth.currentUser?.email ? auth.currentUser.email.toLowerCase() : '';
+            const isFounder = auth.currentUser && (myEmail === MASTER_EMAIL.toLowerCase() || CloudFounders.includes(myEmail));
+            const isLeaderOfThisNode = (user && user.role === 'badge-leader' && user.leaderNode === nodeId);
+            const canPost = isFounder || (user && user.role === 'badge-admin') || isLeaderOfThisNode;
 
-        let html = canPost ? `<button class="btn-core" style="width:100%; margin-bottom:20px;" onclick="UI.show('m-topic')">+ Опубликовать тему в "${targetTitle}"</button>` : '';
-        
-        const topicIds = Object.keys(data);
-        if (topicIds.length > 0) {
-            topicIds.reverse().forEach(id => {
-                const t = data[id];
-                const statusClass = t.status || 'status-open';
-                const displayStatus = statusClass.split('-')[1] ? statusClass.split('-')[1].toUpperCase() : 'OPEN';
-                
-                html += `
-                    <div class="post-card" onclick="Forum.viewTopic('${id}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <span class="status-badge ${statusClass}">${displayStatus}</span>
-                            <span style="font-weight:bold; font-size:16px;">${t.title || 'Без названия'}</span>
-                            <div style="font-size:11px; color:#555; margin-top:8px;">Автор: ${t.authorNick || 'Игрок'}</div>
+            let html = canPost ? `<button class="btn-core" style="width:100%; margin-bottom:20px;" onclick="UI.show('m-topic')">+ Опубликовать тему в "${targetTitle}"</button>` : '';
+            
+            const topicIds = Object.keys(data);
+            if (topicIds.length > 0) {
+                topicIds.reverse().forEach(id => {
+                    const t = data[id];
+                    const statusClass = t.status || 'status-open';
+                    const displayStatus = statusClass.split('-')[1] ? statusClass.split('-')[1].toUpperCase() : 'OPEN';
+                    
+                    html += `
+                        <div class="post-card" onclick="Forum.viewTopic('${id}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <span class="status-badge ${statusClass}">${displayStatus}</span>
+                                <span style="font-weight:bold; font-size:16px;">${t.title || 'Без названия'}</span>
+                                <div style="font-size:11px; color:#555; margin-top:8px;">Автор: ${t.authorNick || 'Игрок'}</div>
+                            </div>
+                            <div style="display:flex; gap:5px;">
+                                ${canPost ? `<button class="btn-core" style="background:#ffb700; color:#000; font-size:9px;" onclick="event.stopPropagation(); Forum.openEditModal('${id}', 'topic_title')">✏️ Ред.</button>` : ''}
+                                ${isFounder ? `<button class="btn-core" style="background:red; font-size:9px;" onclick="event.stopPropagation(); Forum.deleteTopic('${id}')">Удалить</button>` : ''}
+                            </div>
                         </div>
-                        <div style="display:flex; gap:5px;">
-                            ${canPost ? `<button class="btn-core" style="background:#ffb700; color:#000; font-size:9px;" onclick="event.stopPropagation(); Forum.openEditModal('${id}', 'topic_title')">✏️ Ред.</button>` : ''}
-                            ${isFounder ? `<button class="btn-core" style="background:red; font-size:9px;" onclick="event.stopPropagation(); Forum.deleteTopic('${id}')">Удалить</button>` : ''}
-                        </div>
-                    </div>
-                `;
-            });
-        } else {
-            html += '<p style="text-align:center; padding: 20px 0;">В этом разделе ещё нет тем.</p>';
+                    `;
+                });
+            } else {
+                html += '<p style="text-align:center; padding: 20px 0;">В этом разделе ещё нет тем.</p>';
+            }
+            if(renderZone) renderZone.innerHTML = html;
+        } catch(e) {
+            if(renderZone) renderZone.innerHTML = `<p style="color:red;">Ошибка доступа к разделу.</p>`;
         }
-        document.getElementById('forum-render').innerHTML = html;
     },
 
-    // ПРОСМОТР ТЕМЫ ВО ВЕСЬ ЭКРАН (ПУНКТ 8)
     async viewTopic(id) {
         currentOpenTopicId = id;
-        const snap = await db.ref(`topics/${currentActiveNode}/${id}`).once('value');
-        const t = snap.val();
-        if(!t) return;
+        try {
+            const snap = await db.ref(`topics/${currentActiveNode}/${id}`).once('value');
+            const t = snap.val();
+            if(!t) return;
 
-        document.getElementById('fs-topic-title').innerText = t.title || 'Тема';
-        
-        // Управление статусом темы для Лидера/Админа/Основателя прямо из Хедера темы (Пункт 1)
-        const isFounder = auth.currentUser && (auth.currentUser.email.toLowerCase() === MASTER_EMAIL.toLowerCase() || CloudFounders.includes(auth.currentUser.email.toLowerCase()));
-        const isLeaderOfThisNode = (user && user.role === 'badge-leader' && user.leaderNode === currentActiveNode);
-        const hasModAccess = isFounder || (user && user.role === 'badge-admin') || isLeaderOfThisNode;
+            document.getElementById('fs-topic-title').innerText = t.title || 'Тема';
+            
+            const myEmail = auth.currentUser?.email ? auth.currentUser.email.toLowerCase() : '';
+            const isFounder = auth.currentUser && (myEmail === MASTER_EMAIL.toLowerCase() || CloudFounders.includes(myEmail));
+            const isLeaderOfThisNode = (user && user.role === 'badge-leader' && user.leaderNode === currentActiveNode);
+            const hasModAccess = isFounder || (user && user.role === 'badge-admin') || isLeaderOfThisNode;
 
-        let statusSelectorHtml = `<span class="status-badge ${t.status || 'status-open'}">${(t.status || 'open').replace('status-','').toUpperCase()}</span>`;
-        if (hasModAccess) {
-            statusSelectorHtml = `
-                <select onchange="Forum.changeTopicStatus('${id}', this.value)" style="background:#111; color:#fff; border:1px solid var(--border-color); font-size:11px; padding:3px; border-radius:3px;">
-                    <option value="status-open" ${t.status==='status-open'?'selected':''}>ОТКРЫТО</option>
-                    <option value="status-closed" ${t.status==='status-closed'?'selected':''}>ЗАКРЫТО</option>
-                    <option value="status-review" ${t.status==='status-review'?'selected':''}>РАССМОТРЕНИЕ</option>
-                </select>
-            `;
-        }
-        document.getElementById('fs-topic-badge-status').innerHTML = statusSelectorHtml;
+            let statusSelectorHtml = `<span class="status-badge ${t.status || 'status-open'}">${(t.status || 'open').replace('status-','').toUpperCase()}</span>`;
+            if (hasModAccess) {
+                statusSelectorHtml = `
+                    <select onchange="Forum.changeTopicStatus('${id}', this.value)" style="background:#111; color:#fff; border:1px solid var(--border-color); font-size:11px; padding:3px; border-radius:3px;">
+                        <option value="status-open" ${t.status==='status-open'?'selected':''}>ОТКРЫТО</option>
+                        <option value="status-closed" ${t.status==='status-closed'?'selected':''}>ЗАКРЫТО</option>
+                        <option value="status-review" ${t.status==='status-review'?'selected':''}>РАССМОТРЕНИЕ</option>
+                    </select>
+                `;
+            }
+            document.getElementById('fs-topic-badge-status').innerHTML = statusSelectorHtml;
 
-        // Отрисовка корневого поста темы
-        let html = `
-            <div class="post-card" style="border-left: 3px solid var(--accent);">
-                <div style="display:flex; justify-content:between; align-items:start;">
-                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
-                        <img src="${t.authorAvatar || 'https://via.placeholder.com/32'}" class="avatar-mini" onclick="UserProfileCard.show('${t.authorUid || ''}')">
-                        <div>
-                            <span class="${t.authorGlow || ''}" style="font-weight:bold; cursor:pointer;" onclick="UserProfileCard.show('${t.authorUid || ''}')">${t.authorNick || 'Игрок'}</span>
-                            <div class="verified-badge ${t.authorVerify || 'none'}"></div><br>
-                            <span class="badge-role ${t.authorBadge || 'badge-user'}">${(t.authorBadge || 'user').replace('badge-','').toUpperCase()}</span>
+            let html = `
+                <div class="post-card" style="border-left: 3px solid var(--accent);">
+                    <div style="display:flex; justify-content:between; align-items:start;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
+                            <img src="${t.authorAvatar || 'https://via.placeholder.com/32'}" class="avatar-mini" onclick="UserProfileCard.show('${t.authorUid || ''}')">
+                            <div>
+                                <span class="${t.authorGlow || ''}" style="font-weight:bold; cursor:pointer;" onclick="UserProfileCard.show('${t.authorUid || ''}')">${t.authorNick || 'Игрок'}</span>
+                                <div class="verified-badge ${t.authorVerify || 'none'}"></div><br>
+                                <span class="badge-role ${t.authorBadge || 'badge-user'}">${(t.authorBadge || 'user').replace('badge-','').toUpperCase()}</span>
+                            </div>
+                        </div>
+                        <div style="margin-left:auto; display:flex; gap:5px;">
+                            <button class="btn-core" style="background:#1a1a2e; font-size:10px;" onclick="Forum.setReplyTarget('${t.authorUid || ''}', '${t.authorNick || 'Игрок'}')">↩️ Ответить</button>
+                            ${(hasModAccess || (auth.currentUser && auth.currentUser.uid === t.authorUid)) ? `<button class="btn-core" style="background:#ffb700; color:#000; font-size:10px;" onclick="Forum.openEditModal('${id}', 'topic_text')">✏️ Ред.</button>` : ''}
                         </div>
                     </div>
-                    <div style="margin-left:auto; display:flex; gap:5px;">
-                        <button class="btn-core" style="background:#1a1a2e; font-size:10px;" onclick="Forum.setReplyTarget('${t.authorUid || ''}', '${t.authorNick || 'Игрок'}')">↩️ Ответить</button>
-                        ${(isFounder || (user && user.role === 'badge-admin') || isLeaderOfThisNode || (auth.currentUser && auth.currentUser.uid === t.authorUid)) ? `<button class="btn-core" style="background:#ffb700; color:#000; font-size:10px;" onclick="Forum.openEditModal('${id}', 'topic_text')">✏️ Ред.</button>` : ''}
-                    </div>
+                    <div style="color:#cdcdff; line-height:1.6; margin-top:10px; word-break:break-word;">${Editor.parse(t.text || '')}</div>
+                    ${Forum.renderReactionsDom('topic', id, t.reactions, t.authorUid)}
                 </div>
-                <div style="color:#cdcdff; line-height:1.6; margin-top:10px; word-break:break-word;">${Editor.parse(t.text || '')}</div>
-                ${Forum.renderReactionsDom('topic', id, t.reactions, t.authorUid)}
-            </div>
-            <div id="fs-replies-list-zone"></div>
-        `;
-        
-        document.getElementById('fs-messages-container').innerHTML = html;
-        document.getElementById('fullscreen-view').style.display = 'flex';
-        document.body.style.overflow = 'hidden'; // Лочим скролл основного экрана
-        
-        Forum.loadRepliesRealtime(id);
+                <div id="fs-replies-list-zone"></div>
+            `;
+            
+            document.getElementById('fs-messages-container').innerHTML = html;
+            document.getElementById('fullscreen-view').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            Forum.loadRepliesRealtime(id);
+        } catch(e) { console.error(e); }
     },
 
     closeFullscreen() {
         document.getElementById('fullscreen-view').style.display = 'none';
         document.body.style.overflow = 'auto';
         Forum.setReplyTarget(null, null);
+        // Снимаем слушатель ответов
+        if (currentOpenTopicId) {
+            db.ref('replies/' + currentOpenTopicId).off();
+        }
     },
 
     async changeTopicStatus(topicId, newStatus) {
@@ -341,9 +367,9 @@ const Forum = {
         Forum.viewTopic(topicId);
     },
 
-    // СИСТЕМА ОТВЕТОВ И ЦИТИРОВАНИЯ (ПУНКТ 9)
     setReplyTarget(uid, nick) {
         const ind = document.getElementById('reply-target-indicator');
+        if(!ind) return;
         if(!uid) {
             replyToProfileData = null;
             ind.style.display = 'none';
@@ -355,7 +381,6 @@ const Forum = {
         }
     },
 
-    // РЕАКЦИИ НА СООБЩЕНИЯ (ПУНКТ 10)
     renderReactionsDom(type, id, reactionsData, targetAuthorUid) {
         const list = reactionsData || {};
         const emo = ['👍', '❤️', '🔥', '😂', '😮'];
@@ -385,13 +410,11 @@ const Forum = {
             await db.ref(path).remove();
         } else {
             await db.ref(path).set(emoji);
-            // Отправка в колокольчик (Пункт 10)
             AppNotif.send(targetAuthorUid, `поставил реакцию ${emoji} на ваше сообщение`, currentActiveNode, currentOpenTopicId);
         }
         Forum.viewTopic(currentOpenTopicId);
     },
 
-    // ДОБАВЛЕНИЕ МЕДИА ДАННЫХ ПРЯМО В ТЕКСТ ПОД КЛАВИАТУРУ (ПУНКТ 6)
     handleAttachment(e) {
         const file = e.target.files[0];
         if(!file) return;
@@ -410,10 +433,10 @@ const Forum = {
         
         const topic = {
             title, text, status: document.getElementById('t-status').value,
-            authorNick: user.nick, authorAvatar: user.avatar || '',
+            authorNick: user.nick || 'Игрок', authorAvatar: user.avatar || '',
             authorUid: auth.currentUser.uid,
             authorGlow: user.role === 'badge-founder' ? 'glow-founder' : (user.role === 'badge-admin' ? 'glow-admin' : (user.role === 'badge-leader' ? 'glow-leader' : '')),
-            authorBadge: user.role, authorVerify: user.verify || 'none',
+            authorBadge: user.role || 'badge-user', authorVerify: user.verify || 'none',
             time: Date.now()
         };
         await db.ref('topics/' + currentActiveNode).push(topic);
@@ -439,16 +462,15 @@ const Forum = {
         }
 
         const replyData = {
-            text: clearText, authorNick: user.nick, authorAvatar: user.avatar || '',
+            text: clearText, authorNick: user.nick || 'Игрок', authorAvatar: user.avatar || '',
             authorUid: auth.currentUser.uid,
             authorGlow: user.role === 'badge-founder' ? 'glow-founder' : (user.role === 'badge-admin' ? 'glow-admin' : (user.role === 'badge-leader' ? 'glow-leader' : '')),
-            authorBadge: user.role, authorVerify: user.verify || 'none',
+            authorBadge: user.role || 'badge-user', authorVerify: user.verify || 'none',
             time: Date.now()
         };
 
         await db.ref('replies/' + currentOpenTopicId).push(replyData);
         
-        // Оповещения в колокольчик автору темы или автору цитирования (Пункт 3)
         if(replyToProfileData) {
             AppNotif.send(replyToProfileData.uid, `ответил на ваше сообщение в теме`, currentActiveNode, currentOpenTopicId);
         } else {
@@ -457,7 +479,6 @@ const Forum = {
 
         document.getElementById('fs-reply-text').value = '';
         Forum.setReplyTarget(null, null);
-        Forum.viewTopic(currentOpenTopicId);
     },
 
     loadRepliesRealtime(id) {
@@ -465,14 +486,12 @@ const Forum = {
             const data = snap.val() || {};
             let html = '';
             
-            const isFounder = auth.currentUser && (auth.currentUser.email.toLowerCase() === MASTER_EMAIL.toLowerCase() || CloudFounders.includes(auth.currentUser.email.toLowerCase()));
+            const myEmail = auth.currentUser?.email ? auth.currentUser.email.toLowerCase() : '';
+            const isFounder = auth.currentUser && (myEmail === MASTER_EMAIL.toLowerCase() || CloudFounders.includes(myEmail));
             const isLeaderOfThisNode = (user && user.role === 'badge-leader' && user.leaderNode === currentActiveNode);
 
             Object.keys(data).forEach(rid => {
                 const r = data[rid];
-                const rBadge = r.authorBadge || 'badge-user';
-                
-                // Проверяем права на редактирование сообщений (Пункт 4)
                 const canEditPost = isFounder || (user && user.role === 'badge-admin') || isLeaderOfThisNode || (auth.currentUser && auth.currentUser.uid === r.authorUid);
 
                 html += `
@@ -495,11 +514,11 @@ const Forum = {
                     </div>
                 `;
             });
-            document.getElementById('fs-replies-list-zone').innerHTML = html;
+            const repliesZone = document.getElementById('fs-replies-list-zone');
+            if(repliesZone) repliesZone.innerHTML = html;
         });
     },
 
-    // МОДУЛЬ РЕДАКТИРОВАНИЯ (ПУНКТ 4)
     letEditingData: null,
     async openEditModal(id, mode) {
         Forum.letEditingData = { id, mode };
@@ -567,13 +586,13 @@ const Editor = {
     }
 };
 
-// --- УПРАВЛЕНИЕ АДМИН-СИСТЕМОЙ (ПУНКТы 1, 2, 5) ---
+// --- УПРАВЛЕНИЕ АДМИН-СИСТЕМОЙ ---
 const Admin = {
     async open() {
-        const snap = await db.ref('users').once('value');
-        const users = snap.val() || {};
         let html = '';
-        Object.keys(users).forEach(uid => html += `<option value="${uid}">${users[uid].nick || 'Player'} (${users[uid].email || ''})</option>`);
+        Object.keys(GlobalUsers).forEach(uid => {
+            html += `<option value="${uid}">${GlobalUsers[uid].nick || 'Player'} (${GlobalUsers[uid].email || ''})</option>`;
+        });
         document.getElementById('adm-user-list').innerHTML = html;
         
         let nodeOpts = '<option value="none">-- Отвязать лидерку --</option>';
@@ -588,10 +607,8 @@ const Admin = {
 
     async onUserSelectChange() {
         const uid = document.getElementById('adm-user-list').value;
-        if(!uid) return;
-        const snap = await db.ref('users/' + uid).once('value');
-        const u = snap.val();
-        if(!u) return;
+        if(!uid || !GlobalUsers[uid]) return;
+        const u = GlobalUsers[uid];
 
         document.getElementById('adm-role').value = u.role || 'badge-user';
         document.getElementById('adm-verify').value = u.verify || 'none';
@@ -599,20 +616,20 @@ const Admin = {
         document.getElementById('adm-leader-node-select').value = u.leaderNode || 'none';
     },
 
-    // Выдача прав основателя своему другу через Email (Пункт 2)
     async grantFounderPrivilege() {
         const mail = document.getElementById('adm-new-founder-email').value.trim().toLowerCase();
         const nickName = document.getElementById('adm-new-founder-nick').value.trim();
         if(!mail || !nickName) return alert('Заполните почту и ник друга!');
 
         await db.ref('founders').push({ email: mail, nick: nickName });
-        alert(`Права создателя зарезервированы для почты: ${mail}. Как только он зайдет, у него откроется админка!`);
+        alert(`Права создателя зарезервированы для почты: ${mail}.`);
         document.getElementById('adm-new-founder-email').value = '';
         document.getElementById('adm-new-founder-nick').value = '';
     },
 
     async save() {
         const uid = document.getElementById('adm-user-list').value;
+        if(!uid) return;
         const selectedRole = document.getElementById('adm-role').value;
         const isBannedMode = document.getElementById('adm-ban').value === 'yes';
 
@@ -652,6 +669,7 @@ const Profile = {
                 ctx.drawImage(img, 0, 0, SIZE, SIZE);
                 const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
                 document.getElementById('p-avatar-view').src = compressedDataUrl;
+                if(!user) user = {};
                 user.tempAvatar = compressedDataUrl;
             };
             img.src = reader.result;
@@ -659,13 +677,15 @@ const Profile = {
         reader.readAsDataURL(e.target.files[0]);
     },
     save: async () => {
-        const updates = { nick: document.getElementById('p-nick').value || user.nick };
-        if(user.tempAvatar) updates.avatar = user.tempAvatar;
+        if(!auth.currentUser) return;
+        const updates = { nick: document.getElementById('p-nick').value || user?.nick || 'Player' };
+        if(user && user.tempAvatar) updates.avatar = user.tempAvatar;
         
-        // Авто-обновление стилей глобального отображения
-        if(user.role === 'badge-founder') updates.authorGlow = 'glow-founder';
-        if(user.role === 'badge-admin') updates.authorGlow = 'glow-admin';
-        if(user.role === 'badge-leader') updates.authorGlow = 'glow-leader';
+        if(user) {
+            if(user.role === 'badge-founder') updates.authorGlow = 'glow-founder';
+            if(user.role === 'badge-admin') updates.authorGlow = 'glow-admin';
+            if(user.role === 'badge-leader') updates.authorGlow = 'glow-leader';
+        }
 
         await db.ref('users/' + auth.currentUser.uid).update(updates);
         location.reload();
@@ -685,11 +705,14 @@ const Auth = {
 auth.onAuthStateChanged(async (u) => {
     if (u) {
         setupOnlinePresence(u.uid);
+        AppNotif.listen();
+        
         const snap = await db.ref('users/' + u.uid).once('value');
         let dbUser = snap.val();
         
-        const isMaster = (u.email.toLowerCase() === MASTER_EMAIL.toLowerCase());
-        const hasFounderAccess = (isMaster || CloudFounders.includes(u.email.toLowerCase()));
+        const myEmail = u.email ? u.email.toLowerCase() : '';
+        const isMaster = (myEmail === MASTER_EMAIL.toLowerCase());
+        const hasFounderAccess = (isMaster || CloudFounders.includes(myEmail));
 
         if (hasFounderAccess) {
             if (!dbUser || dbUser.role !== 'badge-founder') {
@@ -717,14 +740,13 @@ auth.onAuthStateChanged(async (u) => {
 
         user = dbUser;
 
-        // Полный бан на клиенте (Пункт 5)
         if (user.sanction === 'yes') { 
             document.body.innerHTML = '<h1 style="color:red; text-align:center; padding-top:100px;">ВЫ ЗАБАНЕНЫ НА ФОРУМЕ</h1>'; 
             return; 
         }
         
-        document.getElementById('p-nick').value = user.nick || '';
-        document.getElementById('p-avatar-view').src = user.avatar || 'https://via.placeholder.com/90';
+        const pNickInput = document.getElementById('p-nick'); if(pNickInput) pNickInput.value = user.nick || '';
+        const pAvInput = document.getElementById('p-avatar-view'); if(pAvInput) pAvInput.src = user.avatar || 'https://via.placeholder.com/90';
     } else {
         user = null;
     }
