@@ -99,18 +99,21 @@ const Auth = {
                 
                 // ЖЁСТКАЯ ПРОВЕРКА НА ТВОЮ ПОЧТУ
                 if (user.email && user.email.toLowerCase() === MY_ROOT_EMAIL.toLowerCase()) {
-                    currentProfileData = {
-                        nick: MY_ROOT_NICK,
-                        avatar: user.photoURL || "https://i.imgur.com/8Km9tTv.png",
-                        role: "badge-founder",
-                        verifyBadge: "verif-admin"
-                    };
-                    // Записываем тебя в базу как неуязвимого создателя
-                    db.ref('users/' + user.uid).update(currentProfileData);
-                    db.ref('founders/' + user.uid).set(true);
-                    
-                    Auth.renderHeader(true);
-                    document.getElementById('admin-panel-btn').style.display = 'block';
+                    db.ref('users/' + user.uid).once('value', snap => {
+                        let existingData = snap.val();
+                        currentProfileData = {
+                            nick: MY_ROOT_NICK,
+                            avatar: (existingData && existingData.avatar) ? existingData.avatar : (user.photoURL || "https://i.imgur.com/8Km9tTv.png"),
+                            role: "badge-founder",
+                            verifyBadge: "verif-admin"
+                        };
+                        // Записываем тебя в базу как неуязвимого создателя
+                        db.ref('users/' + user.uid).update(currentProfileData);
+                        db.ref('founders/' + user.uid).set(true);
+                        
+                        Auth.renderHeader(true);
+                        document.getElementById('admin-panel-btn').style.display = 'block';
+                    });
                     return;
                 }
 
@@ -250,6 +253,17 @@ const Forum = {
     openCreateTopicModal: () => {
         if(!currentUser) { alert('Для создания тем необходимо авторизоваться!'); return; }
         if(currentProfileData && currentProfileData.isBanned) { alert('Ваш аккаунт заблокирован!'); return; }
+        
+        // Проверка прав на создание темы на стороне клиента
+        const isFounder = currentProfileData.role === 'badge-founder';
+        const isAdmin = currentProfileData.role === 'badge-admin';
+        const isTargetLeader = currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === currentSelectedNodeId;
+        
+        if (!isFounder && !isAdmin && !isTargetLeader) {
+            alert('У вас нет прав для создания тем в этом разделе!');
+            return;
+        }
+        
         UI.show('m-topic');
     },
     post: () => {
@@ -275,6 +289,8 @@ const Forum = {
             UI.close('m-topic');
             document.getElementById('t-title').value = '';
             document.getElementById('t-text').value = '';
+        }).catch(err => {
+            alert("Ошибка доступа: " + err.message);
         });
     },
     openFullscreenTopic: (nodeId, topicId) => {
