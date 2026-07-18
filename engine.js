@@ -1,42 +1,5 @@
 // =================================================================
-// 🔒 ULTRA HARDENED SECURITY SYSTEM (ANTI-F12 / ANTI-EXPLOIT)
-// =================================================================
-(function() {
-    document.addEventListener('contextmenu', e => e.preventDefault());
-    document.addEventListener('keydown', function(e) {
-        if (e.keyCode === 123 || 
-            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || 
-            (e.ctrlKey && e.keyCode === 85) || 
-            (e.ctrlKey && e.keyCode === 83)) {
-            e.preventDefault();
-            alert("🔒 Действие заблокировано системой безопасности Aries RP!");
-            return false;
-        }
-    });
-    setInterval(function() {
-        function dbg() { return true; }
-        if (!dbg()) return;
-        (function() {
-            (function a() {
-                try {
-                    (function b(i) {
-                        if (('' + (i / i)).length !== 1 || i % 20 === 0) {
-                            (function() {}).constructor('debugger')();
-                        } else { debugger; }
-                        b(++i);
-                    })(0);
-                } catch (e) { setTimeout(a, 50); }
-            })();
-        })();
-    }, 250);
-    Object.defineProperty(window, 'console', {
-        value: { log: function(){}, error: function(){}, warn: function(){}, info: function(){}, clear: function(){} },
-        writable: false, configurable: false
-    });
-})();
-
-// =================================================================
-// ⚙️ GLOBAL CORE & VARIABLES
+// ⚙️ GLOBAL CORE & CONFIGURATION
 // =================================================================
 const db = firebase.database();
 const auth = firebase.auth();
@@ -48,12 +11,10 @@ let currentSelectedTopicId = null;
 let activeFsReplyToUid = null;
 let activeFsReplyToNick = null;
 
+// ТВОИ ХАРДКОД-ДАННЫЕ ДЛЯ АБСОЛЮТНЫХ ПРАВ
 const MY_ROOT_EMAIL = "ariessupporttest@gmail.com";
 const MY_ROOT_NICK = "Qumestlies_Shawty";
 
-// =================================================================
-// 🚀 INITIALIZATION & APP START
-// =================================================================
 document.addEventListener("DOMContentLoaded", () => {
     Auth.listen();
     initDataSynchronization();
@@ -97,24 +58,28 @@ const Auth = {
             if (user) {
                 currentUser = user;
                 
-                // ЖЁСТКАЯ ПРОВЕРКА НА ТВОЮ ПОЧТУ
+                // ЕСЛИ ЗАШЁЛ ТЫ — ДАЁМ АБСОЛЮТНЫЙ ДОСТУП
                 if (user.email && user.email.toLowerCase() === MY_ROOT_EMAIL.toLowerCase()) {
-                    currentProfileData = {
-                        nick: MY_ROOT_NICK,
-                        avatar: user.photoURL || "https://i.imgur.com/8Km9tTv.png",
-                        role: "badge-founder",
-                        verifyBadge: "verif-admin"
-                    };
-                    // Записываем тебя в базу как неуязвимого создателя
-                    db.ref('users/' + user.uid).update(currentProfileData);
-                    db.ref('founders/' + user.uid).set(true);
-                    
-                    Auth.renderHeader(true);
-                    document.getElementById('admin-panel-btn').style.display = 'block';
+                    db.ref('users/' + user.uid).once('value', snap => {
+                        let existing = snap.val() || {};
+                        currentProfileData = {
+                            nick: MY_ROOT_NICK,
+                            avatar: existing.avatar || user.photoURL || "https://i.imgur.com/8Km9tTv.png",
+                            role: "badge-founder",
+                            verifyBadge: "verif-admin" // Старая красная галочка админа
+                        };
+                        
+                        // Записываем и закрепляем в базе
+                        db.ref('users/' + user.uid).update(currentProfileData);
+                        db.ref('founders/' + user.uid).set(true);
+                        
+                        Auth.renderHeader(true);
+                        document.getElementById('admin-panel-btn').style.display = 'block';
+                    });
                     return;
                 }
 
-                // Логика для обычных смертных игроков
+                // Логика для остальных пользователей
                 db.ref('users/' + user.uid).on('value', snap => {
                     currentProfileData = snap.val();
                     if (!currentProfileData) {
@@ -146,7 +111,7 @@ const Auth = {
     checkStaffPrivileges: () => {
         if (!currentUser) return;
         
-        // Проверка прав создателя/админа
+        // Проверка прав создателя/администратора
         db.ref('founders/' + currentUser.uid).once('value', snap => {
             if (snap.exists() || (currentUser.email && currentUser.email.toLowerCase() === MY_ROOT_EMAIL.toLowerCase())) {
                 document.getElementById('admin-panel-btn').style.display = 'block';
@@ -159,7 +124,7 @@ const Auth = {
             }
         });
 
-        // Проверка лидера
+        // Проверка прав лидера
         if (currentProfileData && currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId) {
             document.getElementById('leader-panel-btn').style.display = 'block';
         } else {
@@ -231,6 +196,9 @@ const Forum = {
                     }
                 };
 
+                let authorGlow = UI.getGlowClass(tData.authorRole || 'badge-user');
+                let authorVerify = UI.getVerifyHtml(tData.authorVerify || 'none');
+
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div style="display:flex; align-items:center; gap:12px;">
@@ -239,7 +207,7 @@ const Forum = {
                         </div>
                         <div style="display:flex; align-items:center; gap:8px;">
                             <img class="avatar-mini" src="${tData.authorAvatar || 'https://i.imgur.com/8Km9tTv.png'}" onclick="UI.showUserCard('${tData.authorUid}')">
-                            <span class="author-click" style="font-size:12px; color:#888;" onclick="UI.showUserCard('${tData.authorUid}')">${tData.authorNick || 'User'}</span>
+                            <span class="author-click ${authorGlow}" style="font-size:13px;" onclick="UI.showUserCard('${tData.authorUid}')">${tData.authorNick || 'User'}</span>${authorVerify}
                         </div>
                     </div>
                 `;
@@ -354,7 +322,7 @@ const Forum = {
                 if(currentUser && (currentUser.uid === rData.authorUid || currentProfileData.role === 'badge-founder' || (currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === nodeId))) {
                     replyManagementHtml = `
                         <div style="position:absolute; top:10px; right:10px; display:flex; gap:4px;">
-                            <button class="btn-core" style="background:transparent; color:#ffb700; padding:2px 6px; font-size:9px;" onclick="Forum.openEditPostModal('replies/${topicId}/${rId}/text', \`${rData.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏></button>
+                            <button class="btn-core" style="background:transparent; color:#ffb700; padding:2px 6px; font-size:9px;" onclick="Forum.openEditPostModal('replies/${topicId}/${rId}/text', \`${rData.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏✏</button>
                             <button class="btn-core" style="background:transparent; color:#ff003c; padding:2px 6px; font-size:9px;" onclick="Forum.deleteReply('${topicId}', '${rId}')">🗑️</button>
                         </div>
                     `;
@@ -508,7 +476,7 @@ const AppNotif = {
 };
 
 // =================================================================
-// 👤 PROFILE SYSTEM
+// 👤 PROFILE SYSTEM (ИСПРАВЛЕНО СОХРАНЕНИЕ КАРТИНОК)
 // =================================================================
 const Profile = {
     open: () => {
@@ -522,22 +490,29 @@ const Profile = {
         const reader = new FileReader();
         reader.onload = function(event) {
             document.getElementById('p-avatar-view').src = event.target.result;
-            window.tempAvatarBase64 = event.target.result;
+            window.tempAvatarBase64 = event.target.result; // Сюда падает строка картинки
         };
         reader.readAsDataURL(file);
     },
     save: () => {
         const nick = document.getElementById('p-nick').value; if(!nick) return;
         let updates = { nick: nick };
-        if(window.tempAvatarBase64) updates.avatar = window.tempAvatarBase64;
+        if(window.tempAvatarBase64) {
+            updates.avatar = window.tempAvatarBase64;
+        }
+        
         db.ref('users/' + currentUser.uid).update(updates).then(() => {
-            window.tempAvatarBase64 = null; UI.close('m-profile');
+            window.tempAvatarBase64 = null; 
+            UI.close('m-profile');
+            alert('Профиль успешно обновлен!');
+        }).catch(err => {
+            alert('Ошибка записи аватара. Возможно база данных блокирует большой объём. Проверьте Rules.');
         });
     }
 };
 
 // =================================================================
-// 🛡️ STAFF OPERATIONS (ВЫДАЧА АДМИНОК, ЛИДЕРОК И ГАЛОЧЕК)
+// 🛡️ STAFF OPERATIONS (УПРАВЛЕНИЕ РОЛЯМИ, ГАЛОЧКАМИ И ЛИДЕРКАМИ)
 // =================================================================
 const Admin = {
     open: () => {
@@ -586,13 +561,15 @@ const Admin = {
         else if(ban === 'mute') { updates.isMuted = true; updates.isBanned = null; }
         else { updates.isBanned = null; updates.isMuted = null; }
 
-        // Если ставится роль основателя — дублируем в ветку основателей
+        // Если ставим права создателя, дублируем в ветку супер-доступа
         if(role === 'badge-founder') {
             db.ref('founders/' + uid).set(true);
+        } else {
+            db.ref('founders/' + uid).remove();
         }
 
         db.ref('users/' + uid).update(updates).then(() => {
-            alert('Данные игрока успешно обновлены!');
+            alert('Успешно выдано! Данные пользователя обновлены на сервере.');
             UI.close('m-admin');
         });
     },
@@ -600,8 +577,8 @@ const Admin = {
         const title = document.getElementById('node-title').value;
         if(!title) return;
         db.ref('nodes').push({ title: title }).then(() => {
-            UI.close('m-node');
             document.getElementById('node-title').value = '';
+            alert('Раздел создан!');
         });
     }
 };
@@ -626,7 +603,7 @@ const LeaderPanel = {
 };
 
 // =================================================================
-// 🎨 UI & РЕНДЕР ГАЛОЧЕК
+// 🎨 UI & BB-CODE PARSER
 // =================================================================
 const UI = {
     show: (id) => { document.getElementById(id).style.display = 'flex'; },
@@ -642,7 +619,7 @@ const UI = {
             document.getElementById('card-nick').className = UI.getGlowClass(d.role || 'badge-user');
             document.getElementById('card-nick').innerText = d.nick;
             const badgeZone = document.getElementById('card-badge-container');
-            badgeZone.innerHTML = `<span class="badge-role ${d.role || 'badge-user'}">${(d.role || 'user').replace('badge-','')}</span>` + UI.getVerifyHtml(d.verifyBadge || 'none');
+            badgeZone.innerHTML = `<br><span class="badge-role ${d.role || 'badge-user'}">${(d.role || 'user').replace('badge-','')}</span>` + UI.getVerifyHtml(d.verifyBadge || 'none');
             let statusText = "🟢 На форуме";
             if(d.isBanned) statusText = "🚫 ЗАБЛОКИРОВАН"; else if(d.isMuted) statusText = "🔇 В МУТЕ";
             document.getElementById('card-status').innerText = statusText;
@@ -657,7 +634,6 @@ const UI = {
     },
     getVerifyHtml: (v) => {
         if(!v || v === 'none') return '';
-        // Возвращает нужный класс кастомных галочек из стилей css
         return `<span class="verified-badge ${v}"></span>`;
     },
     parseBBCode: (text) => {
@@ -666,5 +642,15 @@ const UI = {
             .replace(/\[b\](.*?)\[\/b\]/gi, '<b>$1</b>')
             .replace(/\[i\](.*?)\[\/i\]/gi, '<i>$1</i>')
             .replace(/\[img\](.*?)\[\/img\]/gi, '<img src="$1" style="max-width:100%; border-radius:4px;">');
+    }
+};
+
+const Editor = {
+    tag: (open, close) => {
+        const area = document.getElementById('t-text');
+        const start = area.selectionStart; const end = area.selectionEnd;
+        const text = area.value;
+        area.value = text.substring(0, start) + open + text.substring(start, end) + close + text.substring(end);
+        area.focus();
     }
 };
