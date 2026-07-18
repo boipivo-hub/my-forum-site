@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aries Role Play — Forum Engine v3.0</title>
     
+    <!-- Подключение SDK Firebase v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -102,6 +103,13 @@
 </head>
 <body>
 
+    <!-- ВСТАВЬ СЮДА СВОЙ БЛОК КОНФИГУРАЦИИ КЛЮЧЕЙ ИЗ FIREBASE CONSOLE ДО ENGINE.JS! -->
+    <script>
+      // Пример инициализации (Замени на свои ключи):
+      // const firebaseConfig = { apiKey: "...", databaseURL: "...", projectId: "...", ... };
+      // firebase.initializeApp(firebaseConfig);
+    </script>
+
     <header>
         <div class="logo" onclick="location.reload()">ARIES<span>ROLEPLAY</span></div>
         <div style="display:flex; align-items:center; gap:20px;">
@@ -110,7 +118,7 @@
             <!-- КОЛОКОЛЬЧИК УВЕДОМЛЕНИЙ -->
             <div class="notif-container">
                 <div class="notif-bell" onclick="UI.toggleNotifs()">
-                    <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                    <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5 1.5-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
                     <div class="notif-badge" id="bell-badge">0</div>
                 </div>
                 <div class="notif-dropdown" id="bell-dropdown">
@@ -142,7 +150,7 @@
             <!-- АДМИН ПАНЕЛЬ -->
             <div id="admin-panel-btn" style="display:none; margin-top:20px; border-top: 1px solid #222; padding-top:10px;">
                 <p style="font-size:9px; color:var(--accent); margin-bottom:5px;">CONTROL:</p>
-                <button class="btn-core" style="width:100%; margin-bottom:5px; background:#111; border: 1px solid var(--accent);" onclick="Admin.open()">🛡️ Управление игроками</button>
+                <button class="btn-core" style="width:100%; margin-bottom:5px; background:#111; border: 1px solid var(--accent);" onclick="Admin.open()">🛡️ Управление игроков</button>
                 <button class="btn-core" style="width:100%; background:#000;" onclick="UI.show('m-node')">➕ Создать Раздел</button>
             </div>
         </aside>
@@ -179,7 +187,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА: КАРТОЧКА ПРОФИЛЯ С ПОДРОБНОСТЯМИ -->
+    <!-- МОДАЛКА: КАРТОЧКА ПРОФИЛЯ -->
     <div id="m-user-card" class="modal" onclick="if(event.target===this) UI.close('m-user-card')">
         <div class="modal-content" style="text-align:center; position:relative;">
             <h3 style="margin-top:0;">Карточка пользователя</h3>
@@ -227,15 +235,15 @@
         </div>
     </div>
 
-    <!-- УЛУЧШЕННАЯ АДМИНКА (ОСНОВАТЕЛИ + ДРУЗЬЯ С ПРАВАМИ ОСНОВАТЕЛЯ) -->
+    <!-- ПАНЕЛЬ УПРАВЛЕНИЯ -->
     <div id="m-admin" class="modal">
         <div class="modal-content" style="width:500px; max-height:85vh; overflow-y:auto;">
-            <h3 style="color:var(--accent); margin-top:0; display:flex; justify-content:between; align-items:center;">
+            <h3 style="color:var(--accent); margin-top:0; display:flex; justify-content:space-between; align-items:center;">
                 <span>🛡️ Панель Управления Проектом</span>
             </h3>
             
             <div style="background:#11111f; padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid #1c1c35;">
-                <p style="margin:0 0 8px 0; font-size:11px; color:#00ffaa; font-weight:bold;">👑 НАЗНАЧИТЬ НОВОГО ОСНОВАТЕЛЯ (ПУНКТ 2):</p>
+                <p style="margin:0 0 8px 0; font-size:11px; color:#00ffaa; font-weight:bold;">👑 НАЗНАЧИТЬ НОВОГО ОСНОВАТЕЛЯ:</p>
                 <input type="text" id="adm-new-founder-email" class="input-field" placeholder="Email друга">
                 <input type="text" id="adm-new-founder-nick" class="input-field" placeholder="Никнейм друга">
                 <button class="btn-core" style="background:green; width:100%;" onclick="Admin.grantFounderPrivilege()">Выдать Права Основателя</button>
@@ -252,7 +260,7 @@
                 <option value="badge-founder">FOUNDER</option>
             </select>
 
-            <!-- НАСТРОЙКА ЛИДЕРСКИХ РАЗДЕЛОВ (ПУНКТ 1) -->
+            <!-- НАСТРОЙКА ЛИДЕРСКИХ РАЗДЕЛОВ -->
             <div id="adm-leader-nodes-box" style="background:#141424; padding:10px; border-radius:6px; margin-bottom:10px;">
                 <p style="margin:0 0 5px 0; font-size:11px; color:#00ffaa;">Закрепить Лидерский Раздел:</p>
                 <select id="adm-leader-node-select" class="input-field"></select>
