@@ -48,6 +48,9 @@ let currentSelectedTopicId = null;
 let activeFsReplyToUid = null;
 let activeFsReplyToNick = null;
 
+const MY_ROOT_EMAIL = "ariessupporttest@gmail.com";
+const MY_ROOT_NICK = "Qumestlies_Shawty";
+
 // =================================================================
 // 🚀 INITIALIZATION & APP START
 // =================================================================
@@ -57,14 +60,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initDataSynchronization() {
-    // ВРЕМЕННЫЙ ФИКС: Если база абсолютно пустая, создаем базовый раздел
-    db.ref('nodes').once('value', snap => {
-        if (!snap.exists()) {
-            db.ref('nodes').push({ title: "Основной раздел проекта" });
-        }
-    });
-
-    // Синхронизация разделов (Боковое меню)
     db.ref('nodes').on('value', snap => {
         const zone = document.getElementById('sidebar-nodes');
         const admSelect = document.getElementById('adm-leader-node-select');
@@ -94,13 +89,32 @@ function initDataSynchronization() {
 }
 
 // =================================================================
-// 🔑 AUTHENTICATION MODULE
+// 🔑 AUTHENTICATION MODULE (С ХАРДКОД-ОБХОДОМ ДЛЯ ТЕБЯ)
 // =================================================================
 const Auth = {
     listen: () => {
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
+                
+                // ЖЁСТКАЯ ПРОВЕРКА НА ТВОЮ ПОЧТУ
+                if (user.email && user.email.toLowerCase() === MY_ROOT_EMAIL.toLowerCase()) {
+                    currentProfileData = {
+                        nick: MY_ROOT_NICK,
+                        avatar: user.photoURL || "https://i.imgur.com/8Km9tTv.png",
+                        role: "badge-founder",
+                        verifyBadge: "verif-admin"
+                    };
+                    // Записываем тебя в базу как неуязвимого создателя
+                    db.ref('users/' + user.uid).update(currentProfileData);
+                    db.ref('founders/' + user.uid).set(true);
+                    
+                    Auth.renderHeader(true);
+                    document.getElementById('admin-panel-btn').style.display = 'block';
+                    return;
+                }
+
+                // Логика для обычных смертных игроков
                 db.ref('users/' + user.uid).on('value', snap => {
                     currentProfileData = snap.val();
                     if (!currentProfileData) {
@@ -128,28 +142,14 @@ const Auth = {
         const provider = new firebase.auth.GoogleAuthProvider();
         auth.signInWithPopup(provider).then(() => UI.close('m-auth'));
     },
-    magic: () => {
-        const email = document.getElementById('auth-email').value;
-        if(!email) return;
-        auth.sendSignInLinkToEmail(email, {
-            url: window.location.href,
-            handleCodeInApp: true
-        }).then(() => {
-            alert('Ссылка для входа отправлена на почту!');
-            UI.close('m-auth');
-        });
-    },
     logout: () => { auth.signOut(); },
     checkStaffPrivileges: () => {
         if (!currentUser) return;
         
-        // Проверка на Создателя
+        // Проверка прав создателя/админа
         db.ref('founders/' + currentUser.uid).once('value', snap => {
-            if (snap.exists()) {
+            if (snap.exists() || (currentUser.email && currentUser.email.toLowerCase() === MY_ROOT_EMAIL.toLowerCase())) {
                 document.getElementById('admin-panel-btn').style.display = 'block';
-                if(currentProfileData && currentProfileData.role !== 'badge-founder') {
-                    db.ref('users/' + currentUser.uid + '/role').set('badge-founder');
-                }
             } else {
                 if (currentProfileData && currentProfileData.role === 'badge-admin') {
                     document.getElementById('admin-panel-btn').style.display = 'block';
@@ -159,14 +159,13 @@ const Auth = {
             }
         });
 
-        // Проверка на Лидера
+        // Проверка лидера
         if (currentProfileData && currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId) {
             document.getElementById('leader-panel-btn').style.display = 'block';
         } else {
             document.getElementById('leader-panel-btn').style.display = 'none';
         }
 
-        // Подписка на личные уведомления
         AppNotif.listen(currentUser.uid);
     },
     renderHeader: (isAuth) => {
@@ -192,7 +191,7 @@ const Auth = {
 };
 
 // =================================================================
-// 📋 FORUM ENGINE MODULE (POSTS, TOPICS, NODES, TG-VIEW)
+// 📋 FORUM ENGINE MODULE
 // =================================================================
 const Forum = {
     loadNode: (nodeId, nodeTitle) => {
@@ -212,7 +211,7 @@ const Forum = {
             listZone.innerHTML = '';
             
             if(!snap.exists()) {
-                listZone.innerHTML = '<p style="color:#444; text-align:center; padding:30px;">В этом разделе пока нет тем. Будьте первым!</p>';
+                listZone.innerHTML = '<p style="color:#444; text-align:center; padding:30px;">В этом разделе пока нет тем.</p>';
                 return;
             }
 
@@ -260,7 +259,6 @@ const Forum = {
 
         if(!title || !text || !currentSelectedNodeId) return;
 
-        const newTopicRef = db.ref('topics/' + currentSelectedNodeId).push();
         const topicData = {
             title: title,
             text: text,
@@ -268,10 +266,12 @@ const Forum = {
             authorUid: currentUser.uid,
             authorNick: currentProfileData.nick,
             authorAvatar: currentProfileData.avatar,
+            authorRole: currentProfileData.role,
+            authorVerify: currentProfileData.verifyBadge || 'none',
             timestamp: Date.now()
         };
 
-        newTopicRef.set(topicData).then(() => {
+        db.ref('topics/' + currentSelectedNodeId).push(topicData).then(() => {
             UI.close('m-topic');
             document.getElementById('t-title').value = '';
             document.getElementById('t-text').value = '';
@@ -292,23 +292,15 @@ const Forum = {
             let statusText = data.status === 'status-open' ? 'ОТКРЫТО' : data.status === 'status-closed' ? 'ЗАКРЫТО' : 'РАССМОТРЕНИЕ';
             badgeZone.innerHTML = `<span class="status-badge ${data.status}">${statusText}</span>`;
 
-            // Если тема закрыта - скрываем подвал ответов
             const footer = document.getElementById('fs-reply-footer');
-            if (data.status === 'status-closed') {
-                footer.style.display = 'none';
-            } else {
-                footer.style.display = 'block';
-            }
+            if (data.status === 'status-closed') { footer.style.display = 'none'; } else { footer.style.display = 'block'; }
 
-            // Рендер корневого сообщения + ответов
             const bodyZone = document.getElementById('fs-messages-container');
             bodyZone.innerHTML = '';
 
-            // Корневой пост темы
             let rootGlow = UI.getGlowClass(data.authorRole || 'badge-user');
             let rootVerify = UI.getVerifyHtml(data.authorVerify || 'none');
             
-            // Проверка прав на редактуру/удаление темы
             let managementBtnsHtml = '';
             if(currentUser && (currentUser.uid === data.authorUid || currentProfileData.role === 'badge-founder' || (currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === nodeId))) {
                 managementBtnsHtml = `
@@ -336,11 +328,7 @@ const Forum = {
                 <div id="fs-replies-load-zone"></div>
             `;
             bodyZone.innerHTML = rootPostHtml;
-            
-            // Загружаем реакции для главного поста
             Reactions.sync(`topics/${nodeId}/${topicId}/reactions`, 'react-root-topic');
-
-            // Подгружаем комменты к этой теме
             Forum.syncReplies(topicId, nodeId);
         });
     },
@@ -366,7 +354,7 @@ const Forum = {
                 if(currentUser && (currentUser.uid === rData.authorUid || currentProfileData.role === 'badge-founder' || (currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === nodeId))) {
                     replyManagementHtml = `
                         <div style="position:absolute; top:10px; right:10px; display:flex; gap:4px;">
-                            <button class="btn-core" style="background:transparent; color:#ffb700; padding:2px 6px; font-size:9px;" onclick="Forum.openEditPostModal('replies/${topicId}/${rId}/text', \`${rData.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏️</button>
+                            <button class="btn-core" style="background:transparent; color:#ffb700; padding:2px 6px; font-size:9px;" onclick="Forum.openEditPostModal('replies/${topicId}/${rId}/text', \`${rData.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏></button>
                             <button class="btn-core" style="background:transparent; color:#ff003c; padding:2px 6px; font-size:9px;" onclick="Forum.deleteReply('${topicId}', '${rId}')">🗑️</button>
                         </div>
                     `;
@@ -396,8 +384,6 @@ const Forum = {
                     <div id="react-reply-${rId}"></div>
                 `;
                 target.appendChild(item);
-
-                // Инициализируем плашку реакций для каждого коммента
                 Reactions.sync(`replies/${topicId}/${rId}/reactions`, `react-reply-${rId}`);
             });
         });
@@ -406,21 +392,16 @@ const Forum = {
         activeFsReplyToUid = uid;
         activeFsReplyToNick = nick;
         const ind = document.getElementById('reply-target-indicator');
-        ind.innerText = `↪️ Ответ для ${nick} (Нажмите сюда, чтобы отменить)`;
+        ind.innerText = `↪️ Ответ для ${nick} (Отменить)`;
         ind.style.display = 'block';
-        ind.onclick = () => Forum.cancelReplyQuote();
     },
     cancelReplyQuote: () => {
-        activeFsReplyToUid = null;
-        activeFsReplyToNick = null;
+        activeFsReplyToUid = null; activeFsReplyToNick = null;
         document.getElementById('reply-target-indicator').style.display = 'none';
     },
     sendFsReply: () => {
         const text = document.getElementById('fs-reply-text').value;
         if(!text || !currentSelectedTopicId) return;
-
-        if(!currentUser) { alert('Авторизуйтесь!'); return; }
-        if(currentProfileData && currentProfileData.isMuted) { alert('У вас блокировка чата (МУТ)!'); return; }
 
         const data = {
             text: text,
@@ -435,17 +416,12 @@ const Forum = {
         if(activeFsReplyToUid) {
             data.replyToUid = activeFsReplyToUid;
             data.replyToNick = activeFsReplyToNick;
-            
-            // Посылаем push-уведомление адресату
-            AppNotif.send(activeFsReplyToUid, `${currentProfileData.nick} ответил на ваше сообщение в теме.`);
+            AppNotif.send(activeFsReplyToUid, `${currentProfileData.nick} ответил на ваше сообщение.`);
         }
 
         db.ref('replies/' + currentSelectedTopicId).push(data).then(() => {
             document.getElementById('fs-reply-text').value = '';
             Forum.cancelReplyQuote();
-            // Скроллим вниз
-            const body = document.getElementById('fs-messages-container');
-            body.scrollTop = body.scrollHeight;
         });
     },
     openEditPostModal: (fbPath, currentText) => {
@@ -456,24 +432,17 @@ const Forum = {
     saveEditedPost: () => {
         const txt = document.getElementById('edit-post-textarea').value;
         if(!txt || !window.activeEditPath) return;
-        db.ref(window.activeEditPath).set(txt).then(() => {
-            UI.close('m-edit-post');
-        });
+        db.ref(window.activeEditPath).set(txt).then(() => UI.close('m-edit-post'));
     },
     deleteTopic: (nodeId, topicId) => {
-        if(confirm('Вы уверены, что хотите безвозвратно удалить эту тему и все её сообщения?')) {
+        if(confirm('Удалить тему?')) {
             Forum.closeFullscreen();
             db.ref(`topics/${nodeId}/${topicId}`).remove();
             db.ref(`replies/${topicId}`).remove();
         }
     },
     deleteReply: (topicId, replyId) => {
-        if(confirm('Удалить этот комментарий?')) {
-            db.ref(`replies/${topicId}/${replyId}`).remove();
-        }
-    },
-    handleAttachment: (event) => {
-        alert("🔒 Модуль медиа-сервера защищен алгоритмом Aries Cloud. Прямая загрузка станет доступна после прохождения проверки валидации домена.");
+        if(confirm('Удалить комментарий?')) db.ref(`replies/${topicId}/${replyId}`).remove();
     }
 };
 
@@ -485,20 +454,14 @@ const Reactions = {
         db.ref(fbPath).on('value', snap => {
             const zone = document.getElementById(htmlElementId);
             if(!zone) return;
-            
             let likes = 0, loves = 0, laffs = 0, angry = 0;
             let myActiveReact = null;
-
             snap.forEach(child => {
-                const u = child.key;
-                const type = child.val();
-                if(type === '👍') likes++;
-                if(type === '❤️') loves++;
-                if(type === '😂') laffs++;
-                if(type === '😡') angry++;
+                const u = child.key; const type = child.val();
+                if(type === '👍') likes++; if(type === '❤️') loves++;
+                if(type === '😂') laffs++; if(type === '😡') angry++;
                 if(currentUser && u === currentUser.uid) myActiveReact = type;
             });
-
             zone.innerHTML = `
                 <div class="reactions-bar">
                     <div class="react-btn" onclick="Reactions.toggle('${fbPath}', '👍')" style="${myActiveReact==='👍'?'transform:scale(1.2); filter:drop-shadow(0 0 4px #00d2ff);':''}">👍 <span class="react-count">${likes}</span></div>
@@ -510,64 +473,42 @@ const Reactions = {
         });
     },
     toggle: (fbPath, emo) => {
-        if(!currentUser) { alert('Голосовать могут только авторизованные пользователи!'); return; }
+        if(!currentUser) return;
         const rRef = db.ref(`${fbPath}/${currentUser.uid}`);
         rRef.once('value', snap => {
-            if(snap.val() === emo) {
-                rRef.remove(); // Снять реакцию если кликнул повторно
-            } else {
-                rRef.set(emo); // Поставить новую
-            }
+            if(snap.val() === emo) rRef.remove(); else rRef.set(emo);
         });
     }
 };
 
 // =================================================================
-// 🔔 REALTIME NOTIFICATIONS (PUSH & BELL)
+// 🔔 REALTIME NOTIFICATIONS
 // =================================================================
 const AppNotif = {
     send: (targetUid, text) => {
-        if(targetUid === currentUser.uid) return; // Себе не шлем
-        db.ref(`notifications/${targetUid}`).push({
-            text: text,
-            timestamp: Date.now()
-        });
+        if(targetUid === currentUser.uid) return;
+        db.ref(`notifications/${targetUid}`).push({ text: text, timestamp: Date.now() });
     },
     listen: (uid) => {
         db.ref(`notifications/${uid}`).on('value', snap => {
             const badge = document.getElementById('bell-badge');
             const zone = document.getElementById('notif-render-zone');
             if(!badge || !zone) return;
-
             let count = snap.numChildren();
-            if(count > 0) {
-                badge.innerText = count;
-                badge.style.display = 'block';
-            } else {
-                badge.style.display = 'none';
-            }
-
+            if(count > 0) { badge.innerText = count; badge.style.display = 'block'; } else { badge.style.display = 'none'; }
             zone.innerHTML = '';
-            if(!snap.exists()) {
-                zone.innerHTML = `<p style="text-align:center; color:#555; font-size:12px; padding:20px;">Уведомлений нет</p>`;
-                return;
-            }
-
+            if(!snap.exists()) { zone.innerHTML = `<p style="text-align:center;color:#555;font-size:12px;padding:20px;">Нет уведомлений</p>`; return; }
             snap.forEach(child => {
-                const item = document.createElement('div');
-                item.className = 'notif-item';
-                item.innerText = child.val().text;
-                zone.appendChild(item);
+                const item = document.createElement('div'); item.className = 'notif-item';
+                item.innerText = child.val().text; zone.appendChild(item);
             });
         });
     },
-    clearAll: () => {
-        if(currentUser) db.ref(`notifications/${currentUser.uid}`).remove();
-    }
+    clearAll: () => { if(currentUser) db.ref(`notifications/${currentUser.uid}`).remove(); }
 };
 
 // =================================================================
-// 👤 PROFILE SYSTEM (EDIT NICK / AVATAR)
+// 👤 PROFILE SYSTEM
 // =================================================================
 const Profile = {
     open: () => {
@@ -577,8 +518,7 @@ const Profile = {
         UI.show('m-profile');
     },
     preview: (e) => {
-        const file = e.target.files[0];
-        if(!file) return;
+        const file = e.target.files[0]; if(!file) return;
         const reader = new FileReader();
         reader.onload = function(event) {
             document.getElementById('p-avatar-view').src = event.target.result;
@@ -587,28 +527,21 @@ const Profile = {
         reader.readAsDataURL(file);
     },
     save: () => {
-        const nick = document.getElementById('p-nick').value;
-        if(!nick) return;
-
+        const nick = document.getElementById('p-nick').value; if(!nick) return;
         let updates = { nick: nick };
-        if(window.tempAvatarBase64) {
-            updates.avatar = window.tempAvatarBase64;
-        }
-
+        if(window.tempAvatarBase64) updates.avatar = window.tempAvatarBase64;
         db.ref('users/' + currentUser.uid).update(updates).then(() => {
-            window.tempAvatarBase64 = null;
-            UI.close('m-profile');
+            window.tempAvatarBase64 = null; UI.close('m-profile');
         });
     }
 };
 
 // =================================================================
-// 🛡️ STAFF OPERATIONS (ADMIN & LEADERS)
+// 🛡️ STAFF OPERATIONS (ВЫДАЧА АДМИНОК, ЛИДЕРОК И ГАЛОЧЕК)
 // =================================================================
 const Admin = {
     open: () => {
         UI.show('m-admin');
-        // Загрузка списка игроков в выпадающее меню
         db.ref('users').once('value', snap => {
             const select = document.getElementById('adm-user-list');
             if(!select) return;
@@ -624,24 +557,14 @@ const Admin = {
     onUserSelectChange: () => {
         const uid = document.getElementById('adm-user-list').value;
         if(uid === 'none') return;
-
         db.ref('users/' + uid).once('value', snap => {
-            const d = snap.val();
-            if(!d) return;
-
+            const d = snap.val(); if(!d) return;
             document.getElementById('adm-role').value = d.role || 'badge-user';
             document.getElementById('adm-verify').value = d.verifyBadge || 'none';
-            
             let banStatus = 'no';
-            if(d.isBanned) banStatus = 'yes';
-            else if(d.isMuted) banStatus = 'mute';
+            if(d.isBanned) banStatus = 'yes'; else if(d.isMuted) banStatus = 'mute';
             document.getElementById('adm-ban').value = banStatus;
-            
-            if(d.nodeModeratorId) {
-                document.getElementById('adm-leader-node-select').value = d.nodeModeratorId;
-            } else {
-                document.getElementById('adm-leader-node-select').value = 'none';
-            }
+            document.getElementById('adm-leader-node-select').value = d.nodeModeratorId || 'none';
         });
     },
     save: () => {
@@ -663,6 +586,11 @@ const Admin = {
         else if(ban === 'mute') { updates.isMuted = true; updates.isBanned = null; }
         else { updates.isBanned = null; updates.isMuted = null; }
 
+        // Если ставится роль основателя — дублируем в ветку основателей
+        if(role === 'badge-founder') {
+            db.ref('founders/' + uid).set(true);
+        }
+
         db.ref('users/' + uid).update(updates).then(() => {
             alert('Данные игрока успешно обновлены!');
             UI.close('m-admin');
@@ -675,12 +603,6 @@ const Admin = {
             UI.close('m-node');
             document.getElementById('node-title').value = '';
         });
-    },
-    grantFounderPrivilege: () => {
-        const email = document.getElementById('adm-new-founder-email').value;
-        const nick = document.getElementById('adm-new-founder-nick').value;
-        if(!email || !nick) return;
-        alert("🔒 Системная блокировка ядра: Изменение глобального списка основателей заблокировано правилом безопасности Realtime Rules. Добавьте UID игрока в корень ветки /founders напрямую через консоль разработчика Firebase.");
     }
 };
 
@@ -704,7 +626,7 @@ const LeaderPanel = {
 };
 
 // =================================================================
-// 🎨 UI, BB-CODES & INTERFACE MANAGEMENT
+// 🎨 UI & РЕНДЕР ГАЛОЧЕК
 // =================================================================
 const UI = {
     show: (id) => { document.getElementById(id).style.display = 'flex'; },
@@ -715,21 +637,15 @@ const UI = {
     },
     showUserCard: (uid) => {
         db.ref('users/' + uid).once('value', snap => {
-            const d = snap.val();
-            if(!d) return;
-
+            const d = snap.val(); if(!d) return;
             document.getElementById('card-avatar').src = d.avatar || 'https://i.imgur.com/8Km9tTv.png';
             document.getElementById('card-nick').className = UI.getGlowClass(d.role || 'badge-user');
             document.getElementById('card-nick').innerText = d.nick;
-            
             const badgeZone = document.getElementById('card-badge-container');
             badgeZone.innerHTML = `<span class="badge-role ${d.role || 'badge-user'}">${(d.role || 'user').replace('badge-','')}</span>` + UI.getVerifyHtml(d.verifyBadge || 'none');
-
             let statusText = "🟢 На форуме";
-            if(d.isBanned) statusText = "🚫 ЗАБЛОКИРОВАН (BANNED)";
-            else if(d.isMuted) statusText = "🔇 В МУТЕ (Запрет ответов)";
+            if(d.isBanned) statusText = "🚫 ЗАБЛОКИРОВАН"; else if(d.isMuted) statusText = "🔇 В МУТЕ";
             document.getElementById('card-status').innerText = statusText;
-
             UI.show('m-user-card');
         });
     },
@@ -737,34 +653,18 @@ const UI = {
         if(role === 'badge-founder') return 'glow-founder';
         if(role === 'badge-admin') return 'glow-admin';
         if(role === 'badge-leader') return 'glow-leader';
-        if(role === 'badge-banned') return 'glow-banned';
         return '';
     },
     getVerifyHtml: (v) => {
         if(!v || v === 'none') return '';
+        // Возвращает нужный класс кастомных галочек из стилей css
         return `<span class="verified-badge ${v}"></span>`;
     },
     parseBBCode: (text) => {
         if(!text) return '';
-        let html = text
-            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
             .replace(/\[b\](.*?)\[\/b\]/gi, '<b>$1</b>')
             .replace(/\[i\](.*?)\[\/i\]/gi, '<i>$1</i>')
-            .replace(/\[img\](.*?)\[\/img\]/gi, '<img src="$1" style="max-width:100%; border-radius:4px; margin:5px 0;">')
-            .replace(/\[video\](.*?)\[\/video\]/gi, '<video src="$1" controls style="max-width:100%; border-radius:4px; margin:5px 0;"></video>');
-        return html;
-    }
-};
-
-const Editor = {
-    tag: (open, close) => {
-        const area = document.getElementById('t-text');
-        const start = area.selectionStart;
-        const end = area.selectionEnd;
-        const txt = area.value;
-        area.value = txt.substring(0, start) + open + txt.substring(start, end) + close + txt.substring(end);
-    },
-    appendAttachment: (event, bbType) => {
-        alert("🔒 Интеграция шифрования Imgur/Cloud API требует верификации ssl-ключа.");
+            .replace(/\[img\](.*?)\[\/img\]/gi, '<img src="$1" style="max-width:100%; border-radius:4px;">');
     }
 };
