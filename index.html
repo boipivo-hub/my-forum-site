@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aries Role Play — Forum Engine v3.0</title>
     
-    <!-- Подключение SDK Firebase v8 -->
+    <!-- Подключение SDK Firebase v8 (Стабильный глобальный синтаксис для нашего движка) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -103,11 +103,21 @@
 </head>
 <body>
 
-    <!-- ВСТАВЬ СЮДА СВОЙ БЛОК КОНФИГУРАЦИИ КЛЮЧЕЙ ИЗ FIREBASE CONSOLE ДО ENGINE.JS! -->
+    <!-- ПРАВИЛЬНАЯ ИНИЦИАЛИЗАЦИЯ С ТВОИМИ КЛЮЧАМИ -->
     <script>
-      // Пример инициализации (Замени на свои ключи):
-      // const firebaseConfig = { apiKey: "...", databaseURL: "...", projectId: "...", ... };
-      // firebase.initializeApp(firebaseConfig);
+      const firebaseConfig = {
+        apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM",
+        authDomain: "aries-forum.firebaseapp.com",
+        databaseURL: "https://aries-forum-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "aries-forum",
+        storageBucket: "aries-forum.firebasestorage.app",
+        messagingSenderId: "614643963857",
+        appId: "1:614643963857:web:01f1f941c72249ac6eb2f0",
+        measurementId: "G-8YWLND4LR2"
+      };
+      
+      // Стартуем Firebase
+      firebase.initializeApp(firebaseConfig);
     </script>
 
     <header>
@@ -342,12 +352,13 @@
     <div id="m-edit-post" class="modal">
         <div class="modal-content">
             <h3>✏️ Редактирование текста</h3>
-            <textarea id="edit-post-textarea" class="input-field" style="height:150px; resize:none;"></textarea>
+            <textarea id="edit-post-textarea" class="input-field" style="height:150px; resize:noneкой"></textarea>
             <button class="btn-core" style="width:100%;" onclick="Forum.saveEditedPost()">Сохранить изменения</button>
             <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-edit-post')">Отмена</button>
         </div>
     </div>
 
+    <!-- ПОДКЛЮЧАЕМ НАШ ДВИЖОК ENGINE.JS -->
     <script src="engine.js"></script>
 </body>
 </html>
