@@ -3,528 +3,362 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aries RP — Официальный Форум</title>
+    <title>Aries Role Play — Forum Engine v3.0</title>
     
-    <!-- Стабильное окружение Firebase V8 (Классический синтаксис) -->
+    <!-- Подключение SDK Firebase v8 (Стабильный глобальный синтаксис для нашего движка) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
     <style>
         :root {
             --bg-main: #06060c;
-            --bg-sidebar: #090912;
-            --bg-card: #111122;
-            --bg-input: #16162d;
-            --accent: #ff003c;
-            --accent-hover: #ff2a5f;
+            --bg-card: #0c0c14;
+            --border-color: #1c1c30;
+            --accent: #ff0055;
             --neon-blue: #00d2ff;
-            --neon-green: #00ff66;
-            --neon-purple: #b026ff;
-            --border-color: #1e1e38;
-            --text-main: #e2e2eb;
-            --text-muted: #6c6c8c;
+            --neon-red: #ff003c;
+            --success: #70e000;
+            --warning: #ffb700;
         }
 
-        /* Полный пак скроллбаров */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg-main); }
-        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-
-        body {
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* Стили Сайдбара */
-        .sidebar {
-            width: 280px;
-            background: var(--bg-sidebar);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            box-sizing: border-box;
-            position: relative;
-            z-index: 10;
-        }
-
-        .sidebar-brand {
-            padding: 25px 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .sidebar-brand h2 {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 800;
-            letter-spacing: 1.5px;
-            background: linear-gradient(45deg, #fff, var(--text-muted));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .sidebar-menu {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 15px;
-            color: var(--text-muted);
-            font-weight: 600;
-            font-size: 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-decoration: none;
-        }
-
-        .nav-link:hover, .nav-link.active {
-            background: #14142b;
-            color: #fff;
-            border-left: 3px solid var(--accent);
-            padding-left: 12px;
-        }
-
-        .sidebar-footer {
-            padding: 15px;
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        /* Главная область */
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            background: var(--bg-main);
-            position: relative;
-        }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-main); color: #dedee6; overflow-x: hidden; }
 
         header {
-            height: 75px;
-            background: var(--bg-sidebar);
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 30px;
-            box-sizing: border-box;
+            background: var(--bg-card); border-bottom: 1px solid var(--border-color);
+            padding: 15px 40px; display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 1000;
         }
 
-        .forum-body {
-            flex: 1;
-            padding: 35px;
-            overflow-y: auto;
-            box-sizing: border-box;
-        }
+        .logo { font-size: 20px; font-weight: 900; color: #fff; letter-spacing: 1px; cursor: pointer; }
+        .logo span { color: var(--accent); }
 
-        /* Кнопки и инпуты */
-        .btn-core {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            padding: 11px 20px;
-            font-weight: 700;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            text-transform: uppercase;
-            font-size: 12px;
-            letter-spacing: 0.8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn-core:hover {
-            background: var(--accent-hover);
-            box-shadow: 0 0 14px rgba(255, 0, 60, 0.4);
-            transform: translateY(-1px);
-        }
-
-        .btn-core:active {
-            transform: translateY(0);
-        }
-
-        .input-core {
-            background: var(--bg-input);
-            border: 1px solid var(--border-color);
-            padding: 12px 16px;
-            color: #fff;
-            border-radius: 6px;
-            outline: none;
-            font-size: 14px;
-            transition: border-color 0.2s;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .input-core:focus {
-            border-color: var(--accent);
-        }
-
-        /* Карточки постов и тем */
-        .post-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 24px;
-            margin-bottom: 16px;
-            position: relative;
-            transition: transform 0.2s, border-color 0.2s;
-        }
-
-        .post-card.topic-item:hover {
-            border-color: rgba(0, 210, 255, 0.3);
-            transform: translateX(4px);
-        }
-
-        /* Аватарки */
-        .avatar-mini {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid var(--border-color);
-            cursor: pointer;
-            transition: border-color 0.2s;
-        }
-        .avatar-mini:hover { border-color: var(--accent); }
-
-        /* Переливающиеся RGB ники */
-        @keyframes rgbGlow {
-            0% { color: #ff003c; filter: drop-shadow(0 0 2px rgba(255,0,60,0.6)); }
-            33% { color: #00d2ff; filter: drop-shadow(0 0 2px rgba(0,210,255,0.6)); }
-            66% { color: #00ff66; filter: drop-shadow(0 0 2px rgba(0,255,102,0.6)); }
-            100% { color: #ff003c; filter: drop-shadow(0 0 2px rgba(255,0,60,0.6)); }
-        }
-
-        .glow-founder { animation: rgbGlow 4s infinite linear !important; font-weight: 800; letter-spacing: 0.3px; }
-        .glow-admin { color: #ffb700 !important; font-weight: 700; filter: drop-shadow(0 0 1px rgba(255,183,0,0.4)); }
-        .glow-leader { color: #00ff66 !important; font-weight: 700; }
-        .glow-moderator { color: #9d4edd !important; font-weight: 700; }
-
-        /* Бэджи и кастомные роли */
-        .badge-role {
-            display: inline-block;
-            padding: 4px 10px;
-            font-size: 10px;
-            font-weight: 800;
-            border-radius: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 4px;
-        }
-        .badge-founder { background: linear-gradient(135deg, #ff003c, #00d2ff); color: #fff; box-shadow: 0 2px 8px rgba(255,0,60,0.3); }
-        .badge-admin { background: #ffb700; color: #000; }
-        .badge-leader { background: #00ff66; color: #000; }
-        .badge-moderator { background: #9d4edd; color: #fff; }
-        .badge-user { background: #252542; color: #a2a2c2; }
-
-        /* Системные верификационные галочки */
-        .verified-badge {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            margin-left: 6px;
-            vertical-align: middle;
-            background-size: contain;
-            background-repeat: no-repeat;
-        }
-        .verif-admin { background-image: url('https://i.imgur.com/v8tX8Y2.png'); } 
-        .verif-dev { background-image: url('https://i.imgur.com/uG7b7Zg.png'); }   
-        .verif-user { background-image: url('https://i.imgur.com/f0uI9gB.png'); }  
-
-        /* Модальные окна */
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(3, 3, 6, 0.9);
-            backdrop-filter: blur(6px);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-        .modal-overlay.active { opacity: 1; display: flex; }
+        /* ИКОНКА ОПОВЕЩЕНИЯ */
+        .notif-container { position: relative; display: inline-block; }
+        .notif-bell { cursor: pointer; width: 22px; height: 22px; fill: #888; transition: 0.2s; }
+        .notif-bell:hover { fill: #fff; }
+        .notif-badge { position: absolute; top: -5px; right: -5px; background: var(--accent); color: #fff; font-size: 9px; padding: 2px 5px; border-radius: 10px; font-weight: bold; display: none; }
         
-        .modal-window {
-            background: #0b0b16;
-            border: 1px solid var(--border-color);
-            width: 550px;
-            max-width: 90%;
-            border-radius: 12px;
-            padding: 30px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            transform: scale(0.95);
-            transition: transform 0.2s ease;
-        }
-        .modal-overlay.active .modal-window { transform: scale(1); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; }
-        .modal-header h3 { margin: 0; font-size: 20px; font-weight: 700; }
+        .notif-dropdown { display: none; position: absolute; top: 30px; right: 0; background: var(--bg-card); border: 1px solid var(--border-color); width: 280px; max-height: 350px; overflow-y: auto; border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 2000; }
+        .notif-item { padding: 10px; border-bottom: 1px solid #141424; font-size: 12px; cursor: pointer; transition: 0.2s; }
+        .notif-item:hover { background: #11111f; }
 
-        /* Полноэкранный Telegram-вид темы */
-        .fs-view {
-            position: fixed; top: 0; right: 0; width: 100%; height: 100%;
-            background: var(--bg-main); z-index: 500; display: none; flex-direction: column;
-        }
-        .fs-header { 
-            height: 75px; 
-            background: var(--bg-sidebar); 
-            border-bottom: 1px solid var(--border-color); 
-            display: flex; 
-            align-items: center; 
-            padding: 0 30px; 
-            gap: 20px; 
-        }
-        .fs-body { flex: 1; overflow-y: auto; padding: 40px 30px; box-sizing: border-box; }
-        .fs-footer { background: var(--bg-sidebar); border-top: 1px solid var(--border-color); padding: 20px 30px; }
+        /* ГАЛОЧКИ */
+        .verified-badge { display: inline-block; width: 15px; height: 15px; margin-left: 5px; vertical-align: middle; background-size: contain; background-repeat: no-repeat; }
+        .v-blue-line { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="none" stroke="%232196F3" stroke-width="8" d="M50 14l5.7 4 6.5-2.3 4 5.7 6.9-.5 1.8 6.7 6.7 1.8-.5 6.9 5.7 4-2.3 6.5 4 5.7-4 5.7 2.3 6.5-5.7 4 .5 6.9-6.7 1.8-1.8 6.7-6.9-.5-4 5.7-6.5-2.3-5.7 4-5.7-4-6.5 2.3-4-5.7-6.9.5-1.8-6.7-6.7-1.8.5-6.9-5.7-4 2.3-6.5-4-5.7 4-5.7-2.3-6.5 5.7-4-.5-6.9 6.7-1.8 1.8-6.7 6.9.5 4-5.7 6.5 2.3z"/><path fill="none" stroke="%232196F3" stroke-width="10" d="M39 51l8.5 8.5 16-17"/></svg>'); }
+        .v-yellow-line { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="none" stroke="%23FFEB3B" stroke-width="8" d="M50 14l5.7 4 6.5-2.3 4 5.7 6.9-.5 1.8 6.7 6.7 1.8-.5 6.9 5.7 4-2.3 6.5 4 5.7-4 5.7 2.3 6.5-5.7 4 .5 6.9-6.7 1.8-1.8 6.7-6.9-.5-4 5.7-6.5-2.3-5.7 4-5.7-4-6.5 2.3-4-5.7-6.9.5-1.8-6.7-6.7-1.8.5-6.9-5.7-4 2.3-6.5-4-5.7 4-5.7-2.3-6.5 5.7-4-.5-6.9 6.7-1.8 1.8-6.7 6.9.5 4-5.7 6.5 2.3z"/><path fill="none" stroke="%23FFEB3B" stroke-width="10" d="M39 51l8.5 8.5 16-17"/></svg>'); }
+        .v-red-line { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="none" stroke="%23F44336" stroke-width="8" d="M50 14l5.7 4 6.5-2.3 4 5.7 6.9-.5 1.8 6.7 6.7 1.8-.5 6.9 5.7 4-2.3 6.5 4 5.7-4 5.7 2.3 6.5-5.7 4 .5 6.9-6.7 1.8-1.8 6.7-6.9-.5-4 5.7-6.5-2.3-5.7 4-5.7-4-6.5 2.3-4-5.7-6.9.5-1.8-6.7-6.7-1.8.5-6.9-5.7-4 2.3-6.5-4-5.7 4-5.7-2.3-6.5 5.7-4-.5-6.9 6.7-1.8 1.8-6.7 6.9.5 4-5.7 6.5 2.3z"/><path fill="none" stroke="%23F44336" stroke-width="10" d="M39 51l8.5 8.5 16-17"/></svg>'); }
+        .v-blue-fill { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="%232196F3" d="M50 14l5.7 4 6.5-2.3 4 5.7 6.9-.5 1.8 6.7 6.7 1.8-.5 6.9 5.7 4-2.3 6.5 4 5.7-4 5.7 2.3 6.5-5.7 4 .5 6.9-6.7 1.8-1.8 6.7-6.9-.5-4 5.7-6.5-2.3-5.7 4-5.7-4-6.5 2.3-4-5.7-6.9.5-1.8-6.7-6.7-1.8.5-6.9-5.7-4 2.3-6.5-4-5.7 4-5.7-2.3-6.5 5.7-4-.5-6.9 6.7-1.8 1.8-6.7 6.9.5 4-5.7 6.5 2.3z"/><path fill="none" stroke="%23FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="M39 51l8.5 8.5 16-17"/></svg>'); }
 
-        /* Статусы тем */
-        .status-badge { padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: 4px; text-transform: uppercase; }
-        .status-open { background: rgba(0, 255, 102, 0.15); color: var(--neon-green); border: 1px solid rgba(0, 255, 102, 0.3); }
-        .status-consideration { background: rgba(255, 183, 0, 0.15); color: #ffb700; border: 1px solid rgba(255, 183, 0, 0.3); }
-        .status-closed { background: rgba(255, 0, 60, 0.15); color: var(--accent); border: 1px solid rgba(255, 0, 60, 0.3); }
+        /* РОЛИ */
+        @keyframes rgb-burn { 0% { color: #ff0055; text-shadow: 0 0 8px rgba(255,0,85,0.5); } 33% { color: #9900ff; text-shadow: 0 0 8px rgba(153,0,255,0.5); } 66% { color: #00f0ff; text-shadow: 0 0 8px rgba(0,240,255,0.5); } 100% { color: #ff0055; text-shadow: 0 0 8px rgba(255,0,85,0.5); } }
+        .glow-founder { animation: rgb-burn 3s infinite linear !important; font-weight: bold; }
+        .glow-admin { color: #ff3333 !important; text-shadow: 0 0 5px rgba(255,51,51,0.5); font-weight: bold; }
+        .glow-leader { color: #00ffaa !important; text-shadow: 0 0 5px rgba(0,255,170,0.5); font-weight: bold; }
+        .glow-banned { color: #555 !important; text-decoration: line-through; }
+        
+        .badge-role { display: inline-block; font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 3px; margin-top: 4px; text-transform: uppercase; }
+        .badge-founder { background: linear-gradient(135deg, #ff0055, #9900ff); color: #fff; }
+        .badge-admin { background: #ff3333; color: #fff; }
+        .badge-leader { background: #00ffaa; color: #000; }
+        .badge-user { background: #222; color: #888; }
+        .badge-banned { background: #444; color: #aaa; }
 
-        /* Вспомогательные утилиты */
-        .flex-center { display: flex; align-items: center; gap: 10px; }
-        .divider { border: 0; border-top: 1px solid var(--border-color); margin: 5px 0; }
-        .text-muted { color: var(--text-muted); font-size: 13px; }
+        /* ЯРЛЫКИ СТАТУСА ТЕМ */
+        .status-badge { font-size: 10px; padding: 3px 6px; border-radius: 3px; font-weight: bold; margin-right: 10px; border: 1px solid transparent; }
+        .status-open { color: var(--success); border-color: var(--success); background: rgba(112, 224, 0, 0.05); }
+        .status-closed { color: var(--neon-red); border-color: var(--neon-red); background: rgba(255, 0, 60, 0.05); }
+        .status-review { color: var(--warning); border-color: var(--warning); background: rgba(255, 183, 0, 0.05); }
+
+        .forum-container { display: grid; grid-template-columns: 260px 1fr; gap: 25px; max-width: 1300px; margin: 25px auto; padding: 0 15px; }
+        .sidebar { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; height: fit-content; }
+        .nav-link { display: block; color: #fff; text-decoration: none; padding: 12px 15px; border-radius: 4px; margin-bottom: 8px; background: #0d1b2a; border: 1px solid var(--neon-blue); cursor: pointer; font-size: 14px; font-weight: 600; transition: 0.2s; }
+        .nav-link:hover { transform: translateX(5px); box-shadow: 0 0 10px var(--neon-blue); }
+        
+        .main-content { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 25px; min-height: 500px; }
+        .post-card { background: #08080d; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 15px; padding: 15px; position: relative; }
+        
+        .btn-core { background: linear-gradient(135deg, var(--accent), #9900ff); color: #fff; border: none; padding: 10px 18px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
+        .input-field { width: 100%; background: #11111e; border: 1px solid var(--border-color); padding: 10px; border-radius: 4px; color: #fff; margin-bottom: 10px; box-sizing: border-box; }
+        
+        .avatar-main { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color); }
+        .avatar-mini { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--accent); cursor: pointer; }
+
+        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999; }
+        .modal-content { background:var(--bg-card); padding:25px; border-radius:8px; width:450px; border:1px solid var(--border-color); }
+
+        /* РЕАКЦИИ */
+        .reactions-bar { display: flex; gap: 8px; margin-top: 10px; background: #0e0e18; padding: 6px 12px; border-radius: 20px; width: fit-content; border: 1px solid #1a1a2e; }
+        .react-btn { cursor: pointer; font-size: 16px; transition: transform 0.1s; display: flex; align-items: center; gap: 4px; }
+        .react-btn:hover { transform: scale(1.2); }
+        .react-count { font-size: 11px; color: #888; font-weight: bold; }
+
+        /* ПОЛНОЭКРАННЫЙ ИНТЕРФЕЙС ТЕМЫ (TG STYLE) */
+        .fullscreen-topic-view { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: #05050a; z-index: 5000; display: none; flex-direction: column; }
+        .fullscreen-header { background: var(--bg-card); border-bottom: 1px solid var(--border-color); padding: 15px 30px; display: flex; align-items: center; gap: 20px; }
+        .fullscreen-body { flex: 1; overflow-y: auto; padding: 30px; box-sizing: border-box; max-width: 900px; width: 100%; margin: 0 auto; }
+        .fullscreen-footer { background: var(--bg-card); border-top: 1px solid var(--border-color); padding: 15px 30px; }
+        .fullscreen-footer-inner { max-width: 900px; width: 100%; margin: 0 auto; display: flex; gap: 15px; align-items: flex-end; }
     </style>
 </head>
 <body>
 
-    <!-- ЛЕВАЯ ПАНЕЛЬ -->
-    <div class="sidebar">
-        <div class="sidebar-brand">
-            <div style="width: 10px; height: 10px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 8px var(--accent);"></div>
-            <h2>ARIES FORUM</h2>
-        </div>
-        <div class="sidebar-menu" id="sidebar-nodes">
-            <!-- Сюда движок рендерит разделы -->
-        </div>
-        <div class="sidebar-footer">
-            <button class="btn-core" id="admin-panel-btn" style="display: none; background: #ffb700; color: #000;" onclick="Admin.open()">🛠 Панель Создателя</button>
-        </div>
-    </div>
+    <!-- ПРАВИЛЬНАЯ ИНИЦИАЛИЗАЦИЯ С ТВОИМИ КЛЮЧАМИ -->
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM",
+        authDomain: "aries-forum.firebaseapp.com",
+        databaseURL: "https://aries-forum-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "aries-forum",
+        storageBucket: "aries-forum.firebasestorage.app",
+        messagingSenderId: "614643963857",
+        appId: "1:614643963857:web:01f1f941c72249ac6eb2f0",
+        measurementId: "G-8YWLND4LR2"
+      };
+      
+      // Стартуем Firebase
+      firebase.initializeApp(firebaseConfig);
+    </script>
 
-    <!-- ОСНОВНОЙ КОНТЕНТ -->
-    <div class="main-content">
-        <header>
-            <div id="forum-breadcrumbs" class="text-muted" style="font-weight: 600;">Главная страница</div>
+    <header>
+        <div class="logo" onclick="location.reload()">ARIES<span>ROLEPLAY</span></div>
+        <div style="display:flex; align-items:center; gap:20px;">
+            <button class="btn-core" style="background: linear-gradient(135deg, #00c6ff, #0072ff);" onclick="UI.show('m-donate')">💎 Донат</button>
+            
+            <!-- КОЛОКОЛЬЧИК УВЕДОМЛЕНИЙ -->
+            <div class="notif-container">
+                <div class="notif-bell" onclick="UI.toggleNotifs()">
+                    <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5 1.5-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                    <div class="notif-badge" id="bell-badge">0</div>
+                </div>
+                <div class="notif-dropdown" id="bell-dropdown">
+                    <div style="padding:12px; font-weight:bold; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                        <span>Оповещения</span>
+                        <span style="font-size:10px; color:var(--accent); cursor:pointer;" onclick="AppNotif.clearAll()">Очистить все</span>
+                    </div>
+                    <div id="notif-render-zone">
+                        <p style="text-align:center; color:#555; font-size:12px; padding:20px;">Уведомлений нет</p>
+                    </div>
+                </div>
+            </div>
+
             <div id="header-auth"></div>
-        </header>
-        
-        <div class="forum-body" id="forum-render">
-            <div style="text-align: center; margin-top: 150px; color: var(--text-muted);">
-                <img src="https://i.imgur.com/8Km9tTv.png" style="width: 80px; opacity: 0.2; margin-bottom: 15px;">
-                <h2>Система инициализирована</h2>
-                <p style="max-width: 400px; margin: 0 auto; font-size: 14px;">Выберите интересующий игровой или административный раздел в левом меню для просмотра веток обсуждений.</p>
-            </div>
         </div>
+    </header>
+
+    <div class="forum-container">
+        <aside class="sidebar">
+            <div style="font-size:11px; color:#555; margin-bottom:10px; font-weight:bold;">МЕНЮ</div>
+            <div id="sidebar-nodes"></div>
+            
+            <!-- ЛИДЕРСКАЯ ПАНЕЛЬ -->
+            <div id="leader-panel-btn" style="display:none; margin-top:15px; border-top:1px solid #222; padding-top:10px;">
+                <p style="font-size:9px; color:#00ffaa; margin-bottom:5px;">УПРАВЛЕНИЕ ЛИДЕРА:</p>
+                <button class="btn-core" style="width:100%; background:#111; border:1px solid #00ffaa; color:#00ffaa;" onclick="LeaderPanel.open()">💼 Мои разделы</button>
+            </div>
+
+            <!-- АДМИН ПАНЕЛЬ -->
+            <div id="admin-panel-btn" style="display:none; margin-top:20px; border-top: 1px solid #222; padding-top:10px;">
+                <p style="font-size:9px; color:var(--accent); margin-bottom:5px;">CONTROL:</p>
+                <button class="btn-core" style="width:100%; margin-bottom:5px; background:#111; border: 1px solid var(--accent);" onclick="Admin.open()">🛡️ Управление игроков</button>
+                <button class="btn-core" style="width:100%; background:#000;" onclick="UI.show('m-node')">➕ Создать Раздел</button>
+            </div>
+        </aside>
+
+        <main class="main-content" id="forum-render">
+            <h3 style="text-align:center; padding-top:50px;">Загрузка Aries Forum...</h3>
+        </main>
     </div>
 
-    <!-- ТЕЛЕГРАМ-ПРОСМОТР ТЕМЫ (ПОЛНЫЙ ЭКРАН) -->
-    <div class="fs-view" id="fullscreen-view">
-        <div class="fs-header">
-            <button class="btn-core" style="background: #1c1c34; color: #fff;" onclick="Forum.closeFullscreen()">⬅ Вернуться</button>
-            <div style="flex:1;">
-                <h3 id="fs-topic-title" style="margin: 0 0 3px 0; color: #fff; font-size: 18px;"></h3>
-                <div id="fs-topic-meta" class="text-muted"></div>
-            </div>
+    <!-- ПОЛНОЭКРАННЫЙ ИНТЕРФЕЙС ПРОСМОТРА ТЕМЫ (TG-STYLE) -->
+    <div class="fullscreen-topic-view" id="fullscreen-view">
+        <div class="fullscreen-header">
+            <button class="btn-core" style="background:#222;" onclick="Forum.closeFullscreen()">❮ Выйти из темы</button>
+            <h3 id="fs-topic-title" style="margin:0; font-size:18px; color:#fff;">Заголовок темы</h3>
             <div id="fs-topic-badge-status"></div>
         </div>
-        <div class="fs-body" id="fs-messages-container"></div>
-        <div class="fs-footer" id="fs-reply-footer">
-            <div id="reply-target-indicator" style="display: none; background: #161632; padding: 10px 18px; margin-bottom: 12px; border-left: 4px solid var(--neon-blue); border-radius: 4px; font-size: 13px; cursor: pointer;" onclick="Forum.cancelReplyQuote()"></div>
-            <div style="display: flex; gap: 12px; align-items: flex-end;">
-                <textarea class="input-core" id="fs-reply-text" placeholder="Напишите развернутый ответ в тему..." style="flex: 1; height: 54px; resize: none; font-family:inherit;"></textarea>
-                <button class="btn-core" onclick="Forum.sendFsReply()" style="height: 54px; padding: 0 25px;">Отправить</button>
-            </div>
+        <div class="fullscreen-body" id="fs-messages-container">
+            <!-- Сюда сыпятся сообщения темы и ответы -->
         </div>
-    </div>
-
-    <!-- МОДАЛЬНЫЕ ОКНА СИСТЕМЫ -->
-    
-    <!-- Авторизация -->
-    <div class="modal-overlay" id="m-auth">
-        <div class="modal-window">
-            <div class="modal-header">
-                <h3>Авторизация на портале</h3>
-            </div>
-            <p class="text-muted" style="margin: 0;">Для публикации тем, ответов и управления личным профилем необходимо синхронизировать аккаунт с единой системой аутентификации Google.</p>
-            <button class="btn-core" onclick="Auth.google()" style="padding: 14px;">🌐 Синхронизировать через Google Auth</button>
-            <button class="btn-core" style="background: #1c1c34;" onclick="UI.close('m-auth')">Продолжить как гость</button>
-        </div>
-    </div>
-
-    <!-- Настройка Профиля -->
-    <div class="modal-overlay" id="m-profile">
-        <div class="modal-window">
-            <div class="modal-header">
-                <h3>Редактирование профиля</h3>
-            </div>
-            <div style="display: flex; gap: 20px; align-items: center;">
-                <div style="position: relative;">
-                    <img id="p-avatar-view" style="width: 85px; height: 85px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+        <div class="fullscreen-footer" id="fs-reply-footer">
+            <div class="fullscreen-footer-inner">
+                <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
+                    <div id="reply-target-indicator" style="font-size:11px; color:#00ffaa; display:none;"></div>
+                    <textarea id="fs-reply-text" class="input-field" style="height:50px; resize:none; margin-bottom:0;" placeholder="Написать ответ на весь экран..."></textarea>
                 </div>
-                <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
-                    <label class="text-muted" style="font-weight: 700;">Загрузить новую аватарку:</label>
-                    <input type="file" accept="image/*" onchange="Profile.preview(event)" style="font-size: 12px;">
+                <div style="display:flex; gap:5px;">
+                    <label class="btn-core" style="padding:10px; background:#181829;" title="Прикрепить фото/видео">
+                        📎
+                        <input type="file" id="fs-attachment" accept="image/*,video/*" style="display:none;" onchange="Forum.handleAttachment(event)">
+                    </label>
+                    <button class="btn-core" style="height:50px;" onclick="Forum.sendFsReply()">Отправить</button>
                 </div>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label class="text-muted" style="font-weight: 700;">Игровой никнейм (Сhracter Name):</label>
-                <input type="text" class="input-core" id="p-nick" placeholder="Name_Surname">
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 5px;">
-                <button class="btn-core" onclick="Profile.save()" style="flex: 1;">Сохранить изменения</button>
-                <button class="btn-core" style="background: #1c1c34;" onclick="UI.close('m-profile')">Отмена</button>
-            </div>
         </div>
     </div>
 
-    <!-- Создание новой темы -->
-    <div class="modal-overlay" id="m-topic">
-        <div class="modal-window">
-            <div class="modal-header">
-                <h3>Публикация новой темы</h3>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <input type="text" class="input-core" id="t-title" placeholder="Введите лаконичный заголовок темы">
-                <textarea class="input-core" id="t-text" placeholder="Сформулируйте суть обращения, правила или суть топика..." style="height: 160px; resize: none; font-family: inherit;"></textarea>
-                
-                <div id="t-admin-options" style="display: none; flex-direction: column; gap: 12px;">
-                    <div class="divider"></div>
-                    <label class="text-muted" style="font-weight: 700; color: #ffb700;">Административные параметры:</label>
-                    <select class="input-core" id="t-status">
-                        <option value="status-open">Статус: Открыта для обсуждения</option>
-                        <option value="status-consideration">Статус: На рассмотрении</option>
-                        <option value="status-closed">Статус: Закрыта (Архив)</option>
-                    </select>
-                </div>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button class="btn-core" onclick="Forum.post()" style="flex: 1;">Опубликовать топик</button>
-                <button class="btn-core" style="background: #1c1c34;" onclick="UI.close('m-topic')">Отмена</button>
-            </div>
+    <!-- МОДАЛКА: КАРТОЧКА ПРОФИЛЯ -->
+    <div id="m-user-card" class="modal" onclick="if(event.target===this) UI.close('m-user-card')">
+        <div class="modal-content" style="text-align:center; position:relative;">
+            <h3 style="margin-top:0;">Карточка пользователя</h3>
+            <img id="card-avatar" class="avatar-main" src="" style="width:110px; height:110px; border-color:var(--accent);">
+            <h2 id="card-nick" style="margin:10px 0 5px 0;">Nick</h2>
+            <div id="card-badge-container"></div>
+            <hr style="border:0; border-top:1px solid #222; margin:15px 0;">
+            <p id="card-status" style="font-size:13px; color:#888;">Статус: Загрузка...</p>
+            <button class="btn-core" style="width:100%; background:#222; margin-top:10px;" onclick="UI.close('m-user-card')">Закрыть</button>
         </div>
     </div>
 
-    <!-- Огромная панель администратора -->
-    <div class="modal-overlay" id="m-admin">
-        <div class="modal-window" style="width: 650px;">
-            <div class="modal-header">
-                <h3>Управление инфраструктурой Aries RP</h3>
-            </div>
+    <div id="m-donate" class="modal">
+        <div class="modal-content" style="text-align:center; border-color:#0072ff;">
+            <h3 style="color:#fff;">⚡ Выберите регион</h3>
+            <a href="https://www.privat24.ua/send/4285t" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:12px; background: #70b012;">🇺🇦 Ukraine (Карта)</a>
+            <a href="https://destream.net/live/ponkc29/donate" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:20px; background: #fff; color: #000;">🌐 Google Pay / World</a>
+            <button class="btn-core" onclick="UI.close('m-donate')" style="background: #222; width:100%;">Вернуться</button>
+        </div>
+    </div>
+
+    <div id="m-auth" class="modal">
+        <div class="modal-content" style="text-align:center;">
+            <h3>Авторизация</h3>
+            <button class="btn-core" style="width:100%; background:#fff; color:#000; margin-bottom:10px;" onclick="Auth.google()">Войти через Google</button>
+            <div style="margin:10px 0; font-size:10px; color:#444;">ИЛИ ПО ПОЧТЕ</div>
+            <input type="email" id="auth-email" class="input-field" placeholder="Ваша почта">
+            <button class="btn-core" style="width:100%;" onclick="Auth.magic()">Получить ссылку</button>
+            <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-auth')">Закрыть</button>
+        </div>
+    </div>
+
+    <div id="m-profile" class="modal">
+        <div class="modal-content" style="text-align:center;">
+            <h3>Настройки профиля</h3>
+            <img id="p-avatar-view" class="avatar-main" src="">
+            <br>
+            <label class="btn-core" style="font-size:10px; margin:10px 0; display:inline-block;">
+                Сменить Фото/GIF
+                <input type="file" id="p-file" accept="image/*" style="display:none;" onchange="Profile.preview(event)">
+            </label>
+            <input type="text" id="p-nick" class="input-field" placeholder="Новый никнейм">
+            <button class="btn-core" style="width:100%;" onclick="Profile.save()">Сохранить изменения</button>
+            <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-profile')">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- ПАНЕЛЬ УПРАВЛЕНИЯ -->
+    <div id="m-admin" class="modal">
+        <div class="modal-content" style="width:500px; max-height:85vh; overflow-y:auto;">
+            <h3 style="color:var(--accent); margin-top:0; display:flex; justify-content:space-between; align-items:center;">
+                <span>🛡️ Панель Управления Проектом</span>
+            </h3>
             
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <label class="text-muted" style="font-weight: 700;">1. Создание глобального форумного раздела (Ноды):</label>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" class="input-core" id="node-title" placeholder="Пример: Государственные организации">
-                    <button class="btn-core" onclick="Admin.createNode()" style="white-space: nowrap;">Создать ноду</button>
-                </div>
+            <div style="background:#11111f; padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid #1c1c35;">
+                <p style="margin:0 0 8px 0; font-size:11px; color:#00ffaa; font-weight:bold;">👑 НАЗНАЧИТЬ НОВОГО ОСНОВАТЕЛЯ:</p>
+                <input type="text" id="adm-new-founder-email" class="input-field" placeholder="Email друга">
+                <input type="text" id="adm-new-founder-nick" class="input-field" placeholder="Никнейм друга">
+                <button class="btn-core" style="background:green; width:100%;" onclick="Admin.grantFounderPrivilege()">Выдать Права Основателя</button>
             </div>
-            
-            <div class="divider"></div>
-            
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <label class="text-muted" style="font-weight: 700;">2. Изменение рангов, ролей и системных префиксов пользователей:</label>
-                
-                <div style="display: flex; flex-direction: column; gap: 5px;">
-                    <span class="text-muted">Выберите пользователя из базы данных:</span>
-                    <select class="input-core" id="adm-user-list" onchange="Admin.onUserSelectChange()"></select>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div style="display: flex; flex-direction: column; gap: 5px;">
-                        <span class="text-muted">Форумная группа:</span>
-                        <select class="input-core" id="adm-role">
-                            <option value="badge-user">Пользователь (Обычный)</option>
-                            <option value="badge-leader">Лидер фракции</option>
-                            <option value="badge-moderator">Модератор разделов</option>
-                            <option value="badge-admin">Администратор сервера</option>
-                            <option value="badge-founder">Создатель проекта (Founder)</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 5px;">
-                        <span class="text-muted">Графический знак (Галка):</span>
-                        <select class="input-core" id="adm-verify">
-                            <option value="none">Отсутствует</option>
-                            <option value="verif-admin">Красная (Высший состав)</option>
-                            <option value="verif-dev">Синяя (Разработчик)</option>
-                            <option value="verif-user">Зеленая (Проверенный)</option>
-                        </select>
-                    </div>
-                </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="adm-ban-status">
-                        <label for="adm-ban-status" style="color: var(--accent); font-weight: 700; font-size: 13px;">Заблокировать (БАН)</label>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="adm-mute-status">
-                        <label for="adm-mute-status" style="color: #ffb700; font-weight: 700; font-size: 13px;">Заглушить (МУТ)</label>
-                    </div>
-                </div>
-            </div>
+            <label style="font-size:10px; color:#888;">Выберите игрока для редактирования:</label>
+            <select id="adm-user-list" class="input-field" onchange="Admin.onUserSelectChange()"></select>
             
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button class="btn-core" onclick="Admin.save()" style="flex: 1; background: #ffb700; color: #000;">Применить конфигурацию прав</button>
-                <button class="btn-core" style="background: #1c1c34;" onclick="UI.close('m-admin')">Закрыть панель</button>
+            <label style="font-size:10px; color:#888;">Роль:</label>
+            <select id="adm-role" class="input-field">
+                <option value="badge-user">USER</option>
+                <option value="badge-leader">LEADER (Лидер)</option>
+                <option value="badge-admin">ADMIN</option>
+                <option value="badge-founder">FOUNDER</option>
+            </select>
+
+            <!-- НАСТРОЙКА ЛИДЕРСКИХ РАЗДЕЛОВ -->
+            <div id="adm-leader-nodes-box" style="background:#141424; padding:10px; border-radius:6px; margin-bottom:10px;">
+                <p style="margin:0 0 5px 0; font-size:11px; color:#00ffaa;">Закрепить Лидерский Раздел:</p>
+                <select id="adm-leader-node-select" class="input-field"></select>
+                <p style="font-size:10px; color:#555; margin:-5px 0 5px 0;">Лидер получит полный доступ к модерации и созданию тем в выбранном разделе.</p>
             </div>
+
+            <label style="font-size:10px; color:#888;">Верификация (Галочка):</label>
+            <select id="adm-verify" class="input-field">
+                <option value="none">Нет</option>
+                <option value="v-blue-line">Синий контур</option>
+                <option value="v-yellow-line">Желтый контур</option>
+                <option value="v-red-line">Красный контур</option>
+                <option value="v-blue-fill">Синяя заливка</option>
+            </select>
+
+            <label style="font-size:10px; color:#888;">Доступ к форуму:</label>
+            <select id="adm-ban" class="input-field">
+                <option value="no">✅ Активен</option>
+                <option value="yes">🚫 БАН (BANNED)</option>
+                <option value="mute">🔇 МУТ</option>
+            </select>
+
+            <button class="btn-core" style="width:100%;" onclick="Admin.save()">Применить настройки</button>
+            <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-admin')">Закрыть</button>
         </div>
     </div>
 
-    <!-- Просмотр профиля другого юзера (Карточка) -->
-    <div class="modal-overlay" id="m-user-card">
-        <div class="modal-window" style="width: 400px; text-align: center;">
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 10px 0;">
-                <img id="card-avatar" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--border-color);">
-                <div>
-                    <h3 id="card-nick" style="margin: 0 0 5px 0; font-size: 22px;"></h3>
-                    <div id="card-badge-container"></div>
-                </div>
-                <div class="divider" style="width: 100%;"></div>
-                <div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-muted);">
-                    <div>Статус активности: <span style="color: var(--neon-green); font-weight: 700;">Online</span></div>
-                    <div id="card-reg-date"></div>
-                </div>
-            </div>
-            <button class="btn-core" style="background: #1c1c34; width: 100%;" onclick="UI.close('m-user-card')">Закрыть профиль</button>
+    <!-- МОДАЛКА ЛИДЕРСКОЙ ПАНЕЛИ -->
+    <div id="m-leader" class="modal">
+        <div class="modal-content">
+            <h3 style="color:#00ffaa; margin-top:0;">💼 Панель Управления Лидера</h3>
+            <p style="font-size:12px; color:#aaa;">Ваш закрепленный раздел управления:</p>
+            <div id="leader-assigned-node-title" style="font-weight:bold; color:#fff; background:#111; padding:10px; border-radius:4px; border-left:3px solid #00ffaa; margin-bottom:15px;">Не назначен</div>
+            <button class="btn-core" style="width:100%; background:#00ffaa; color:#000;" onclick="LeaderPanel.goToMyNode()">Перейти в раздел и модерировать</button>
+            <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-leader')">Закрыть</button>
         </div>
     </div>
 
+    <div id="m-node" class="modal">
+        <div class="modal-content">
+            <h3>Создать новый раздел</h3>
+            <input type="text" id="node-title" class="input-field" placeholder="Название раздела (например: Жалобы)">
+            <button class="btn-core" style="width:100%;" onclick="Admin.createNode()">Создать</button>
+            <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-node')">Отмена</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА СОЗДАНИЯ ТЕМЫ -->
+    <div id="m-topic" class="modal">
+        <div class="modal-content">
+            <h3>Новая тема</h3>
+            <input type="text" id="t-title" class="input-field" placeholder="Заголовок темы">
+            <div style="margin-bottom:10px; display:flex; gap:5px;">
+                <label class="btn-core" style="padding:5px 10px; background:#222; cursor:pointer;" title="Добавить картинку">
+                    🖼️ ФОТО
+                    <input type="file" id="t-attach-img" accept="image/*" style="display:none;" onchange="Editor.appendAttachment(event, '[img]')">
+                </label>
+                <label class="btn-core" style="padding:5px 10px; background:#222; cursor:pointer;" title="Добавить видео">
+                    🎥 ВИДЕО
+                    <input type="file" id="t-attach-vid" accept="video/*" style="display:none;" onchange="Editor.appendAttachment(event, '[video]')">
+                </label>
+                <button class="btn-core" style="padding:5px 10px;" onclick="Editor.tag('[b]','[/b]')">B</button>
+            </div>
+            <textarea id="t-text" class="input-field" style="height:150px; resize:none;" placeholder="Текст вашего сообщения..."></textarea>
+            
+            <label style="font-size:10px; color:#555;">Статус темы:</label>
+            <select id="t-status" class="input-field">
+                <option value="status-open">Открыто</option>
+                <option value="status-closed">Закрыто</option>
+                <option value="status-review">На рассмотрении</option>
+            </select>
+            
+            <button class="btn-core" style="width:100%;" onclick="Forum.post()">Опубликовать</button>
+            <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-topic')">Отмена</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА РЕДАКТИРОВАНИЯ СООБЩЕНИЯ/ТЕМЫ -->
+    <div id="m-edit-post" class="modal">
+        <div class="modal-content">
+            <h3>✏️ Редактирование текста</h3>
+            <textarea id="edit-post-textarea" class="input-field" style="height:150px; resize:noneкой"></textarea>
+            <button class="btn-core" style="width:100%;" onclick="Forum.saveEditedPost()">Сохранить изменения</button>
+            <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-edit-post')">Отмена</button>
+        </div>
+    </div>
+
+    <!-- ПОДКЛЮЧАЕМ НАШ ДВИЖОК ENGINE.JS -->
     <script src="engine.js"></script>
 </body>
 </html>
