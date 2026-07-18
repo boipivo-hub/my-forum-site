@@ -21,7 +21,7 @@
             --warning: #ffb700;
         }
 
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-main); color: #dedee6; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-main); color: #dedee6; overflow-x: hidden; }
 
         header {
             background: var(--bg-card); border-bottom: 1px solid var(--border-color);
@@ -33,8 +33,14 @@
         .logo span { color: var(--accent); }
 
         /* ИКОНКА ОПОВЕЩЕНИЯ */
-        .notif-bell { position: relative; cursor: pointer; width: 22px; height: 22px; fill: #555; }
-        .notif-badge { position: absolute; top: -5px; right: -5px; background: var(--accent); color: #fff; font-size: 9px; padding: 2px 4px; border-radius: 10px; font-weight: bold; }
+        .notif-container { position: relative; display: inline-block; }
+        .notif-bell { cursor: pointer; width: 22px; height: 22px; fill: #888; transition: 0.2s; }
+        .notif-bell:hover { fill: #fff; }
+        .notif-badge { position: absolute; top: -5px; right: -5px; background: var(--accent); color: #fff; font-size: 9px; padding: 2px 5px; border-radius: 10px; font-weight: bold; display: none; }
+        
+        .notif-dropdown { display: none; position: absolute; top: 30px; right: 0; background: var(--bg-card); border: 1px solid var(--border-color); width: 280px; max-height: 350px; overflow-y: auto; border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 2000; }
+        .notif-item { padding: 10px; border-bottom: 1px solid #141424; font-size: 12px; cursor: pointer; transition: 0.2s; }
+        .notif-item:hover { background: #11111f; }
 
         /* ГАЛОЧКИ */
         .verified-badge { display: inline-block; width: 15px; height: 15px; margin-left: 5px; vertical-align: middle; background-size: contain; background-repeat: no-repeat; }
@@ -47,10 +53,15 @@
         @keyframes rgb-burn { 0% { color: #ff0055; text-shadow: 0 0 8px rgba(255,0,85,0.5); } 33% { color: #9900ff; text-shadow: 0 0 8px rgba(153,0,255,0.5); } 66% { color: #00f0ff; text-shadow: 0 0 8px rgba(0,240,255,0.5); } 100% { color: #ff0055; text-shadow: 0 0 8px rgba(255,0,85,0.5); } }
         .glow-founder { animation: rgb-burn 3s infinite linear !important; font-weight: bold; }
         .glow-admin { color: #ff3333 !important; text-shadow: 0 0 5px rgba(255,51,51,0.5); font-weight: bold; }
+        .glow-leader { color: #00ffaa !important; text-shadow: 0 0 5px rgba(0,255,170,0.5); font-weight: bold; }
+        .glow-banned { color: #555 !important; text-decoration: line-through; }
+        
         .badge-role { display: inline-block; font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 3px; margin-top: 4px; text-transform: uppercase; }
         .badge-founder { background: linear-gradient(135deg, #ff0055, #9900ff); color: #fff; }
         .badge-admin { background: #ff3333; color: #fff; }
+        .badge-leader { background: #00ffaa; color: #000; }
         .badge-user { background: #222; color: #888; }
+        .badge-banned { background: #444; color: #aaa; }
 
         /* ЯРЛЫКИ СТАТУСА ТЕМ */
         .status-badge { font-size: 10px; padding: 3px 6px; border-radius: 3px; font-weight: bold; margin-right: 10px; border: 1px solid transparent; }
@@ -64,16 +75,29 @@
         .nav-link:hover { transform: translateX(5px); box-shadow: 0 0 10px var(--neon-blue); }
         
         .main-content { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 25px; min-height: 500px; }
-        .post-card { background: #08080d; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 15px; padding: 15px; }
+        .post-card { background: #08080d; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 15px; padding: 15px; position: relative; }
         
         .btn-core { background: linear-gradient(135deg, var(--accent), #9900ff); color: #fff; border: none; padding: 10px 18px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
         .input-field { width: 100%; background: #11111e; border: 1px solid var(--border-color); padding: 10px; border-radius: 4px; color: #fff; margin-bottom: 10px; box-sizing: border-box; }
         
         .avatar-main { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color); }
-        .avatar-mini { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--accent); }
+        .avatar-mini { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--accent); cursor: pointer; }
 
         .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999; }
         .modal-content { background:var(--bg-card); padding:25px; border-radius:8px; width:450px; border:1px solid var(--border-color); }
+
+        /* РЕАКЦИИ */
+        .reactions-bar { display: flex; gap: 8px; margin-top: 10px; background: #0e0e18; padding: 6px 12px; border-radius: 20px; width: fit-content; border: 1px solid #1a1a2e; }
+        .react-btn { cursor: pointer; font-size: 16px; transition: transform 0.1s; display: flex; align-items: center; gap: 4px; }
+        .react-btn:hover { transform: scale(1.2); }
+        .react-count { font-size: 11px; color: #888; font-weight: bold; }
+
+        /* ПОЛНОЭКРАННЫЙ ИНТЕРФЕЙС ТЕМЫ (TG STYLE) */
+        .fullscreen-topic-view { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: #05050a; z-index: 5000; display: none; flex-direction: column; }
+        .fullscreen-header { background: var(--bg-card); border-bottom: 1px solid var(--border-color); padding: 15px 30px; display: flex; align-items: center; gap: 20px; }
+        .fullscreen-body { flex: 1; overflow-y: auto; padding: 30px; box-sizing: border-box; max-width: 900px; width: 100%; margin: 0 auto; }
+        .fullscreen-footer { background: var(--bg-card); border-top: 1px solid var(--border-color); padding: 15px 30px; }
+        .fullscreen-footer-inner { max-width: 900px; width: 100%; margin: 0 auto; display: flex; gap: 15px; align-items: flex-end; }
     </style>
 </head>
 <body>
@@ -82,10 +106,24 @@
         <div class="logo" onclick="location.reload()">ARIES<span>ROLEPLAY</span></div>
         <div style="display:flex; align-items:center; gap:20px;">
             <button class="btn-core" style="background: linear-gradient(135deg, #00c6ff, #0072ff);" onclick="UI.show('m-donate')">💎 Донат</button>
-            <div class="notif-bell" onclick="alert('Уведомлений нет')">
-                <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
-                <div class="notif-badge">0</div>
+            
+            <!-- КОЛОКОЛЬЧИК УВЕДОМЛЕНИЙ -->
+            <div class="notif-container">
+                <div class="notif-bell" onclick="UI.toggleNotifs()">
+                    <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                    <div class="notif-badge" id="bell-badge">0</div>
+                </div>
+                <div class="notif-dropdown" id="bell-dropdown">
+                    <div style="padding:12px; font-weight:bold; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                        <span>Оповещения</span>
+                        <span style="font-size:10px; color:var(--accent); cursor:pointer;" onclick="AppNotif.clearAll()">Очистить все</span>
+                    </div>
+                    <div id="notif-render-zone">
+                        <p style="text-align:center; color:#555; font-size:12px; padding:20px;">Уведомлений нет</p>
+                    </div>
+                </div>
             </div>
+
             <div id="header-auth"></div>
         </div>
     </header>
@@ -94,6 +132,14 @@
         <aside class="sidebar">
             <div style="font-size:11px; color:#555; margin-bottom:10px; font-weight:bold;">МЕНЮ</div>
             <div id="sidebar-nodes"></div>
+            
+            <!-- ЛИДЕРСКАЯ ПАНЕЛЬ -->
+            <div id="leader-panel-btn" style="display:none; margin-top:15px; border-top:1px solid #222; padding-top:10px;">
+                <p style="font-size:9px; color:#00ffaa; margin-bottom:5px;">УПРАВЛЕНИЕ ЛИДЕРА:</p>
+                <button class="btn-core" style="width:100%; background:#111; border:1px solid #00ffaa; color:#00ffaa;" onclick="LeaderPanel.open()">💼 Мои разделы</button>
+            </div>
+
+            <!-- АДМИН ПАНЕЛЬ -->
             <div id="admin-panel-btn" style="display:none; margin-top:20px; border-top: 1px solid #222; padding-top:10px;">
                 <p style="font-size:9px; color:var(--accent); margin-bottom:5px;">CONTROL:</p>
                 <button class="btn-core" style="width:100%; margin-bottom:5px; background:#111; border: 1px solid var(--accent);" onclick="Admin.open()">🛡️ Управление игроками</button>
@@ -106,10 +152,50 @@
         </main>
     </div>
 
+    <!-- ПОЛНОЭКРАННЫЙ ИНТЕРФЕЙС ПРОСМОТРА ТЕМЫ (TG-STYLE) -->
+    <div class="fullscreen-topic-view" id="fullscreen-view">
+        <div class="fullscreen-header">
+            <button class="btn-core" style="background:#222;" onclick="Forum.closeFullscreen()">❮ Выйти из темы</button>
+            <h3 id="fs-topic-title" style="margin:0; font-size:18px; color:#fff;">Заголовок темы</h3>
+            <div id="fs-topic-badge-status"></div>
+        </div>
+        <div class="fullscreen-body" id="fs-messages-container">
+            <!-- Сюда сыпятся сообщения темы и ответы -->
+        </div>
+        <div class="fullscreen-footer" id="fs-reply-footer">
+            <div class="fullscreen-footer-inner">
+                <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
+                    <div id="reply-target-indicator" style="font-size:11px; color:#00ffaa; display:none;"></div>
+                    <textarea id="fs-reply-text" class="input-field" style="height:50px; resize:none; margin-bottom:0;" placeholder="Написать ответ на весь экран..."></textarea>
+                </div>
+                <div style="display:flex; gap:5px;">
+                    <label class="btn-core" style="padding:10px; background:#181829;" title="Прикрепить фото/видео">
+                        📎
+                        <input type="file" id="fs-attachment" accept="image/*,video/*" style="display:none;" onchange="Forum.handleAttachment(event)">
+                    </label>
+                    <button class="btn-core" style="height:50px;" onclick="Forum.sendFsReply()">Отправить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: КАРТОЧКА ПРОФИЛЯ С ПОДРОБНОСТЯМИ -->
+    <div id="m-user-card" class="modal" onclick="if(event.target===this) UI.close('m-user-card')">
+        <div class="modal-content" style="text-align:center; position:relative;">
+            <h3 style="margin-top:0;">Карточка пользователя</h3>
+            <img id="card-avatar" class="avatar-main" src="" style="width:110px; height:110px; border-color:var(--accent);">
+            <h2 id="card-nick" style="margin:10px 0 5px 0;">Nick</h2>
+            <div id="card-badge-container"></div>
+            <hr style="border:0; border-top:1px solid #222; margin:15px 0;">
+            <p id="card-status" style="font-size:13px; color:#888;">Статус: Загрузка...</p>
+            <button class="btn-core" style="width:100%; background:#222; margin-top:10px;" onclick="UI.close('m-user-card')">Закрыть</button>
+        </div>
+    </div>
+
     <div id="m-donate" class="modal">
         <div class="modal-content" style="text-align:center; border-color:#0072ff;">
             <h3 style="color:#fff;">⚡ Выберите регион</h3>
-            <a href="https://www.privat24.ua/send/4285t" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:12px; background: #70b012;">🇺🇦 Украина (Карта)</a>
+            <a href="https://www.privat24.ua/send/4285t" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:12px; background: #70b012;">🇺🇦 Ukraine (Карта)</a>
             <a href="https://destream.net/live/ponkc29/donate" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:20px; background: #fff; color: #000;">🌐 Google Pay / World</a>
             <button class="btn-core" onclick="UI.close('m-donate')" style="background: #222; width:100%;">Вернуться</button>
         </div>
@@ -141,20 +227,39 @@
         </div>
     </div>
 
+    <!-- УЛУЧШЕННАЯ АДМИНКА (ОСНОВАТЕЛИ + ДРУЗЬЯ С ПРАВАМИ ОСНОВАТЕЛЯ) -->
     <div id="m-admin" class="modal">
-        <div class="modal-content">
-            <h3 style="color:var(--accent); margin-top:0;">🛡️ Панель управления</h3>
-            <label style="font-size:10px; color:#555;">Выберите игрока:</label>
-            <select id="adm-user-list" class="input-field"></select>
+        <div class="modal-content" style="width:500px; max-height:85vh; overflow-y:auto;">
+            <h3 style="color:var(--accent); margin-top:0; display:flex; justify-content:between; align-items:center;">
+                <span>🛡️ Панель Управления Проектом</span>
+            </h3>
             
-            <label style="font-size:10px; color:#555;">Роль:</label>
+            <div style="background:#11111f; padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid #1c1c35;">
+                <p style="margin:0 0 8px 0; font-size:11px; color:#00ffaa; font-weight:bold;">👑 НАЗНАЧИТЬ НОВОГО ОСНОВАТЕЛЯ (ПУНКТ 2):</p>
+                <input type="text" id="adm-new-founder-email" class="input-field" placeholder="Email друга">
+                <input type="text" id="adm-new-founder-nick" class="input-field" placeholder="Никнейм друга">
+                <button class="btn-core" style="background:green; width:100%;" onclick="Admin.grantFounderPrivilege()">Выдать Права Основателя</button>
+            </div>
+
+            <label style="font-size:10px; color:#888;">Выберите игрока для редактирования:</label>
+            <select id="adm-user-list" class="input-field" onchange="Admin.onUserSelectChange()"></select>
+            
+            <label style="font-size:10px; color:#888;">Роль:</label>
             <select id="adm-role" class="input-field">
                 <option value="badge-user">USER</option>
+                <option value="badge-leader">LEADER (Лидер)</option>
                 <option value="badge-admin">ADMIN</option>
                 <option value="badge-founder">FOUNDER</option>
             </select>
 
-            <label style="font-size:10px; color:#555;">Верификация (Галочка):</label>
+            <!-- НАСТРОЙКА ЛИДЕРСКИХ РАЗДЕЛОВ (ПУНКТ 1) -->
+            <div id="adm-leader-nodes-box" style="background:#141424; padding:10px; border-radius:6px; margin-bottom:10px;">
+                <p style="margin:0 0 5px 0; font-size:11px; color:#00ffaa;">Закрепить Лидерский Раздел:</p>
+                <select id="adm-leader-node-select" class="input-field"></select>
+                <p style="font-size:10px; color:#555; margin:-5px 0 5px 0;">Лидер получит полный доступ к модерации и созданию тем в выбранном разделе.</p>
+            </div>
+
+            <label style="font-size:10px; color:#888;">Верификация (Галочка):</label>
             <select id="adm-verify" class="input-field">
                 <option value="none">Нет</option>
                 <option value="v-blue-line">Синий контур</option>
@@ -163,15 +268,26 @@
                 <option value="v-blue-fill">Синяя заливка</option>
             </select>
 
-            <label style="font-size:10px; color:#555;">Доступ:</label>
+            <label style="font-size:10px; color:#888;">Доступ к форуму:</label>
             <select id="adm-ban" class="input-field">
                 <option value="no">✅ Активен</option>
-                <option value="yes">🚫 БАН</option>
+                <option value="yes">🚫 БАН (BANNED)</option>
                 <option value="mute">🔇 МУТ</option>
             </select>
 
-            <button class="btn-core" style="width:100%;" onclick="Admin.save()">Применить</button>
+            <button class="btn-core" style="width:100%;" onclick="Admin.save()">Применить настройки</button>
             <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-admin')">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА ЛИДЕРСКОЙ ПАНЕЛИ -->
+    <div id="m-leader" class="modal">
+        <div class="modal-content">
+            <h3 style="color:#00ffaa; margin-top:0;">💼 Панель Управления Лидера</h3>
+            <p style="font-size:12px; color:#aaa;">Ваш закрепленный раздел управления:</p>
+            <div id="leader-assigned-node-title" style="font-weight:bold; color:#fff; background:#111; padding:10px; border-radius:4px; border-left:3px solid #00ffaa; margin-bottom:15px;">Не назначен</div>
+            <button class="btn-core" style="width:100%; background:#00ffaa; color:#000;" onclick="LeaderPanel.goToMyNode()">Перейти в раздел и модерировать</button>
+            <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-leader')">Закрыть</button>
         </div>
     </div>
 
@@ -184,324 +300,46 @@
         </div>
     </div>
 
+    <!-- МОДАЛКА СОЗДАНИЯ ТЕМЫ -->
     <div id="m-topic" class="modal">
         <div class="modal-content">
             <h3>Новая тема</h3>
             <input type="text" id="t-title" class="input-field" placeholder="Заголовок темы">
             <div style="margin-bottom:10px; display:flex; gap:5px;">
-                <button class="btn-core" style="padding:5px;" onclick="Editor.tag('[img]','[/img]')">🖼️</button>
-                <button class="btn-core" style="padding:5px;" onclick="Editor.tag('[video]','[/video]')">🎥</button>
-                <button class="btn-core" style="padding:5px;" onclick="Editor.tag('[b]','[/b]')">B</button>
+                <label class="btn-core" style="padding:5px 10px; background:#222; cursor:pointer;" title="Добавить картинку">
+                    🖼️ ФОТО
+                    <input type="file" id="t-attach-img" accept="image/*" style="display:none;" onchange="Editor.appendAttachment(event, '[img]')">
+                </label>
+                <label class="btn-core" style="padding:5px 10px; background:#222; cursor:pointer;" title="Добавить видео">
+                    🎥 ВИДЕО
+                    <input type="file" id="t-attach-vid" accept="video/*" style="display:none;" onchange="Editor.appendAttachment(event, '[video]')">
+                </label>
+                <button class="btn-core" style="padding:5px 10px;" onclick="Editor.tag('[b]','[/b]')">B</button>
             </div>
             <textarea id="t-text" class="input-field" style="height:150px; resize:none;" placeholder="Текст вашего сообщения..."></textarea>
+            
             <label style="font-size:10px; color:#555;">Статус темы:</label>
             <select id="t-status" class="input-field">
                 <option value="status-open">Открыто</option>
                 <option value="status-closed">Закрыто</option>
                 <option value="status-review">На рассмотрении</option>
             </select>
+            
             <button class="btn-core" style="width:100%;" onclick="Forum.post()">Опубликовать</button>
             <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-topic')">Отмена</button>
         </div>
     </div>
 
-    <script>
-        // === FIREBASE CONFIG ===
-        const firebaseConfig = {
-            apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM",
-            authDomain: "aries-forum.firebaseapp.com",
-            databaseURL: "https://aries-forum-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "aries-forum",
-            storageBucket: "aries-forum.firebasestorage.app",
-            messagingSenderId: "614643963857",
-            appId: "1:614643963857:web:01f1f941c72249ac6eb2f0"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        const auth = firebase.auth();
+    <!-- МОДАЛКА РЕДАКТИРОВАНИЯ СООБЩЕНИЯ/ТЕМЫ -->
+    <div id="m-edit-post" class="modal">
+        <div class="modal-content">
+            <h3>✏️ Редактирование текста</h3>
+            <textarea id="edit-post-textarea" class="input-field" style="height:150px; resize:none;"></textarea>
+            <button class="btn-core" style="width:100%;" onclick="Forum.saveEditedPost()">Сохранить изменения</button>
+            <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-edit-post')">Отмена</button>
+        </div>
+    </div>
 
-        let user = null;
-        let currentActiveNode = null;
-
-        const UI = {
-            show: (id) => document.getElementById(id).style.display='flex',
-            close: (id) => document.getElementById(id).style.display='none',
-            renderHeader: () => {
-                const zone = document.getElementById('header-auth');
-                if (user) {
-                    const glow = user.role === 'badge-founder' ? 'glow-founder' : (user.role === 'badge-admin' ? 'glow-admin' : '');
-                    const verifyClass = user.verify || 'none';
-                    zone.innerHTML = `
-                        <div style="display:flex; align-items:center; gap:12px;">
-                            <img src="${user.avatar || 'https://via.placeholder.com/32'}" class="avatar-mini" onclick="UI.show('m-profile')">
-                            <span class="${glow}" style="font-weight:bold; cursor:pointer;" onclick="UI.show('m-profile')">${user.nick || 'Player'} <div class="verified-badge ${verifyClass}"></div></span>
-                            <button class="btn-core" style="background:#222; font-size:10px;" onclick="auth.signOut().then(()=>location.reload())">Выход</button>
-                        </div>
-                    `;
-                    if (user.role === 'badge-founder' || user.role === 'badge-admin') {
-                        document.getElementById('admin-panel-btn').style.display='block';
-                    } else {
-                        document.getElementById('admin-panel-btn').style.display='none';
-                    }
-                } else {
-                    zone.innerHTML = `<button class="btn-core" onclick="UI.show('m-auth')">Войти</button>`;
-                    document.getElementById('admin-panel-btn').style.display='none';
-                }
-            }
-        };
-
-        const Auth = {
-            google: () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).then(() => location.reload()),
-            magic: () => {
-                const email = document.getElementById('auth-email').value;
-                auth.sendSignInLinkToEmail(email, { url: window.location.href, handleCodeInApp: true })
-                .then(() => alert('Ссылка отправлена на почту!'));
-            }
-        };
-
-        const Profile = {
-            preview: (e) => {
-                const reader = new FileReader();
-                reader.onload = () => { document.getElementById('p-avatar-view').src = reader.result; user.tempAvatar = reader.result; };
-                reader.readAsDataURL(e.target.files[0]);
-            },
-            save: async () => {
-                const updates = { nick: document.getElementById('p-nick').value || user.nick };
-                if(user.tempAvatar) updates.avatar = user.tempAvatar;
-                await db.ref('users/' + auth.currentUser.uid).update(updates);
-                location.reload();
-            }
-        };
-
-        const Forum = {
-            init: () => {
-                db.ref('nodes').on('value', snap => {
-                    const nodes = snap.val() || {};
-                    let html = '';
-                    const nodeKeys = Object.keys(nodes);
-                    
-                    if (nodeKeys.length === 0) {
-                        // Если в базе пусто - создаем дефолтные разделы, чтобы сайт не был пустым
-                        db.ref('nodes/news').set({ title: 'Новости' });
-                        db.ref('nodes/general').set({ title: 'Общий раздел' });
-                        return;
-                    }
-
-                    nodeKeys.forEach(id => {
-                        html += `<div class="nav-link" onclick="Forum.loadTopics('${id}', '${nodes[id].title}')">${nodes[id].title}</div>`;
-                    });
-                    document.getElementById('sidebar-nodes').innerHTML = html;
-                    
-                    if(!currentActiveNode) {
-                        Forum.loadTopics(nodeKeys[0], nodes[nodeKeys[0]].title);
-                    }
-                });
-            },
-            loadTopics: async (nodeId, title) => {
-                currentActiveNode = nodeId;
-                document.getElementById('forum-render').innerHTML = `<h3>Загрузка ${title || ''}...</h3>`;
-                const snap = await db.ref('topics/' + nodeId).once('value');
-                const data = snap.val() || {};
-                
-                // Создавать темы в разделе теперь по умолчанию могут ТОЛЬКО Основатель (founder) и Админ (admin)
-                let html = (user && (user.role === 'badge-founder' || user.role === 'badge-admin')) ? 
-                           `<button class="btn-core" style="width:100%; margin-bottom:20px;" onclick="UI.show('m-topic')">+ Опубликовать тему в "${title || ''}"</button>` : '';
-                
-                const topicIds = Object.keys(data);
-                if (topicIds.length > 0) {
-                    topicIds.reverse().forEach(id => {
-                        const t = data[id];
-                        const statusClass = t.status || 'status-open';
-                        const displayStatus = statusClass.split('-')[1] ? statusClass.split('-')[1].toUpperCase() : 'OPEN';
-                        
-                        html += `
-                            <div class="post-card" onclick="Forum.viewTopic('${id}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                    <span class="status-badge ${statusClass}">${displayStatus}</span>
-                                    <span style="font-weight:bold; font-size:16px;">${t.title || 'Без названия'}</span>
-                                    <div style="font-size:11px; color:#555; margin-top:8px;">Автор: ${t.authorNick || 'Игрок'}</div>
-                                </div>
-                                ${(user && user.role === 'badge-founder') ? `<button class="btn-core" style="background:red; font-size:9px;" onclick="event.stopPropagation(); Forum.deleteTopic('${id}')">Удалить</button>` : ''}
-                            </div>
-                        `;
-                    });
-                } else {
-                    html += '<p style="text-align:center; padding: 20px 0;">В этом разделе ещё нет тем.</p>';
-                }
-                document.getElementById('forum-render').innerHTML = html;
-            },
-            viewTopic: async (id) => {
-                const snap = await db.ref('topics/' + currentActiveNode + '/' + id).once('value');
-                const t = snap.val();
-                if(!t) return;
-
-                const statusClass = t.status || 'status-open';
-                const authorBadge = t.authorBadge || 'badge-user';
-                const displayBadge = authorBadge.split('-')[1] ? authorBadge.split('-')[1].toUpperCase() : 'USER';
-
-                let html = `
-                    <button class="btn-core" style="background:#222; margin-bottom:15px;" onclick="Forum.loadTopics('${currentActiveNode}', '')">❮ Назад</button>
-                    <div class="post-card">
-                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
-                            <img src="${t.authorAvatar || 'https://via.placeholder.com/32'}" class="avatar-mini">
-                            <div>
-                                <span class="${t.authorGlow || ''}">${t.authorNick || 'Игрок'} <div class="verified-badge ${t.authorVerify || 'none'}"></div></span><br>
-                                <span class="badge-role ${authorBadge}">${displayBadge}</span>
-                            </div>
-                        </div>
-                        <div style="color:#cdcdff; line-height:1.6;">${Editor.parse(t.text || '')}</div>
-                    </div>
-                    <div id="replies-list"></div>
-                    ${(user && user.sanction !== 'mute' && statusClass !== 'status-closed') ? `
-                        <div class="post-card">
-                            <textarea id="reply-text" class="input-field" style="height:80px; resize:none;" placeholder="Ваш ответ игроку..."></textarea>
-                            <button class="btn-core" onclick="Forum.reply('${id}')">Отправить ответ</button>
-                        </div>
-                    ` : (statusClass === 'status-closed' ? '<p style="color:red; text-align:center; font-weight:bold;">ТЕМА ЗАКРЫТА ДЛЯ ОТВЕТОВ</p>' : '')}
-                `;
-                document.getElementById('forum-render').innerHTML = html;
-                Forum.loadReplies(id);
-            },
-            post: async () => {
-                const title = document.getElementById('t-title').value;
-                const text = document.getElementById('t-text').value;
-                if(!title || !text) return alert('Заполните заголовок и текст!');
-                
-                const topic = {
-                    title, text, status: document.getElementById('t-status').value,
-                    authorNick: user.nick, authorAvatar: user.avatar || '',
-                    authorGlow: user.role === 'badge-founder' ? 'glow-founder' : (user.role === 'badge-admin' ? 'glow-admin' : ''),
-                    authorBadge: user.role, authorVerify: user.verify || 'none'
-                };
-                await db.ref('topics/' + currentActiveNode).push(topic);
-                
-                document.getElementById('t-title').value = '';
-                document.getElementById('t-text').value = '';
-                UI.close('m-topic'); 
-                Forum.loadTopics(currentActiveNode, '');
-            },
-            reply: async (id) => {
-                const text = document.getElementById('reply-text').value;
-                if(!text) return;
-                await db.ref('replies/' + id).push({
-                    text, authorNick: user.nick, authorAvatar: user.avatar || '',
-                    authorGlow: user.role === 'badge-founder' ? 'glow-founder' : (user.role === 'badge-admin' ? 'glow-admin' : ''),
-                    authorBadge: user.role, authorVerify: user.verify || 'none'
-                });
-                document.getElementById('reply-text').value = '';
-                Forum.loadReplies(id);
-            },
-            loadReplies: async (id) => {
-                const snap = await db.ref('replies/' + id).once('value');
-                const data = snap.val() || {};
-                let html = '';
-                Object.keys(data).forEach(rid => {
-                    const r = data[rid];
-                    const rBadge = r.authorBadge || 'badge-user';
-                    html += `
-                        <div class="post-card" style="margin-left:25px; border-left:2px solid var(--accent);">
-                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                                <img src="${r.authorAvatar || 'https://via.placeholder.com/24'}" class="avatar-mini" style="width:24px; height:24px;">
-                                <span class="${r.authorGlow || ''}" style="font-size:12px;">${r.authorNick || 'Игрок'} <div class="verified-badge ${r.authorVerify || 'none'}"></div></span>
-                            </div>
-                            <div style="font-size:13px; color:#aaa;">${Editor.parse(r.text || '')}</div>
-                        </div>
-                    `;
-                });
-                document.getElementById('replies-list').innerHTML = html;
-            },
-            deleteTopic: async (id) => {
-                if(confirm('Удалить эту тему навсегда?')) {
-                    await db.ref('topics/' + currentActiveNode + '/' + id).remove();
-                    await db.ref('replies/' + id).remove();
-                    Forum.loadTopics(currentActiveNode, '');
-                }
-            }
-        };
-
-        const Admin = {
-            open: async () => {
-                const snap = await db.ref('users').once('value');
-                const users = snap.val() || {};
-                let html = '';
-                Object.keys(users).forEach(uid => html += `<option value="${uid}">${users[uid].nick || 'Player'} (${users[uid].email || ''})</option>`);
-                document.getElementById('adm-user-list').innerHTML = html;
-                UI.show('m-admin');
-            },
-            save: async () => {
-                const uid = document.getElementById('adm-user-list').value;
-                await db.ref('users/' + uid).update({
-                    role: document.getElementById('adm-role').value,
-                    verify: document.getElementById('adm-verify').value,
-                    sanction: document.getElementById('adm-ban').value
-                });
-                alert('Данные пользователя обновлены!');
-                UI.close('m-admin');
-                location.reload();
-            },
-            createNode: async () => {
-                const title = document.getElementById('node-title').value;
-                if(!title) return;
-                await db.ref('nodes').push({ title });
-                UI.close('m-node');
-                document.getElementById('node-title').value = '';
-            }
-        };
-
-        const Editor = {
-            tag: (s, e) => document.getElementById('t-text').value += s + e,
-            parse: (t) => {
-                if(!t) return '';
-                return t.replace(/\[img\](.*?)\[\/img\]/g, '<img src="$1" style="max-width:100%; border-radius:5px; margin:5px 0;">').replace(/\[video\](.*?)\[\/video\]/g, '<video src="$1" controls style="max-width:100%;"></video>').replace(/\[b\](.*?)\[\/b\]/g, '<b>$1</b>').replace(/\n/g, '<br>');
-            }
-        };
-
-        auth.onAuthStateChanged(async (u) => {
-            if (u) {
-                const snap = await db.ref('users/' + u.uid).once('value');
-                let dbUser = snap.val();
-                
-                // Проверка твоей почты (Основатель)
-                if (u.email === 'ariessupporttest@gmail.com') {
-                    if (!dbUser || dbUser.role !== 'badge-founder') {
-                        dbUser = { 
-                            role: 'badge-founder', 
-                            nick: 'Qumestlies_Shawty', 
-                            email: u.email, 
-                            verify: 'v-blue-fill',
-                            avatar: u.photoURL || '',
-                            sanction: 'no'
-                        };
-                        await db.ref('users/' + u.uid).set(dbUser);
-                    }
-                } else if (!dbUser) {
-                    // Создаем профиль для ОБЫЧНОГО нового пользователя
-                    dbUser = { 
-                        nick: u.displayName || 'Player_' + Math.floor(1000 + Math.random() * 9000), 
-                        role: 'badge-user', 
-                        avatar: u.photoURL || '', 
-                        sanction: 'no', 
-                        email: u.email, 
-                        verify: 'none' 
-                    };
-                    await db.ref('users/' + u.uid).set(dbUser);
-                }
-
-                user = dbUser;
-
-                if (user.sanction === 'yes') { 
-                    document.body.innerHTML = '<h1 style="color:red; text-align:center; padding-top:100px;">ВЫ ЗАБАНЕНЫ НА ФОРУМЕ</h1>'; 
-                    return; 
-                }
-                
-                document.getElementById('p-nick').value = user.nick || '';
-                document.getElementById('p-avatar-view').src = user.avatar || 'https://via.placeholder.com/90';
-            } else {
-                user = null;
-            }
-            UI.renderHeader();
-            Forum.init();
-        });
-    </script>
+    <script src="engine.js"></script>
 </body>
 </html>
