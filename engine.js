@@ -136,7 +136,6 @@ const Auth = {
     checkStaffPrivileges: () => {
         if (!currentUser) return;
         
-        // Серверная проверка прав администратора или лидера
         if (currentProfileData && (currentProfileData.role === 'badge-admin' || currentProfileData.role === 'badge-founder')) {
             document.getElementById('admin-panel-btn').style.display = 'block';
         } else {
@@ -515,7 +514,7 @@ const AppNotif = {
 };
 
 // =================================================================
-// 👤 PROFILE SYSTEM
+// 👤 PROFILE SYSTEM (ОБНОВЛЕННЫЙ И БЕЗОПАСНЫЙ)
 // =================================================================
 const Profile = {
     open: () => {
@@ -534,11 +533,31 @@ const Profile = {
         reader.readAsDataURL(file);
     },
     save: () => {
-        const nick = document.getElementById('p-nick').value; if(!nick) return;
+        const nick = document.getElementById('p-nick').value.trim(); 
+        if(!nick || !currentUser) return;
+
         let updates = { nick: nick };
-        if(window.tempAvatarBase64) updates.avatar = window.tempAvatarBase64;
+        if(window.tempAvatarBase64) {
+            updates.avatar = window.tempAvatarBase64;
+        }
+
+        // Обновляем данные пользователя в базе
         db.ref('users/' + currentUser.uid).update(updates).then(() => {
-            window.tempAvatarBase64 = null; UI.close('m-profile');
+            // Синхронизируем локальные данные текущей сессии
+            if (currentProfileData) {
+                currentProfileData.nick = nick;
+                if (updates.avatar) currentProfileData.avatar = updates.avatar;
+            }
+            registerKnownUser(currentUser.uid, nick);
+            
+            // Перерисовываем элементы интерфейса
+            Auth.renderHeader(true);
+
+            window.tempAvatarBase64 = null; 
+            UI.close('m-profile');
+            alert("Профиль успешно сохранен!");
+        }).catch(err => {
+            alert("Ошибка сохранения: " + err.message);
         });
     }
 };
