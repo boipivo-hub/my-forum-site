@@ -48,8 +48,14 @@ let currentSelectedTopicId = null;
 let activeFsReplyToUid = null;
 let activeFsReplyToNick = null;
 
-const MY_ROOT_EMAIL = "ariessupporttest@gmail.com";
-const MY_ROOT_NICK = "Qumestlies_Shawty";
+// Локальный реестр известных UID (для безопасной работы админ-панели без массового скачивания /users)
+let knownUserMap = new Map();
+
+function registerKnownUser(uid, nick) {
+    if (uid && nick) {
+        knownUserMap.set(uid, nick);
+    }
+}
 
 // =================================================================
 // 🚀 INITIALIZATION & APP START
@@ -89,7 +95,7 @@ function initDataSynchronization() {
 }
 
 // =================================================================
-// 🔑 AUTHENTICATION MODULE (С ХАРДКОД-ОБХОДОМ ДЛЯ ТЕБЯ)
+// 🔑 AUTHENTICATION MODULE (СЕРВЕРНАЯ ПРОВЕРКА ПРАВ)
 // =================================================================
 const Auth = {
     listen: () => {
@@ -97,27 +103,6 @@ const Auth = {
             if (user) {
                 currentUser = user;
                 
-                // ЖЁСТКАЯ ПРОВЕРКА НА ТВОЮ ПОЧТУ
-                if (user.email && user.email.toLowerCase() === MY_ROOT_EMAIL.toLowerCase()) {
-                    db.ref('users/' + user.uid).once('value', snap => {
-                        let existingData = snap.val();
-                        currentProfileData = {
-                            nick: MY_ROOT_NICK,
-                            avatar: (existingData && existingData.avatar) ? existingData.avatar : (user.photoURL || "https://i.imgur.com/8Km9tTv.png"),
-                            role: "badge-founder",
-                            verifyBadge: "verif-admin"
-                        };
-                        // Записываем тебя в базу как неуязвимого создателя
-                        db.ref('users/' + user.uid).update(currentProfileData);
-                        db.ref('founders/' + user.uid).set(true);
-                        
-                        Auth.renderHeader(true);
-                        document.getElementById('admin-panel-btn').style.display = 'block';
-                    });
-                    return;
-                }
-
-                // Логика для обычных смертных игроков
                 db.ref('users/' + user.uid).on('value', snap => {
                     currentProfileData = snap.val();
                     if (!currentProfileData) {
@@ -129,6 +114,8 @@ const Auth = {
                         };
                         db.ref('users/' + user.uid).set(currentProfileData);
                     }
+                    
+                    registerKnownUser(user.uid, currentProfileData.nick);
                     Auth.checkStaffPrivileges();
                     Auth.renderHeader(true);
                 });
@@ -149,20 +136,13 @@ const Auth = {
     checkStaffPrivileges: () => {
         if (!currentUser) return;
         
-        // Проверка прав создателя/админа
-        db.ref('founders/' + currentUser.uid).once('value', snap => {
-            if (snap.exists() || (currentUser.email && currentUser.email.toLowerCase() === MY_ROOT_EMAIL.toLowerCase())) {
-                document.getElementById('admin-panel-btn').style.display = 'block';
-            } else {
-                if (currentProfileData && currentProfileData.role === 'badge-admin') {
-                    document.getElementById('admin-panel-btn').style.display = 'block';
-                } else {
-                    document.getElementById('admin-panel-btn').style.display = 'none';
-                }
-            }
-        });
+        // Серверная проверка прав администратора или лидера
+        if (currentProfileData && (currentProfileData.role === 'badge-admin' || currentProfileData.role === 'badge-founder')) {
+            document.getElementById('admin-panel-btn').style.display = 'block';
+        } else {
+            document.getElementById('admin-panel-btn').style.display = 'none';
+        }
 
-        // Проверка лидера
         if (currentProfileData && currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId) {
             document.getElementById('leader-panel-btn').style.display = 'block';
         } else {
@@ -222,6 +202,10 @@ const Forum = {
                 const tId = child.key;
                 const tData = child.val();
                 
+                if (tData.authorUid && tData.authorNick) {
+                    registerKnownUser(tData.authorUid, tData.authorNick);
+                }
+
                 let statusClass = tData.status || 'status-open';
                 let statusText = statusClass === 'status-open' ? 'ОТКРЫТО' : statusClass === 'status-closed' ? 'ЗАКРЫТО' : 'НА РАССМОТРЕНИИ';
 
@@ -254,7 +238,6 @@ const Forum = {
         if(!currentUser) { alert('Для создания тем необходимо авторизоваться!'); return; }
         if(currentProfileData && currentProfileData.isBanned) { alert('Ваш аккаунт заблокирован!'); return; }
         
-        // Проверка прав на создание темы на стороне клиента
         const isFounder = currentProfileData.role === 'badge-founder';
         const isAdmin = currentProfileData.role === 'badge-admin';
         const isTargetLeader = currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === currentSelectedNodeId;
@@ -302,6 +285,10 @@ const Forum = {
         db.ref(`topics/${nodeId}/${topicId}`).on('value', snap => {
             const data = snap.val();
             if(!data) return;
+
+            if (data.authorUid && data.authorNick) {
+                registerKnownUser(data.authorUid, data.authorNick);
+            }
 
             document.getElementById('fs-topic-title').innerText = data.title;
             const badgeZone = document.getElementById('fs-topic-badge-status');
@@ -362,6 +349,10 @@ const Forum = {
             snap.forEach(child => {
                 const rId = child.key;
                 const rData = child.val();
+
+                if (rData.authorUid && rData.authorNick) {
+                    registerKnownUser(rData.authorUid, rData.authorNick);
+                }
 
                 let rGlow = UI.getGlowClass(rData.authorRole || 'badge-user');
                 let rVerify = UI.getVerifyHtml(rData.authorVerify || 'none');
@@ -553,29 +544,37 @@ const Profile = {
 };
 
 // =================================================================
-// 🛡️ STAFF OPERATIONS (ВЫДАЧА АДМИНОК, ЛИДЕРОК И ГАЛОЧЕК)
+// 🛡️ STAFF OPERATIONS (АДМИН-ПАНЕЛЬ: БЕЗ ВЫДАЧИ ОСНОВАТЕЛЯ И БЕЗ СЛИВА ПОЧТ)
 // =================================================================
 const Admin = {
     open: () => {
         UI.show('m-admin');
-        db.ref('users').once('value', snap => {
-            const select = document.getElementById('adm-user-list');
-            if(!select) return;
-            select.innerHTML = '<option value="none">-- Выберите игрока --</option>';
-            snap.forEach(child => {
-                const o = document.createElement('option');
-                o.value = child.key;
-                o.innerText = `${child.val().nick} (${child.key.substring(0,6)})`;
-                select.appendChild(o);
-            });
+        const select = document.getElementById('adm-user-list');
+        if(!select) return;
+        select.innerHTML = '<option value="none">-- Выберите известного игрока или укажите UID --</option>';
+        
+        // Заполняем список зарегистрированными в процессе работы никами/UID
+        knownUserMap.forEach((nick, uid) => {
+            const o = document.createElement('option');
+            o.value = uid;
+            o.innerText = `${nick} (UID: ${uid.substring(0, 6)}...)`;
+            select.appendChild(o);
         });
     },
     onUserSelectChange: () => {
         const uid = document.getElementById('adm-user-list').value;
         if(uid === 'none') return;
+        
+        // Безопасное чтение одного выбранного пользователя по UID
         db.ref('users/' + uid).once('value', snap => {
             const d = snap.val(); if(!d) return;
-            document.getElementById('adm-role').value = d.role || 'badge-user';
+            
+            // В селектор выставляются только безопасные роли
+            const roleSelect = document.getElementById('adm-role');
+            if (roleSelect) {
+                roleSelect.value = (d.role === 'badge-founder') ? 'badge-admin' : (d.role || 'badge-user');
+            }
+            
             document.getElementById('adm-verify').value = d.verifyBadge || 'none';
             let banStatus = 'no';
             if(d.isBanned) banStatus = 'yes'; else if(d.isMuted) banStatus = 'mute';
@@ -584,13 +583,29 @@ const Admin = {
         });
     },
     save: () => {
-        const uid = document.getElementById('adm-user-list').value;
-        if(uid === 'none') return;
+        let uid = document.getElementById('adm-user-list').value;
+        
+        // Если администратор ввел UID вручную в текстовое поле
+        const manualInput = document.getElementById('adm-manual-uid-input');
+        if (manualInput && manualInput.value.trim() !== '') {
+            uid = manualInput.value.trim();
+        }
+
+        if(!uid || uid === 'none') {
+            alert('Пожалуйста, выберите игрока из списка или введите UID!');
+            return;
+        }
 
         const role = document.getElementById('adm-role').value;
         const verify = document.getElementById('adm-verify').value;
         const ban = document.getElementById('adm-ban').value;
         const leaderNode = document.getElementById('adm-leader-node-select').value;
+
+        // Блокировка попытки назначить 'badge-founder' из интерфейса
+        if (role === 'badge-founder') {
+            alert('Ошибка безопасности: Роль Основателя выдается ТОЛЬКО через консоль Firebase!');
+            return;
+        }
 
         let updates = {
             role: role,
@@ -602,14 +617,11 @@ const Admin = {
         else if(ban === 'mute') { updates.isMuted = true; updates.isBanned = null; }
         else { updates.isBanned = null; updates.isMuted = null; }
 
-        // Если ставится роль основателя — дублируем в ветку основателей
-        if(role === 'badge-founder') {
-            db.ref('founders/' + uid).set(true);
-        }
-
         db.ref('users/' + uid).update(updates).then(() => {
             alert('Данные игрока успешно обновлены!');
             UI.close('m-admin');
+        }).catch(err => {
+            alert('Ошибка при сохранении: ' + err.message);
         });
     },
     createNode: () => {
@@ -654,6 +666,8 @@ const UI = {
     showUserCard: (uid) => {
         db.ref('users/' + uid).once('value', snap => {
             const d = snap.val(); if(!d) return;
+            registerKnownUser(uid, d.nick);
+            
             document.getElementById('card-avatar').src = d.avatar || 'https://i.imgur.com/8Km9tTv.png';
             document.getElementById('card-nick').className = UI.getGlowClass(d.role || 'badge-user');
             document.getElementById('card-nick').innerText = d.nick;
@@ -673,7 +687,6 @@ const UI = {
     },
     getVerifyHtml: (v) => {
         if(!v || v === 'none') return '';
-        // Возвращает нужный класс кастомных галочек из стилей css
         return `<span class="verified-badge ${v}"></span>`;
     },
     parseBBCode: (text) => {
