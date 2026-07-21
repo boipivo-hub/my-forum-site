@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aries Role Play — Forum Engine v3.0</title>
     
-    <!-- Подключение SDK Firebase v8 (Стабильный глобальный синтаксис для нашего движка) -->
+    <!-- Подключение SDK Firebase v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -103,7 +103,7 @@
 </head>
 <body>
 
-    <!-- ПРАВИЛЬНАЯ ИНИЦИАЛИЗАЦИЯ С ТВОИМИ КЛЮЧАМИ -->
+    <!-- ИНИЦИАЛИЗАЦИЯ FIREBASE -->
     <script>
       const firebaseConfig = {
         apiKey: "AIzaSyB3IcqqmojbVDiQaos8phPyWbzFCq0_TlM",
@@ -116,7 +116,6 @@
         measurementId: "G-8YWLND4LR2"
       };
       
-      // Стартуем Firebase
       firebase.initializeApp(firebaseConfig);
     </script>
 
@@ -177,9 +176,7 @@
             <h3 id="fs-topic-title" style="margin:0; font-size:18px; color:#fff;">Заголовок темы</h3>
             <div id="fs-topic-badge-status"></div>
         </div>
-        <div class="fullscreen-body" id="fs-messages-container">
-            <!-- Сюда сыпятся сообщения темы и ответы -->
-        </div>
+        <div class="fullscreen-body" id="fs-messages-container"></div>
         <div class="fullscreen-footer" id="fs-reply-footer">
             <div class="fullscreen-footer-inner">
                 <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
@@ -187,10 +184,6 @@
                     <textarea id="fs-reply-text" class="input-field" style="height:50px; resize:none; margin-bottom:0;" placeholder="Написать ответ на весь экран..."></textarea>
                 </div>
                 <div style="display:flex; gap:5px;">
-                    <label class="btn-core" style="padding:10px; background:#181829;" title="Прикрепить фото/видео">
-                        📎
-                        <input type="file" id="fs-attachment" accept="image/*,video/*" style="display:none;" onchange="Forum.handleAttachment(event)">
-                    </label>
                     <button class="btn-core" style="height:50px;" onclick="Forum.sendFsReply()">Отправить</button>
                 </div>
             </div>
@@ -210,6 +203,7 @@
         </div>
     </div>
 
+    <!-- МОДАЛКА ДОНАТА -->
     <div id="m-donate" class="modal">
         <div class="modal-content" style="text-align:center; border-color:#0072ff;">
             <h3 style="color:#fff;">⚡ Выберите регион</h3>
@@ -219,17 +213,16 @@
         </div>
     </div>
 
+    <!-- МОДАЛКА АВТОРИЗАЦИИ -->
     <div id="m-auth" class="modal">
         <div class="modal-content" style="text-align:center;">
             <h3>Авторизация</h3>
             <button class="btn-core" style="width:100%; background:#fff; color:#000; margin-bottom:10px;" onclick="Auth.google()">Войти через Google</button>
-            <div style="margin:10px 0; font-size:10px; color:#444;">ИЛИ ПО ПОЧТЕ</div>
-            <input type="email" id="auth-email" class="input-field" placeholder="Ваша почта">
-            <button class="btn-core" style="width:100%;" onclick="Auth.magic()">Получить ссылку</button>
-            <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-auth')">Закрыть</button>
+            <button class="btn-core" style="width:100%; background:#222;" onclick="UI.close('m-auth')">Закрыть</button>
         </div>
     </div>
 
+    <!-- МОДАЛКА НАСТРОЕК ПРОФИЛЯ -->
     <div id="m-profile" class="modal">
         <div class="modal-content" style="text-align:center;">
             <h3>Настройки профиля</h3>
@@ -245,36 +238,29 @@
         </div>
     </div>
 
-    <!-- ПАНЕЛЬ УПРАВЛЕНИЯ -->
+    <!-- ПАНЕЛЬ УПРАВЛЕНИЯ (БЕЗОПАСНАЯ ВЕРСИЯ) -->
     <div id="m-admin" class="modal">
         <div class="modal-content" style="width:500px; max-height:85vh; overflow-y:auto;">
-            <h3 style="color:var(--accent); margin-top:0; display:flex; justify-content:space-between; align-items:center;">
-                <span>🛡️ Панель Управления Проектом</span>
-            </h3>
-            
-            <div style="background:#11111f; padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid #1c1c35;">
-                <p style="margin:0 0 8px 0; font-size:11px; color:#00ffaa; font-weight:bold;">👑 НАЗНАЧИТЬ НОВОГО ОСНОВАТЕЛЯ:</p>
-                <input type="text" id="adm-new-founder-email" class="input-field" placeholder="Email друга">
-                <input type="text" id="adm-new-founder-nick" class="input-field" placeholder="Никнейм друга">
-                <button class="btn-core" style="background:green; width:100%;" onclick="Admin.grantFounderPrivilege()">Выдать Права Основателя</button>
-            </div>
+            <h3 style="color:var(--accent); margin-top:0;">🛡️ Панель Управления Проектом</h3>
 
-            <label style="font-size:10px; color:#888;">Выберите игрока для редактирования:</label>
+            <label style="font-size:10px; color:#888;">Выберите игрока из списка активных:</label>
             <select id="adm-user-list" class="input-field" onchange="Admin.onUserSelectChange()"></select>
             
+            <div style="text-align:center; font-size:10px; color:#555; margin:5px 0;">ИЛИ УКАЖИТЕ UID ВРУЧНУЮ</div>
+            <input type="text" id="adm-manual-uid-input" class="input-field" placeholder="Вставьте Firebase UID игрока...">
+
             <label style="font-size:10px; color:#888;">Роль:</label>
             <select id="adm-role" class="input-field">
                 <option value="badge-user">USER</option>
                 <option value="badge-leader">LEADER (Лидер)</option>
                 <option value="badge-admin">ADMIN</option>
-                <option value="badge-founder">FOUNDER</option>
             </select>
 
             <!-- НАСТРОЙКА ЛИДЕРСКИХ РАЗДЕЛОВ -->
             <div id="adm-leader-nodes-box" style="background:#141424; padding:10px; border-radius:6px; margin-bottom:10px;">
                 <p style="margin:0 0 5px 0; font-size:11px; color:#00ffaa;">Закрепить Лидерский Раздел:</p>
                 <select id="adm-leader-node-select" class="input-field"></select>
-                <p style="font-size:10px; color:#555; margin:-5px 0 5px 0;">Лидер получит полный доступ к модерации и созданию тем в выбранном разделе.</p>
+                <p style="font-size:10px; color:#555; margin:-5px 0 5px 0;">Лидер получит полный доступ к модерации в выбранном разделе.</p>
             </div>
 
             <label style="font-size:10px; color:#888;">Верификация (Галочка):</label>
@@ -293,7 +279,7 @@
                 <option value="mute">🔇 МУТ</option>
             </select>
 
-            <button class="btn-core" style="width:100%;" onclick="Admin.save()">Применить настройки</button>
+            <button class="btn-core" style="width:100%; margin-top:10px;" onclick="Admin.save()">Применить настройки</button>
             <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-admin')">Закрыть</button>
         </div>
     </div>
@@ -309,6 +295,7 @@
         </div>
     </div>
 
+    <!-- МОДАЛКА СОЗДАНИЯ РАЗДЕЛА -->
     <div id="m-node" class="modal">
         <div class="modal-content">
             <h3>Создать новый раздел</h3>
@@ -323,17 +310,6 @@
         <div class="modal-content">
             <h3>Новая тема</h3>
             <input type="text" id="t-title" class="input-field" placeholder="Заголовок темы">
-            <div style="margin-bottom:10px; display:flex; gap:5px;">
-                <label class="btn-core" style="padding:5px 10px; background:#222; cursor:pointer;" title="Добавить картинку">
-                    🖼️ ФОТО
-                    <input type="file" id="t-attach-img" accept="image/*" style="display:none;" onchange="Editor.appendAttachment(event, '[img]')">
-                </label>
-                <label class="btn-core" style="padding:5px 10px; background:#222; cursor:pointer;" title="Добавить видео">
-                    🎥 ВИДЕО
-                    <input type="file" id="t-attach-vid" accept="video/*" style="display:none;" onchange="Editor.appendAttachment(event, '[video]')">
-                </label>
-                <button class="btn-core" style="padding:5px 10px;" onclick="Editor.tag('[b]','[/b]')">B</button>
-            </div>
             <textarea id="t-text" class="input-field" style="height:150px; resize:none;" placeholder="Текст вашего сообщения..."></textarea>
             
             <label style="font-size:10px; color:#555;">Статус темы:</label>
@@ -352,7 +328,7 @@
     <div id="m-edit-post" class="modal">
         <div class="modal-content">
             <h3>✏️ Редактирование текста</h3>
-            <textarea id="edit-post-textarea" class="input-field" style="height:150px; resize:noneкой"></textarea>
+            <textarea id="edit-post-textarea" class="input-field" style="height:150px; resize:none;"></textarea>
             <button class="btn-core" style="width:100%;" onclick="Forum.saveEditedPost()">Сохранить изменения</button>
             <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-edit-post')">Отмена</button>
         </div>
