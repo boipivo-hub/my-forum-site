@@ -2,37 +2,59 @@
 // 🔒 ULTRA HARDENED SECURITY SYSTEM (ANTI-F12 / ANTI-EXPLOIT)
 // =================================================================
 (function() {
-    document.addEventListener('contextmenu', e => e.preventDefault());
-    document.addEventListener('keydown', function(e) {
-        if (e.keyCode === 123 || 
-            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || 
-            (e.ctrlKey && e.keyCode === 85) || 
-            (e.ctrlKey && e.keyCode === 83)) {
+    'use strict';
+
+    // 1. Блокировка контекстного меню
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+    }, true);
+
+    // 2. Блокировка горячих клавиш (F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S)
+    window.addEventListener('keydown', function(e) {
+        if (
+            e.keyCode === 123 || // F12
+            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || // Ctrl+Shift+I/J/C
+            (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83)) // Ctrl+U, Ctrl+S
+        ) {
             e.preventDefault();
-            alert("🔒 Действие заблокировано системой безопасности Aries RP!");
+            e.stopPropagation();
             return false;
         }
-    });
-    setInterval(function() {
-        function dbg() { return true; }
-        if (!dbg()) return;
-        (function() {
-            (function a() {
-                try {
-                    (function b(i) {
-                        if (('' + (i / i)).length !== 1 || i % 20 === 0) {
-                            (function() {}).constructor('debugger')();
-                        } else { debugger; }
-                        b(++i);
-                    })(0);
-                } catch (e) { setTimeout(a, 50); }
-            })();
-        })();
-    }, 250);
-    Object.defineProperty(window, 'console', {
-        value: { log: function(){}, error: function(){}, warn: function(){}, info: function(){}, clear: function(){} },
-        writable: false, configurable: false
-    });
+    }, true);
+
+    // 3. Непрерывный Titan-защитник от DevTools (debugger trap)
+    const titanLock = function() {
+        function dbg(i) {
+            if (('' + i / i).length !== 1 || i % 20 === 0) {
+                (function() {}).constructor('debugger')();
+            } else {
+                debugger;
+            }
+            dbg(++i);
+        }
+        try {
+            dbg(0);
+        } catch (e) {
+            setTimeout(titanLock, 5);
+        }
+    };
+
+    setInterval(titanLock, 50);
+
+    // 4. Заглушка консоли
+    try {
+        const dummy = function() {};
+        const mockConsole = {
+            log: dummy, error: dummy, warn: dummy, info: dummy,
+            clear: dummy, dir: dummy, table: dummy, debug: dummy
+        };
+        Object.defineProperty(window, 'console', {
+            get: function() { return mockConsole; },
+            set: function() {},
+            configurable: false
+        });
+    } catch (e) {}
 })();
 
 // =================================================================
