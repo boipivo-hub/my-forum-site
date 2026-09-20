@@ -502,13 +502,18 @@ const Forum = {
                 timestamp: Date.now()
             };
 
+            const replyTargetUid = activeFsReplyToUid;
             if(activeFsReplyToUid) {
                 data.replyToUid = activeFsReplyToUid;
                 data.replyToNick = activeFsReplyToNick;
-                AppNotif.send(activeFsReplyToUid, `${currentProfileData.nick} ответил на ваше сообщение.`);
             }
 
-            return db.ref('replies/' + currentSelectedTopicId).push(data);
+            // Изолируем отправку сообщения и отправку уведомления
+            return db.ref('replies/' + currentSelectedTopicId).push(data).then(() => {
+                if(replyTargetUid) {
+                    AppNotif.send(replyTargetUid, `${currentProfileData.nick} ответил на ваше сообщение.`);
+                }
+            });
         }).then(() => {
             document.getElementById('fs-reply-text').value = '';
             const fileInput = document.getElementById('fs-reply-image-file');
@@ -582,8 +587,11 @@ const Reactions = {
 // =================================================================
 const AppNotif = {
     send: (targetUid, text) => {
-        if(targetUid === currentUser.uid) return;
-        db.ref(`notifications/${targetUid}`).push({ text: text, timestamp: Date.now() });
+        if(!currentUser || targetUid === currentUser.uid) return;
+        // Оборачиваем отправку в обработчик ошибки, чтобы отказы правил не ломали основную логику
+        db.ref(`notifications/${targetUid}`).push({ text: text, timestamp: Date.now() }).catch(err => {
+            console.warn("Уведомление не отправлено из-за ограничений прав доступа.");
+        });
     },
     listen: (uid) => {
         db.ref(`notifications/${uid}`).on('value', snap => {
