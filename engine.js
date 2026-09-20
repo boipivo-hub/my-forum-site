@@ -48,7 +48,6 @@ let currentSelectedTopicId = null;
 let activeFsReplyToUid = null;
 let activeFsReplyToNick = null;
 
-// Локальный реестр известных UID (для безопасной работы админ-панели без массового скачивания /users)
 let knownUserMap = new Map();
 
 function registerKnownUser(uid, nick) {
@@ -58,8 +57,8 @@ function registerKnownUser(uid, nick) {
 }
 
 /**
- * Вспомогательная функция безопасного считывания файла или URL-картинки.
- * Возвращает Promise, который резолвит URL картинки или null.
+ * Функция считывания и АВТОМАТИЧЕСКОГО СЖАТИЯ изображения.
+ * Предотвращает ошибки PERMISSION_DENIED в Firebase Realtime Database.
  */
 function processImageInput(fileInputId, urlInputId) {
     return new Promise((resolve, reject) => {
@@ -70,22 +69,49 @@ function processImageInput(fileInputId, urlInputId) {
         const urlVal = urlElem ? urlElem.value.trim() : '';
 
         if (file) {
-            // Валидация типов
             const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
             if (!validTypes.includes(file.type)) {
                 return reject(new Error('Разрешены только изображения в формате PNG, JPG, GIF или WEBP.'));
             }
-            // Лимит размера файла (до 3 МБ)
-            if (file.size > 3 * 1024 * 1024) {
-                return reject(new Error('Превышен максимальный размер файла (лимит 3 МБ).'));
-            }
 
             const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Ограничиваем максимальное разрешение до 1280px
+                    const MAX_WIDTH = 1280;
+                    const MAX_HEIGHT = 1280;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Сжимаем в JPEG с качеством 70% для минимального размера в базе
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                    resolve(compressedBase64);
+                };
+                img.onerror = () => reject(new Error('Не удалось обработать файл изображения.'));
+                img.src = e.target.result;
+            };
             reader.onerror = () => reject(new Error('Ошибка при чтении файла изображения.'));
             reader.readAsDataURL(file);
         } else if (urlVal) {
-            // Проверка URL на безопасный протокол
             if (!/^https?:\/\//i.test(urlVal)) {
                 return reject(new Error('Ссылка на изображение должна начинаться с http:// или https://'));
             }
@@ -134,7 +160,7 @@ function initDataSynchronization() {
 }
 
 // =================================================================
-// 🔑 AUTHENTICATION MODULE (СЕРВЕРНАЯ ПРОВЕРКА ПРАВ)
+// 🔑 AUTHENTICATION MODULE
 // =================================================================
 const Auth = {
     listen: () => {
@@ -578,7 +604,7 @@ const AppNotif = {
 };
 
 // =================================================================
-// 👤 PROFILE SYSTEM (ОБНОВЛЕННЫЙ И БЕЗОПАСНЫЙ)
+// 👤 PROFILE SYSTEM
 // =================================================================
 const Profile = {
     open: () => {
@@ -605,16 +631,13 @@ const Profile = {
             updates.avatar = window.tempAvatarBase64;
         }
 
-        // Обновляем данные пользователя в базе
         db.ref('users/' + currentUser.uid).update(updates).then(() => {
-            // Синхронизируем локальные данные текущей сессии
             if (currentProfileData) {
                 currentProfileData.nick = nick;
                 if (updates.avatar) currentProfileData.avatar = updates.avatar;
             }
             registerKnownUser(currentUser.uid, nick);
             
-            // Перерисовываем элементы интерфейса
             Auth.renderHeader(true);
 
             window.tempAvatarBase64 = null; 
@@ -627,7 +650,7 @@ const Profile = {
 };
 
 // =================================================================
-// 🛡️ STAFF OPERATIONS (АДМИН-ПАНЕЛЬ: БЕЗ ВЫДАЧИ ОСНОВАТЕЛЯ И БЕЗ СЛИВА ПОЧТ)
+// 🛡️ STAFF OPERATIONS
 // =================================================================
 const Admin = {
     open: () => {
@@ -636,7 +659,6 @@ const Admin = {
         if(!select) return;
         select.innerHTML = '<option value="none">-- Выберите известного игрока или укажите UID --</option>';
         
-        // Заполняем список зарегистрированными в процессе работы никами/UID
         knownUserMap.forEach((nick, uid) => {
             const o = document.createElement('option');
             o.value = uid;
@@ -648,11 +670,9 @@ const Admin = {
         const uid = document.getElementById('adm-user-list').value;
         if(uid === 'none') return;
         
-        // Безопасное чтение одного выбранного пользователя по UID
         db.ref('users/' + uid).once('value', snap => {
             const d = snap.val(); if(!d) return;
             
-            // В селектор выставляются только безопасные роли
             const roleSelect = document.getElementById('adm-role');
             if (roleSelect) {
                 roleSelect.value = (d.role === 'badge-founder') ? 'badge-admin' : (d.role || 'badge-user');
@@ -668,7 +688,6 @@ const Admin = {
     save: () => {
         let uid = document.getElementById('adm-user-list').value;
         
-        // Если администратор ввел UID вручную в текстовое поле
         const manualInput = document.getElementById('adm-manual-uid-input');
         if (manualInput && manualInput.value.trim() !== '') {
             uid = manualInput.value.trim();
@@ -684,7 +703,6 @@ const Admin = {
         const ban = document.getElementById('adm-ban').value;
         const leaderNode = document.getElementById('adm-leader-node-select').value;
 
-        // Блокировка попытки назначить 'badge-founder' из интерфейса
         if (role === 'badge-founder') {
             alert('Ошибка безопасности: Роль Основателя выдается ТОЛЬКО через консоль Firebase!');
             return;
@@ -737,7 +755,7 @@ const LeaderPanel = {
 };
 
 // =================================================================
-// 🎨 UI & РЕНДЕР ГАЛОЧЕК
+// 🎨 UI & BBCODE PARSER
 // =================================================================
 const UI = {
     show: (id) => { document.getElementById(id).style.display = 'flex'; },
