@@ -182,6 +182,13 @@
                 <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
                     <div id="reply-target-indicator" style="font-size:11px; color:#00ffaa; display:none;"></div>
                     <textarea id="fs-reply-text" class="input-field" style="height:50px; resize:none; margin-bottom:0;" placeholder="Написать ответ на весь экран..."></textarea>
+                    
+                    <!-- БЛОК ПРИКРЕПЛЕНИЯ ФОТО В БЫСТРОМ ОТВЕТЕ -->
+                    <div style="background:#11111e; padding:8px; border-radius:4px; border:1px solid var(--border-color); margin-top:5px;">
+                        <label style="font-size:10px; color:#00ffaa; display:block; margin-bottom:4px;">📷 Прикрепить фото к ответу:</label>
+                        <input type="file" id="fs-reply-image-file" class="input-field" accept="image/png, image/jpeg, image/gif, image/webp" style="padding:4px; font-size:11px; margin-bottom:4px;">
+                        <input type="url" id="fs-reply-image-url" class="input-field" placeholder="Или URL картинки (https://...)" style="margin-bottom:0; font-size:11px; padding:6px;">
+                    </div>
                 </div>
                 <div style="display:flex; gap:5px;">
                     <button class="btn-core" style="height:50px;" onclick="Forum.sendFsReply()">Отправить</button>
@@ -277,9 +284,7 @@
                 <option value="no">✅ Активен</option>
                 <option value="yes">🚫 БАН (BANNED)</option>
                 <option value="mute">🔇 МУТ</option>
-            </select>
-
-            <button class="btn-core" style="width:100%; margin-top:10px;" onclick="Admin.save()">Применить настройки</button>
+            </select><button class="btn-core" style="width:100%; margin-top:10px;" onclick="Admin.save()">Применить настройки</button>
             <button class="btn-core" style="width:100%; margin-top:10px; background:#222;" onclick="UI.close('m-admin')">Закрыть</button>
         </div>
     </div>
@@ -312,6 +317,13 @@
             <input type="text" id="t-title" class="input-field" placeholder="Заголовок темы">
             <textarea id="t-text" class="input-field" style="height:150px; resize:none;" placeholder="Текст вашего сообщения..."></textarea>
             
+            <!-- БЛОК ЗАГРУЗКИ ФОТО ДЛЯ НОВОЙ ТЕМЫ -->
+            <div style="margin-bottom: 12px; background: #11111e; padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                <label style="font-size:11px; color:#00ffaa; display:block; margin-bottom:6px;">📷 Прикрепить фото к теме:</label>
+                <input type="file" id="t-image-file" class="input-field" accept="image/png, image/jpeg, image/gif, image/webp" style="padding: 6px; font-size:12px; margin-bottom: 6px;">
+                <input type="url" id="t-image-url" class="input-field" placeholder="Или вставьте прямую ссылку на фото (https://...)" style="margin-bottom: 0;">
+            </div>
+
             <label style="font-size:10px; color:#555;">Статус темы:</label>
             <select id="t-status" class="input-field">
                 <option value="status-open">Открыто</option>
