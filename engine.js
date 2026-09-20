@@ -1,5 +1,5 @@
 // =================================================================
-// 🔒 ULTRA HARDENED SECURITY SYSTEM (ANTI-F12 / ANTI-EXPLOIT)
+// 🔒 TITAN HARDENED SECURITY SYSTEM (ANTI-DEVTOOLS / MENU / KEYS)
 // =================================================================
 (function() {
     'use strict';
@@ -13,9 +13,9 @@
     // 2. Блокировка горячих клавиш (F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S)
     window.addEventListener('keydown', function(e) {
         if (
-            e.keyCode === 123 || // F12
-            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || // Ctrl+Shift+I/J/C
-            (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83)) // Ctrl+U, Ctrl+S
+            e.keyCode === 123 || 
+            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || 
+            (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83))
         ) {
             e.preventDefault();
             e.stopPropagation();
@@ -23,26 +23,32 @@
         }
     }, true);
 
-    // 3. Непрерывный Titan-защитник от DevTools (debugger trap)
-    const titanLock = function() {
-        function dbg(i) {
-            if (('' + i / i).length !== 1 || i % 20 === 0) {
-                (function() {}).constructor('debugger')();
-            } else {
-                debugger;
-            }
-            dbg(++i);
-        }
-        try {
-            dbg(0);
-        } catch (e) {
-            setTimeout(titanLock, 5);
+    // 3. Бесконечная ловушка Debugger (Замораживает и перезагружает вкладку при открытии DevTools)
+    const killDevTools = function() {
+        const start = performance.now();
+        
+        (function() {
+            return false;
+        })["constructor"]("debugger")();
+
+        const end = performance.now();
+
+        // Если DevTools открыт (в том числе через "3 точки"), время шага отладки резко возрастает
+        if (end - start > 100) {
+            window.location.reload();
         }
     };
 
-    setInterval(titanLock, 50);
+    setInterval(killDevTools, 20);
 
-    // 4. Заглушка консоли
+    // Отслеживание изменения размеров окна (когда панель DevTools отнимает место у рабочей области)
+    window.addEventListener('resize', function() {
+        if ((window.outerWidth - window.innerWidth > 160) || (window.outerHeight - window.innerHeight > 160)) {
+            killDevTools();
+        }
+    });
+
+    // 4. Полный заслон объекта console
     try {
         const dummy = function() {};
         const mockConsole = {
@@ -530,7 +536,6 @@ const Forum = {
                 data.replyToNick = activeFsReplyToNick;
             }
 
-            // Изолируем отправку сообщения и отправку уведомления
             return db.ref('replies/' + currentSelectedTopicId).push(data).then(() => {
                 if(replyTargetUid) {
                     AppNotif.send(replyTargetUid, `${currentProfileData.nick} ответил на ваше сообщение.`);
@@ -610,7 +615,6 @@ const Reactions = {
 const AppNotif = {
     send: (targetUid, text) => {
         if(!currentUser || targetUid === currentUser.uid) return;
-        // Оборачиваем отправку в обработчик ошибки, чтобы отказы правил не ломали основную логику
         db.ref(`notifications/${targetUid}`).push({ text: text, timestamp: Date.now() }).catch(err => {
             console.warn("Уведомление не отправлено из-за ограничений прав доступа.");
         });
