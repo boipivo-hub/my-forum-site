@@ -1,5 +1,5 @@
 // =================================================================
-// 🔒 TITAN HARDENED SECURITY SYSTEM (ANTI-DEVTOOLS / MENU / KEYS)
+// 🔒 TITAN ULTIMATE SECURITY SYSTEM (ANTI-DEVTOOLS & FREEZE)
 // =================================================================
 (function() {
     'use strict';
@@ -10,12 +10,13 @@
         return false;
     }, true);
 
-    // 2. Блокировка горячих клавиш (F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S)
+    // 2. Блокировка горячих клавиш (F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S, Cmd+Alt+I)
     window.addEventListener('keydown', function(e) {
         if (
             e.keyCode === 123 || 
             (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || 
-            (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83))
+            (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83)) ||
+            (e.metaKey && e.altKey && (e.keyCode === 73 || e.keyCode === 74)) // macOS
         ) {
             e.preventDefault();
             e.stopPropagation();
@@ -23,32 +24,50 @@
         }
     }, true);
 
-    // 3. Бесконечная ловушка Debugger (Замораживает и перезагружает вкладку при открытии DevTools)
-    const killDevTools = function() {
-        const start = performance.now();
-        
-        (function() {
-            return false;
-        })["constructor"]("debugger")();
+    // 3. Агрессивная нейтрализация DevTools
+    function hardNuke() {
+        document.body.innerHTML = '<h1 style="color:white;text-align:center;margin-top:20%;">DevTools Запрещен!</h1>';
+        window.location.reload();
+    }
 
+    // Запуск потокового дебаггера через Blob (обходит большинство блокировок)
+    try {
+        const workerCode = `
+            setInterval(function() {
+                Function('debugger')();
+            }, 50);
+        `;
+        const blob = new Blob([workerCode], { type: 'text/javascript' });
+        const worker = new Worker(URL.createObjectURL(blob));
+    } catch (e) {
+        setInterval(function() {
+            (function() { return false; })["constructor"]("debugger")();
+        }, 50);
+    }
+
+    // 4. Детектор времени выполнения (Timing Attack Detection)
+    setInterval(function() {
+        const start = performance.now();
+        (function() { return false; })["constructor"]("debugger")();
         const end = performance.now();
 
-        // Если DevTools открыт (в том числе через "3 точки"), время шага отладки резко возрастает
+        // Если DevTools открыт, выполнение "debugger" занимает более 100мс
         if (end - start > 100) {
-            window.location.reload();
+            hardNuke();
         }
-    };
+    }, 100);
 
-    setInterval(killDevTools, 20);
-
-    // Отслеживание изменения размеров окна (когда панель DevTools отнимает место у рабочей области)
+    // 5. Детектор изменения геометрии (Встраиваемая панель DevTools)
+    const threshold = 160;
     window.addEventListener('resize', function() {
-        if ((window.outerWidth - window.innerWidth > 160) || (window.outerHeight - window.innerHeight > 160)) {
-            killDevTools();
+        const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+        const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+        if (widthThreshold || heightThreshold) {
+            hardNuke();
         }
     });
 
-    // 4. Полный заслон объекта console
+    // 6. Полный заслон объекта console
     try {
         const dummy = function() {};
         const mockConsole = {
