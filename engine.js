@@ -57,6 +57,45 @@ function registerKnownUser(uid, nick) {
     }
 }
 
+/**
+ * Вспомогательная функция безопасного считывания файла или URL-картинки.
+ * Возвращает Promise, который резолвит URL картинки или null.
+ */
+function processImageInput(fileInputId, urlInputId) {
+    return new Promise((resolve, reject) => {
+        const fileElem = document.getElementById(fileInputId);
+        const urlElem = document.getElementById(urlInputId);
+
+        const file = fileElem && fileElem.files ? fileElem.files[0] : null;
+        const urlVal = urlElem ? urlElem.value.trim() : '';
+
+        if (file) {
+            // Валидация типов
+            const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                return reject(new Error('Разрешены только изображения в формате PNG, JPG, GIF или WEBP.'));
+            }
+            // Лимит размера файла (до 3 МБ)
+            if (file.size > 3 * 1024 * 1024) {
+                return reject(new Error('Превышен максимальный размер файла (лимит 3 МБ).'));
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = () => reject(new Error('Ошибка при чтении файла изображения.'));
+            reader.readAsDataURL(file);
+        } else if (urlVal) {
+            // Проверка URL на безопасный протокол
+            if (!/^https?:\/\//i.test(urlVal)) {
+                return reject(new Error('Ссылка на изображение должна начинаться с http:// или https://'));
+            }
+            resolve(urlVal);
+        } else {
+            resolve(null);
+        }
+    });
+}
+
 // =================================================================
 // 🚀 INITIALIZATION & APP START
 // =================================================================
@@ -249,30 +288,43 @@ const Forum = {
         UI.show('m-topic');
     },
     post: () => {
-        const title = document.getElementById('t-title').value;
-        const text = document.getElementById('t-text').value;
+        const title = document.getElementById('t-title').value.trim();
+        let text = document.getElementById('t-text').value.trim();
         const status = document.getElementById('t-status').value;
 
-        if(!title || !text || !currentSelectedNodeId) return;
+        if(!title || !text || !currentSelectedNodeId) {
+            alert('Пожалуйста, заполните заголовок и текст темы!');
+            return;
+        }
 
-        const topicData = {
-            title: title,
-            text: text,
-            status: status,
-            authorUid: currentUser.uid,
-            authorNick: currentProfileData.nick,
-            authorAvatar: currentProfileData.avatar,
-            authorRole: currentProfileData.role,
-            authorVerify: currentProfileData.verifyBadge || 'none',
-            timestamp: Date.now()
-        };
+        processImageInput('t-image-file', 't-image-url').then(imageUrl => {
+            if (imageUrl) {
+                text += `\n\n[img]${imageUrl}[/img]`;
+            }
 
-        db.ref('topics/' + currentSelectedNodeId).push(topicData).then(() => {
+            const topicData = {
+                title: title,
+                text: text,
+                status: status,
+                authorUid: currentUser.uid,
+                authorNick: currentProfileData.nick,
+                authorAvatar: currentProfileData.avatar,
+                authorRole: currentProfileData.role,
+                authorVerify: currentProfileData.verifyBadge || 'none',
+                timestamp: Date.now()
+            };
+
+            return db.ref('topics/' + currentSelectedNodeId).push(topicData);
+        }).then(() => {
             UI.close('m-topic');
             document.getElementById('t-title').value = '';
             document.getElementById('t-text').value = '';
+            const fileInput = document.getElementById('t-image-file');
+            const urlInput = document.getElementById('t-image-url');
+            if (fileInput) fileInput.value = '';
+            if (urlInput) urlInput.value = '';
         }).catch(err => {
-            alert("Ошибка доступа: " + err.message);
+            alert("Ошибка при публикации темы: " + err.message);
         });
     },
     openFullscreenTopic: (nodeId, topicId) => {
@@ -360,7 +412,7 @@ const Forum = {
                 if(currentUser && (currentUser.uid === rData.authorUid || currentProfileData.role === 'badge-founder' || (currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === nodeId))) {
                     replyManagementHtml = `
                         <div style="position:absolute; top:10px; right:10px; display:flex; gap:4px;">
-                            <button class="btn-core" style="background:transparent; color:#ffb700; padding:2px 6px; font-size:9px;" onclick="Forum.openEditPostModal('replies/${topicId}/${rId}/text', \`${rData.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏></button>
+                            <button class="btn-core" style="background:transparent; color:#ffb700; padding:2px 6px; font-size:9px;" onclick="Forum.openEditPostModal('replies/${topicId}/${rId}/text', \`${rData.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏️</button>
                             <button class="btn-core" style="background:transparent; color:#ff003c; padding:2px 6px; font-size:9px;" onclick="Forum.deleteReply('${topicId}', '${rId}')">🗑️</button>
                         </div>
                     `;
@@ -406,28 +458,40 @@ const Forum = {
         document.getElementById('reply-target-indicator').style.display = 'none';
     },
     sendFsReply: () => {
-        const text = document.getElementById('fs-reply-text').value;
+        let text = document.getElementById('fs-reply-text').value.trim();
         if(!text || !currentSelectedTopicId) return;
 
-        const data = {
-            text: text,
-            authorUid: currentUser.uid,
-            authorNick: currentProfileData.nick,
-            authorAvatar: currentProfileData.avatar,
-            authorRole: currentProfileData.role,
-            authorVerify: currentProfileData.verifyBadge || 'none',
-            timestamp: Date.now()
-        };
+        processImageInput('fs-reply-image-file', 'fs-reply-image-url').then(imageUrl => {
+            if (imageUrl) {
+                text += `\n\n[img]${imageUrl}[/img]`;
+            }
 
-        if(activeFsReplyToUid) {
-            data.replyToUid = activeFsReplyToUid;
-            data.replyToNick = activeFsReplyToNick;
-            AppNotif.send(activeFsReplyToUid, `${currentProfileData.nick} ответил на ваше сообщение.`);
-        }
+            const data = {
+                text: text,
+                authorUid: currentUser.uid,
+                authorNick: currentProfileData.nick,
+                authorAvatar: currentProfileData.avatar,
+                authorRole: currentProfileData.role,
+                authorVerify: currentProfileData.verifyBadge || 'none',
+                timestamp: Date.now()
+            };
 
-        db.ref('replies/' + currentSelectedTopicId).push(data).then(() => {
+            if(activeFsReplyToUid) {
+                data.replyToUid = activeFsReplyToUid;
+                data.replyToNick = activeFsReplyToNick;
+                AppNotif.send(activeFsReplyToUid, `${currentProfileData.nick} ответил на ваше сообщение.`);
+            }
+
+            return db.ref('replies/' + currentSelectedTopicId).push(data);
+        }).then(() => {
             document.getElementById('fs-reply-text').value = '';
+            const fileInput = document.getElementById('fs-reply-image-file');
+            const urlInput = document.getElementById('fs-reply-image-url');
+            if (fileInput) fileInput.value = '';
+            if (urlInput) urlInput.value = '';
             Forum.cancelReplyQuote();
+        }).catch(err => {
+            alert("Ошибка при отправке ответа: " + err.message);
         });
     },
     openEditPostModal: (fbPath, currentText) => {
@@ -713,6 +777,6 @@ const UI = {
         return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
             .replace(/\[b\](.*?)\[\/b\]/gi, '<b>$1</b>')
             .replace(/\[i\](.*?)\[\/i\]/gi, '<i>$1</i>')
-            .replace(/\[img\](.*?)\[\/img\]/gi, '<img src="$1" style="max-width:100%; border-radius:4px;">');
+            .replace(/\[img\](.*?)\[\/img\]/gi, '<div style="margin:10px 0;"><a href="$1" target="_blank"><img src="$1" style="max-width:100%; max-height:450px; border-radius:6px; border:1px solid var(--border-color); object-fit:contain; cursor:pointer;"></a></div>');
     }
 };
