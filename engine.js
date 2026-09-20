@@ -1,5 +1,5 @@
 // =================================================================
-// 🔒 TITAN ULTIMATE SECURITY SYSTEM (ANTI-DEVTOOLS & FREEZE)
+// 🔒 TITAN ULTIMATE ANTI-DEVTOOLS & HARDENED PROTECTION
 // =================================================================
 (function() {
     'use strict';
@@ -10,13 +10,13 @@
         return false;
     }, true);
 
-    // 2. Блокировка горячих клавиш (F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S, Cmd+Alt+I)
+    // 2. Блокировка сочетаний клавиш
     window.addEventListener('keydown', function(e) {
         if (
-            e.keyCode === 123 || 
-            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || 
-            (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83)) ||
-            (e.metaKey && e.altKey && (e.keyCode === 73 || e.keyCode === 74)) // macOS
+            e.keyCode === 123 || // F12
+            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || // Ctrl+Shift+I/J/C
+            (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83)) || // Ctrl+U / Ctrl+S
+            (e.metaKey && e.altKey && (e.keyCode === 73 || e.keyCode === 74)) // Cmd+Alt+I/J
         ) {
             e.preventDefault();
             e.stopPropagation();
@@ -24,18 +24,21 @@
         }
     }, true);
 
-    // 3. Агрессивная нейтрализация DevTools
     function hardNuke() {
-        document.body.innerHTML = '<h1 style="color:white;text-align:center;margin-top:20%;">DevTools Запрещен!</h1>';
+        try {
+            document.body.innerHTML = '<div style="background:#000;color:#ff003c;height:100vh;display:flex;justify-content:center;align-items:center;font-family:sans-serif;"><h1>ОТЛАДКА И DEVTOOLS ЗАПРЕЩЕНЫ!</h1></div>';
+        } catch(e){}
         window.location.reload();
     }
 
-    // Запуск потокового дебаггера через Blob (обходит большинство блокировок)
+    // 3. Бесконечная зацикленная блокировка через Web Worker (обходит базовые скрипты отмены)
     try {
         const workerCode = `
             setInterval(function() {
-                Function('debugger')();
-            }, 50);
+                (function() {
+                    return false;
+                })["constructor"]("debugger")();
+            }, 20);
         `;
         const blob = new Blob([workerCode], { type: 'text/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
@@ -45,37 +48,36 @@
         }, 50);
     }
 
-    // 4. Детектор времени выполнения (Timing Attack Detection)
+    // 4. Детектор времени выполнения (Timing Attack)
     setInterval(function() {
         const start = performance.now();
         (function() { return false; })["constructor"]("debugger")();
         const end = performance.now();
-
-        // Если DevTools открыт, выполнение "debugger" занимает более 100мс
         if (end - start > 100) {
             hardNuke();
         }
     }, 100);
 
-    // 5. Детектор изменения геометрии (Встраиваемая панель DevTools)
+    // 5. Детектор изменения внешнего размера окна (панель DevTools)
     const threshold = 160;
     window.addEventListener('resize', function() {
-        const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-        const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-        if (widthThreshold || heightThreshold) {
+        if (
+            (window.outerWidth - window.innerWidth > threshold) ||
+            (window.outerHeight - window.innerHeight > threshold)
+        ) {
             hardNuke();
         }
     });
 
-    // 6. Полный заслон объекта console
+    // 6. Защита и заморозка объекта console
+    const noop = function() {};
+    const frozenConsole = {
+        log: noop, error: noop, warn: noop, info: noop,
+        clear: noop, dir: noop, table: noop, debug: noop
+    };
     try {
-        const dummy = function() {};
-        const mockConsole = {
-            log: dummy, error: dummy, warn: dummy, info: dummy,
-            clear: dummy, dir: dummy, table: dummy, debug: dummy
-        };
         Object.defineProperty(window, 'console', {
-            get: function() { return mockConsole; },
+            get: function() { return frozenConsole; },
             set: function() {},
             configurable: false
         });
@@ -104,8 +106,7 @@ function registerKnownUser(uid, nick) {
 }
 
 /**
- * Функция считывания и АВТОМАТИЧЕСКОГО СЖАТИЯ изображения.
- * Предотвращает ошибки PERMISSION_DENIED в Firebase Realtime Database.
+ * Обработка и сжатие изображений
  */
 function processImageInput(fileInputId, urlInputId) {
     return new Promise((resolve, reject) => {
@@ -125,7 +126,6 @@ function processImageInput(fileInputId, urlInputId) {
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-                    // Ограничиваем максимальное разрешение до 1280px
                     const MAX_WIDTH = 1280;
                     const MAX_HEIGHT = 1280;
                     let width = img.width;
@@ -149,7 +149,6 @@ function processImageInput(fileInputId, urlInputId) {
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // Сжимаем в JPEG с качеством 70% для минимального размера в базе
                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
                     resolve(compressedBase64);
                 };
@@ -429,7 +428,7 @@ const Forum = {
             let rootVerify = UI.getVerifyHtml(data.authorVerify || 'none');
             
             let managementBtnsHtml = '';
-            if(currentUser && (currentUser.uid === data.authorUid || currentProfileData.role === 'badge-founder' || (currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === nodeId))) {
+            if(currentUser && (currentUser.uid === data.authorUid || currentProfileData.role === 'badge-founder' || currentProfileData.role === 'badge-admin' || (currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === nodeId))) {
                 managementBtnsHtml = `
                     <div style="position:absolute; top:15px; right:15px; display:flex; gap:5px;">
                         <button class="btn-core" style="background:#111; border:1px solid #ffb700; color:#ffb700; padding:4px 8px; font-size:10px;" onclick="Forum.openEditPostModal('topics/${nodeId}/${topicId}/text', \`${data.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏️ Ред.</button>
@@ -439,7 +438,7 @@ const Forum = {
             }
 
             const rootPostHtml = `
-                <div class="post-card" style="border-left: 3px solid var(--accent); padding-top:20px;">
+                <div class="post-card" style="border-left: 3px solid var(--accent); padding-top:20px; position:relative;">
                     ${managementBtnsHtml}
                     <div style="display:flex; align-items:center; gap:12px; margin-bottom:15px;">
                         <img class="avatar-mini" src="${data.authorAvatar || 'https://i.imgur.com/8Km9tTv.png'}" onclick="UI.showUserCard('${data.authorUid}')" style="width:40px; height:40px;">
@@ -482,7 +481,7 @@ const Forum = {
                 let rVerify = UI.getVerifyHtml(rData.authorVerify || 'none');
 
                 let replyManagementHtml = '';
-                if(currentUser && (currentUser.uid === rData.authorUid || currentProfileData.role === 'badge-founder' || (currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === nodeId))) {
+                if(currentUser && (currentUser.uid === rData.authorUid || currentProfileData.role === 'badge-founder' || currentProfileData.role === 'badge-admin' || (currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === nodeId))) {
                     replyManagementHtml = `
                         <div style="position:absolute; top:10px; right:10px; display:flex; gap:4px;">
                             <button class="btn-core" style="background:transparent; color:#ffb700; padding:2px 6px; font-size:9px;" onclick="Forum.openEditPostModal('replies/${topicId}/${rId}/text', \`${rData.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏️</button>
@@ -498,6 +497,7 @@ const Forum = {
 
                 const item = document.createElement('div');
                 item.className = 'post-card';
+                item.style.position = 'relative';
                 item.innerHTML = `
                     ${replyManagementHtml}
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
@@ -508,7 +508,7 @@ const Forum = {
                                 <span class="badge-role ${rData.authorRole || 'badge-user'}" style="font-size:7px; padding:1px 4px; margin-left:5px;">${(rData.authorRole || 'user').replace('badge-','')}</span>
                             </div>
                         </div>
-                        <span style="font-size:11px; color:var(--neon-blue); cursor:pointer; font-weight:bold;" onclick="Forum.setReplyQuote('${rData.authorUid}', '${rData.authorNick}')">Ответить</span>
+                        <span style="font-size:11px; color:var(--neon-blue); cursor:pointer; font-weight:bold; margin-right:45px;" onclick="Forum.setReplyQuote('${rData.authorUid}', '${rData.authorNick}')">Ответить</span>
                     </div>
                     ${quoteHtml}
                     <div style="font-size:14px; color:#d1d1db; white-space:pre-wrap;">${UI.parseBBCode(rData.text)}</div>
@@ -579,17 +579,25 @@ const Forum = {
     saveEditedPost: () => {
         const txt = document.getElementById('edit-post-textarea').value;
         if(!txt || !window.activeEditPath) return;
-        db.ref(window.activeEditPath).set(txt).then(() => UI.close('m-edit-post'));
+        db.ref(window.activeEditPath).set(txt).then(() => UI.close('m-edit-post')).catch(err => {
+            alert('Ошибка редактирования: Недостаточно прав!');
+        });
     },
     deleteTopic: (nodeId, topicId) => {
         if(confirm('Удалить тему?')) {
             Forum.closeFullscreen();
-            db.ref(`topics/${nodeId}/${topicId}`).remove();
+            db.ref(`topics/${nodeId}/${topicId}`).remove().catch(err => {
+                alert('Нельзя удалить: Недостаточно прав!');
+            });
             db.ref(`replies/${topicId}`).remove();
         }
     },
     deleteReply: (topicId, replyId) => {
-        if(confirm('Удалить комментарий?')) db.ref(`replies/${topicId}/${replyId}`).remove();
+        if(confirm('Удалить комментарий?')) {
+            db.ref(`replies/${topicId}/${replyId}`).remove().catch(err => {
+                alert('Нельзя удалить: Недостаточно прав!');
+            });
+        }
     }
 };
 
@@ -775,7 +783,7 @@ const Admin = {
             alert('Данные игрока успешно обновлены!');
             UI.close('m-admin');
         }).catch(err => {
-            alert('Ошибка при сохранении: ' + err.message);
+            alert('Ошибка при сохранении: Недостаточно прав или ошибка связи с сервером (' + err.message + ')');
         });
     },
     createNode: () => {
@@ -784,6 +792,8 @@ const Admin = {
         db.ref('nodes').push({ title: title }).then(() => {
             UI.close('m-node');
             document.getElementById('node-title').value = '';
+        }).catch(err => {
+            alert('Не удалось создать раздел: Нет админ-прав!');
         });
     }
 };
