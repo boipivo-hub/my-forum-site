@@ -224,18 +224,25 @@
     <div id="m-donate" class="modal">
         <div class="modal-content" style="text-align:center; border-color:#38ef7d;">
             <h3 style="color:#fff;">⚡ Выберите регион</h3>
-            <a href="" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:12px; background: #38ef7d; color:#000;">🇺АК Ukraine (Карта)</a>
+            <a href="" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:12px; background: #38ef7d; color:#000;">🇺🇦 Ukraine (Карта)</a>
             <a href="https://destream.net/live/ponkc29/donate" target="_blank" class="btn-core" style="display:block; text-decoration:none; margin-bottom:20px; background: #fff; color: #000;">🌐 Google Pay / World</a>
             <button class="btn-core" onclick="UI.close('m-donate')" style="background: #112216; color:#fff; width:100%;">Вернуться</button>
         </div>
     </div>
 
-    <!-- МОДАЛКА АВТОРИЗАЦИИ -->
+    <!-- МОДАЛКА АВТОРИЗАЦИИ И РЕГИСТРАЦИИ -->
     <div id="m-auth" class="modal">
         <div class="modal-content" style="text-align:center;">
-            <h3>Авторизация</h3>
-            <button class="btn-core" style="width:100%; background:#fff; color:#000; margin-bottom:10px;" onclick="Auth.google()">Войти через Google</button>
-            <button class="btn-core" style="width:100%; background:#112216; color:#fff;" onclick="UI.close('m-auth')">Закрыть</button>
+            <h3>Вход / Регистрация</h3>
+            <p style="font-size:12px; color:#7f9984; margin-bottom:15px;">
+                Авторизуйтесь через Google-аккаунт. Если у вас нет аккаунта, регистрация выполнится автоматически!
+            </p>
+            <button class="btn-core" style="width:100%; background:#fff; color:#000; margin-bottom:10px; font-weight:bold;" onclick="Auth.google()">
+                🚀 Войти / Зарегистрироваться через Google
+            </button>
+            <button class="btn-core" style="width:100%; background:#112216; color:#fff;" onclick="UI.close('m-auth')">
+                Закрыть
+            </button>
         </div>
     </div>
 
