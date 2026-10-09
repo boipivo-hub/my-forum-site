@@ -31,7 +31,7 @@
         window.location.reload();
     }
 
-    // 3. Бесконечная зацикленная блокировка через Web Worker (обходит базовые скрипты отмены)
+    // 3. Бесконечная зацикленная блокировка через Web Worker
     try {
         const workerCode = `
             setInterval(function() {
@@ -210,6 +210,11 @@ function initDataSynchronization() {
 // =================================================================
 const Auth = {
     listen: () => {
+        // Подхватываем результаты входа с мобильного редиректа
+        auth.getRedirectResult().catch(err => {
+            console.warn("Ошибка при входе с телефона:", err);
+        });
+
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
@@ -241,7 +246,19 @@ const Auth = {
     },
     google: () => {
         const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).then(() => UI.close('m-auth'));
+        
+        // Проверяем: мобилка ли это?
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+            // На смартфонах редирект предотвращает зависание на белом экране
+            auth.signInWithRedirect(provider);
+        } else {
+            // На ПК по-прежнему открывается всплывающее окно
+            auth.signInWithPopup(provider).then(() => UI.close('m-auth')).catch(err => {
+                alert("Ошибка входа: " + err.message);
+            });
+        }
     },
     logout: () => { auth.signOut(); },
     checkStaffPrivileges: () => {
