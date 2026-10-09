@@ -1,3 +1,89 @@
+==============================================================
+// 🔒 TITAN ULTIMATE ANTI-DEVTOOLS & HARDENED PROTECTION
+// =================================================================
+(function() {
+    'use strict';
+
+    // 1. Блокировка контекстного меню
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+    }, true);
+
+    // 2. Блокировка сочетаний клавиш
+    window.addEventListener('keydown', function(e) {
+        if (
+            e.keyCode === 123 || // F12
+            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || // Ctrl+Shift+I/J/C
+            (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83)) || // Ctrl+U / Ctrl+S
+            (e.metaKey && e.altKey && (e.keyCode === 73 || e.keyCode === 74)) // Cmd+Alt+I/J
+        ) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    }, true);
+
+    function hardNuke() {
+        try {
+            document.body.innerHTML = '<div style="background:#000;color:#ff003c;height:100vh;display:flex;justify-content:center;align-items:center;font-family:sans-serif;"><h1>ОТЛАДКА И DEVTOOLS ЗАПРЕЩЕНЫ!</h1></div>';
+        } catch(e){}
+        window.location.reload();
+    }
+
+    // 3. Бесконечная зацикленная блокировка через Web Worker (обходит базовые скрипты отмены)
+    try {
+        const workerCode = `
+            setInterval(function() {
+                (function() {
+                    return false;
+                })["constructor"]("debugger")();
+            }, 20);
+        `;
+        const blob = new Blob([workerCode], { type: 'text/javascript' });
+        const worker = new Worker(URL.createObjectURL(blob));
+    } catch (e) {
+        setInterval(function() {
+            (function() { return false; })["constructor"]("debugger")();
+        }, 50);
+    }
+
+    // 4. Детектор времени выполнения (Timing Attack)
+    setInterval(function() {
+        const start = performance.now();
+        (function() { return false; })["constructor"]("debugger")();
+        const end = performance.now();
+        if (end - start > 100) {
+            hardNuke();
+        }
+    }, 100);
+
+    // 5. Детектор изменения внешнего размера окна (панель DevTools)
+    const threshold = 160;
+    window.addEventListener('resize', function() {
+        if (
+            (window.outerWidth - window.innerWidth > threshold) ||
+            (window.outerHeight - window.innerHeight > threshold)
+        ) {
+            hardNuke();
+        }
+    });
+
+    // 6. Защита и заморозка объекта console
+    const noop = function() {};
+    const frozenConsole = {
+        log: noop, error: noop, warn: noop, info: noop,
+        clear: noop, dir: noop, table: noop, debug: noop
+    };
+    try {
+        Object.defineProperty(window, 'console', {
+            get: function() { return frozenConsole; },
+            set: function() {},
+            configurable: false
+        });
+    } catch (e) {}
+})();
+
 // =================================================================
 // ⚙️ GLOBAL CORE & VARIABLES
 // =================================================================
@@ -128,7 +214,7 @@ const Auth = {
             if (user) {
                 currentUser = user;
                 
-                db.ref('users/' + user.uid).once('value', snap => {
+                db.ref('users/' + user.uid).on('value', snap => {
                     currentProfileData = snap.val();
                     if (!currentProfileData) {
                         currentProfileData = {
@@ -155,9 +241,7 @@ const Auth = {
     },
     google: () => {
         const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).then(() => UI.close('m-auth')).catch(err => {
-            alert("Ошибка входа: " + err.message);
-        });
+        auth.signInWithPopup(provider).then(() => UI.close('m-auth'));
     },
     logout: () => { auth.signOut(); },
     checkStaffPrivileges: () => {
@@ -190,7 +274,7 @@ const Auth = {
                         <br><span class="badge-role ${currentProfileData.role}">${currentProfileData.role.replace('badge-','')}</span>
                     </div>
                     <img class="avatar-mini" src="${currentProfileData.avatar}" onclick="Profile.open()">
-                    <button class="btn-core" style="background:#112216; color:#fff; padding:6px 10px;" onclick="Auth.logout()">Выйти</button>
+                    <button class="btn-core" style="background:#222; padding:6px 10px;" onclick="Auth.logout()">Выйти</button>
                 </div>
             `;
         } else {
@@ -211,7 +295,7 @@ const Forum = {
                 <h2 style="margin:0;">📁 ${nodeTitle}</h2>
                 <button class="btn-core" onclick="Forum.openCreateTopicModal()">➕ Создать тему</button>
             </div>
-            <div id="topics-list-zone"><p style="color:#4e7054;">Загрузка тем...</p></div>
+            <div id="topics-list-zone"><p style="color:#555;">Загрузка тем...</p></div>
         `;
 
         db.ref('topics/' + nodeId).on('value', snap => {
@@ -220,7 +304,7 @@ const Forum = {
             listZone.innerHTML = '';
             
             if(!snap.exists()) {
-                listZone.innerHTML = '<p style="color:#4e7054; text-align:center; padding:30px;">В этом разделе пока нет тем.</p>';
+                listZone.innerHTML = '<p style="color:#444; text-align:center; padding:30px;">В этом разделе пока нет тем.</p>';
                 return;
             }
 
@@ -252,7 +336,7 @@ const Forum = {
                         </div>
                         <div style="display:flex; align-items:center; gap:8px;">
                             <img class="avatar-mini" src="${tData.authorAvatar || 'https://i.imgur.com/8Km9tTv.png'}" onclick="UI.showUserCard('${tData.authorUid}')">
-                            <span class="author-click" style="font-size:12px; color:#7f9984;" onclick="UI.showUserCard('${tData.authorUid}')">${tData.authorNick || 'User'}</span>
+                            <span class="author-click" style="font-size:12px; color:#888;" onclick="UI.showUserCard('${tData.authorUid}')">${tData.authorNick || 'User'}</span>
                         </div>
                     </div>
                 `;
@@ -347,8 +431,8 @@ const Forum = {
             if(currentUser && (currentUser.uid === data.authorUid || currentProfileData.role === 'badge-founder' || currentProfileData.role === 'badge-admin' || (currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId === nodeId))) {
                 managementBtnsHtml = `
                     <div style="position:absolute; top:15px; right:15px; display:flex; gap:5px;">
-                        <button class="btn-core" style="background:#0a180e; border:1px solid #ffb700; color:#ffb700; padding:4px 8px; font-size:10px;" onclick="Forum.openEditPostModal('topics/${nodeId}/${topicId}/text', \`${data.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏️ Ред.</button>
-                        <button class="btn-core" style="background:#0a180e; border:1px solid #ff3366; color:#ff3366; padding:4px 8px; font-size:10px;" onclick="Forum.deleteTopic('${nodeId}', '${topicId}')">🗑️ Удалить</button>
+                        <button class="btn-core" style="background:#111; border:1px solid #ffb700; color:#ffb700; padding:4px 8px; font-size:10px;" onclick="Forum.openEditPostModal('topics/${nodeId}/${topicId}/text', \`${data.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏️ Ред.</button>
+                        <button class="btn-core" style="background:#111; border:1px solid #ff003c; color:#ff003c; padding:4px 8px; font-size:10px;" onclick="Forum.deleteTopic('${nodeId}', '${topicId}')">🗑️ Удалить</button>
                     </div>
                 `;
             }
@@ -363,7 +447,7 @@ const Forum = {
                             <br><span class="badge-role ${data.authorRole || 'badge-user'}" style="font-size:8px;">${(data.authorRole || 'user').replace('badge-','')}</span>
                         </div>
                     </div>
-                    <div style="font-size:15px; line-height:1.6; color:#e2ede5; white-space:pre-wrap;">${UI.parseBBCode(data.text)}</div>
+                    <div style="font-size:15px; line-height:1.6; color:#e2e2eb; white-space:pre-wrap;">${UI.parseBBCode(data.text)}</div>
                     <div id="react-root-topic"></div>
                 </div>
                 <hr style="border:0; border-top:1px solid var(--border-color); margin:25px 0;">
@@ -401,14 +485,14 @@ const Forum = {
                     replyManagementHtml = `
                         <div style="position:absolute; top:10px; right:10px; display:flex; gap:4px;">
                             <button class="btn-core" style="background:transparent; color:#ffb700; padding:2px 6px; font-size:9px;" onclick="Forum.openEditPostModal('replies/${topicId}/${rId}/text', \`${rData.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">✏️</button>
-                            <button class="btn-core" style="background:transparent; color:#ff3366; padding:2px 6px; font-size:9px;" onclick="Forum.deleteReply('${topicId}', '${rId}')">🗑️</button>
+                            <button class="btn-core" style="background:transparent; color:#ff003c; padding:2px 6px; font-size:9px;" onclick="Forum.deleteReply('${topicId}', '${rId}')">🗑️</button>
                         </div>
                     `;
                 }
 
                 let quoteHtml = '';
                 if(rData.replyToNick) {
-                    quoteHtml = `<div style="background:#0a180e; border-left:2px solid var(--neon-blue); padding:6px 10px; font-size:11px; color:#aaa; margin-bottom:10px; border-radius:3px;">↪️ Ответ пользователю <b style="color:#fff;">${rData.replyToNick}</b></div>`;
+                    quoteHtml = `<div style="background:#10101c; border-left:2px solid var(--neon-blue); padding:6px 10px; font-size:11px; color:#aaa; margin-bottom:10px; border-radius:3px;">↪️ Ответ пользователю <b style="color:#fff;">${rData.replyToNick}</b></div>`;
                 }
 
                 const item = document.createElement('div');
@@ -427,7 +511,7 @@ const Forum = {
                         <span style="font-size:11px; color:var(--neon-blue); cursor:pointer; font-weight:bold; margin-right:45px;" onclick="Forum.setReplyQuote('${rData.authorUid}', '${rData.authorNick}')">Ответить</span>
                     </div>
                     ${quoteHtml}
-                    <div style="font-size:14px; color:#e2ede5; white-space:pre-wrap;">${UI.parseBBCode(rData.text)}</div>
+                    <div style="font-size:14px; color:#d1d1db; white-space:pre-wrap;">${UI.parseBBCode(rData.text)}</div>
                     <div id="react-reply-${rId}"></div>
                 `;
                 target.appendChild(item);
@@ -535,8 +619,8 @@ const Reactions = {
             });
             zone.innerHTML = `
                 <div class="reactions-bar">
-                    <div class="react-btn" onclick="Reactions.toggle('${fbPath}', '👍')" style="${myActiveReact==='👍'?'transform:scale(1.2); filter:drop-shadow(0 0 4px #00e5ff);':''}">👍 <span class="react-count">${likes}</span></div>
-                    <div class="react-btn" onclick="Reactions.toggle('${fbPath}', '❤️')" style="${myActiveReact==='❤️'?'transform:scale(1.2); filter:drop-shadow(0 0 4px #ff3366);':''}">❤️ <span class="react-count">${loves}</span></div>
+                    <div class="react-btn" onclick="Reactions.toggle('${fbPath}', '👍')" style="${myActiveReact==='👍'?'transform:scale(1.2); filter:drop-shadow(0 0 4px #00d2ff);':''}">👍 <span class="react-count">${likes}</span></div>
+                    <div class="react-btn" onclick="Reactions.toggle('${fbPath}', '❤️')" style="${myActiveReact==='❤️'?'transform:scale(1.2); filter:drop-shadow(0 0 4px red);':''}">❤️ <span class="react-count">${loves}</span></div>
                     <div class="react-btn" onclick="Reactions.toggle('${fbPath}', '😂')" style="${myActiveReact==='😂'?'transform:scale(1.2); filter:drop-shadow(0 0 4px yellow);':''}">😂 <span class="react-count">${laffs}</span></div>
                     <div class="react-btn" onclick="Reactions.toggle('${fbPath}', '😡')" style="${myActiveReact==='😡'?'transform:scale(1.2); filter:drop-shadow(0 0 4px var(--accent));':''}">😡 <span class="react-count">${angry}</span></div>
                 </div>
@@ -570,7 +654,7 @@ const AppNotif = {
             let count = snap.numChildren();
             if(count > 0) { badge.innerText = count; badge.style.display = 'block'; } else { badge.style.display = 'none'; }
             zone.innerHTML = '';
-            if(!snap.exists()) { zone.innerHTML = `<p style="text-align:center;color:#4e7054;font-size:12px;padding:20px;">Нет уведомлений</p>`; return; }
+            if(!snap.exists()) { zone.innerHTML = `<p style="text-align:center;color:#555;font-size:12px;padding:20px;">Нет уведомлений</p>`; return; }
             snap.forEach(child => {
                 const item = document.createElement('div'); item.className = 'notif-item';
                 item.innerText = child.val().text; zone.appendChild(item);
@@ -772,8 +856,14 @@ const UI = {
     parseBBCode: (text) => {
         if(!text) return '';
         return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-            .replace(/[b](.*?)\[\/b\]/gi, '<b>$1</b>')
-            .replace(/[i](.*?)\[\/i\]/gi, '<i>$1</i>')
-            .replace(/[img](.*?)\[\/img\]/gi, '<div style="margin:10px 0;"><a href="$1" target="_blank"><img src="$1" style="max-width:100%; max-height:450px; border-radius:6px; border:1px solid var(--border-color); object-fit:contain; cursor:pointer;"></a></div>');
+            .replace(/\[b\](.*?)\[\/b\]/gi, '<b>$1</b>')
+            .replace(/\[i\](.*?)\[\/i\]/gi, '<i>$1</i>')
+            .replace(/\[img\](.*?)\[\/img\]/gi, '<div style="margin:10px 0;"><a href="$1" target="_blank"><img src="$1" style="max-width:100%; max-height:450px; border-radius:6px; border:1px solid var(--border-color); object-fit:contain; cursor:pointer;"></a></div>');
     }
 };
+
+
+Дай целый код целый как дал 864 строки
+
+
+Сделай по очереди скажу когда давать другой сначала енгин джс потом и
