@@ -128,7 +128,7 @@ const Auth = {
             if (user) {
                 currentUser = user;
                 
-                db.ref('users/' + user.uid).on('value', snap => {
+                db.ref('users/' + user.uid).once('value', snap => {
                     currentProfileData = snap.val();
                     if (!currentProfileData) {
                         currentProfileData = {
@@ -155,9 +155,7 @@ const Auth = {
     },
     google: () => {
         const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).then(() => {
-            UI.close('m-auth');
-        }).catch(err => {
+        auth.signInWithPopup(provider).then(() => UI.close('m-auth')).catch(err => {
             alert("Ошибка входа: " + err.message);
         });
     },
