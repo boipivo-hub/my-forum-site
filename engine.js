@@ -861,9 +861,3 @@ const UI = {
             .replace(/\[img\](.*?)\[\/img\]/gi, '<div style="margin:10px 0;"><a href="$1" target="_blank"><img src="$1" style="max-width:100%; max-height:450px; border-radius:6px; border:1px solid var(--border-color); object-fit:contain; cursor:pointer;"></a></div>');
     }
 };
-
-
-Дай целый код целый как дал 864 строки
-
-
-Сделай по очереди скажу когда давать другой сначала енгин джс потом и
