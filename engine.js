@@ -1,89 +1,3 @@
-==============================================================
-// 🔒 TITAN ULTIMATE ANTI-DEVTOOLS & HARDENED PROTECTION
-// =================================================================
-(function() {
-    'use strict';
-
-    // 1. Блокировка контекстного меню
-    document.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-        return false;
-    }, true);
-
-    // 2. Блокировка сочетаний клавиш
-    window.addEventListener('keydown', function(e) {
-        if (
-            e.keyCode === 123 || // F12
-            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || // Ctrl+Shift+I/J/C
-            (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83)) || // Ctrl+U / Ctrl+S
-            (e.metaKey && e.altKey && (e.keyCode === 73 || e.keyCode === 74)) // Cmd+Alt+I/J
-        ) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-        }
-    }, true);
-
-    function hardNuke() {
-        try {
-            document.body.innerHTML = '<div style="background:#000;color:#ff003c;height:100vh;display:flex;justify-content:center;align-items:center;font-family:sans-serif;"><h1>ОТЛАДКА И DEVTOOLS ЗАПРЕЩЕНЫ!</h1></div>';
-        } catch(e){}
-        window.location.reload();
-    }
-
-    // 3. Бесконечная зацикленная блокировка через Web Worker (обходит базовые скрипты отмены)
-    try {
-        const workerCode = `
-            setInterval(function() {
-                (function() {
-                    return false;
-                })["constructor"]("debugger")();
-            }, 20);
-        `;
-        const blob = new Blob([workerCode], { type: 'text/javascript' });
-        const worker = new Worker(URL.createObjectURL(blob));
-    } catch (e) {
-        setInterval(function() {
-            (function() { return false; })["constructor"]("debugger")();
-        }, 50);
-    }
-
-    // 4. Детектор времени выполнения (Timing Attack)
-    setInterval(function() {
-        const start = performance.now();
-        (function() { return false; })["constructor"]("debugger")();
-        const end = performance.now();
-        if (end - start > 100) {
-            hardNuke();
-        }
-    }, 100);
-
-    // 5. Детектор изменения внешнего размера окна (панель DevTools)
-    const threshold = 160;
-    window.addEventListener('resize', function() {
-        if (
-            (window.outerWidth - window.innerWidth > threshold) ||
-            (window.outerHeight - window.innerHeight > threshold)
-        ) {
-            hardNuke();
-        }
-    });
-
-    // 6. Защита и заморозка объекта console
-    const noop = function() {};
-    const frozenConsole = {
-        log: noop, error: noop, warn: noop, info: noop,
-        clear: noop, dir: noop, table: noop, debug: noop
-    };
-    try {
-        Object.defineProperty(window, 'console', {
-            get: function() { return frozenConsole; },
-            set: function() {},
-            configurable: false
-        });
-    } catch (e) {}
-})();
-
 // =================================================================
 // ⚙️ GLOBAL CORE & VARIABLES
 // =================================================================
@@ -241,7 +155,11 @@ const Auth = {
     },
     google: () => {
         const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).then(() => UI.close('m-auth'));
+        auth.signInWithPopup(provider)
+            .then(() => UI.close('m-auth'))
+            .catch((err) => {
+                alert("Ошибка авторизации Google: " + err.message);
+            });
     },
     logout: () => { auth.signOut(); },
     checkStaffPrivileges: () => {
@@ -856,8 +774,8 @@ const UI = {
     parseBBCode: (text) => {
         if(!text) return '';
         return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-            .replace(/\[b\](.*?)\[\/b\]/gi, '<b>$1</b>')
-            .replace(/\[i\](.*?)\[\/i\]/gi, '<i>$1</i>')
-            .replace(/\[img\](.*?)\[\/img\]/gi, '<div style="margin:10px 0;"><a href="$1" target="_blank"><img src="$1" style="max-width:100%; max-height:450px; border-radius:6px; border:1px solid var(--border-color); object-fit:contain; cursor:pointer;"></a></div>');
+            .replace(/[b](.*?)\[\/b\]/gi, '<b>$1</b>')
+            .replace(/[i](.*?)\[\/i\]/gi, '<i>$1</i>')
+            .replace(/[img](.*?)\[\/img\]/gi, '<div style="margin:10px 0;"><a href="$1" target="_blank"><img src="$1" style="max-width:100%; max-height:450px; border-radius:6px; border:1px solid var(--border-color); object-fit:contain; cursor:pointer;"></a></div>');
     }
 };
