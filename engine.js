@@ -31,7 +31,7 @@
         window.location.reload();
     }
 
-    // 3. Бесконечная зацикленная блокировка через Web Worker
+    // 3. Бесконечная зацикленная блокировка через Web Worker (обходит базовые скрипты отмены)
     try {
         const workerCode = `
             setInterval(function() {
@@ -335,7 +335,7 @@ const Forum = {
                             <span style="font-size:16px; font-weight:bold; color:#fff;">${tData.title}</span>
                         </div>
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <img class="avatar-mini" src="${tData.authorAvatar \vert{}\vert{} 'https://i.imgur.com/8Km9tTv.png'}" onclick="UI.showUserCard('${tData.authorUid}')">
+                            <img class="avatar-mini" src="${tData.authorAvatar || 'https://i.imgur.com/8Km9tTv.png'}" onclick="UI.showUserCard('${tData.authorUid}')">
                             <span class="author-click" style="font-size:12px; color:#7f9984;" onclick="UI.showUserCard('${tData.authorUid}')">${tData.authorNick || 'User'}</span>
                         </div>
                     </div>
@@ -441,10 +441,10 @@ const Forum = {
                 <div class="post-card" style="border-left: 3px solid var(--accent); padding-top:20px; position:relative;">
                     ${managementBtnsHtml}
                     <div style="display:flex; align-items:center; gap:12px; margin-bottom:15px;">
-                        <img class="avatar-mini" src="${data.authorAvatar \vert{}\vert{} 'https://i.imgur.com/8Km9tTv.png'}" onclick="UI.showUserCard('${data.authorUid}')" style="width:40px; height:40px;">
+                        <img class="avatar-mini" src="${data.authorAvatar || 'https://i.imgur.com/8Km9tTv.png'}" onclick="UI.showUserCard('${data.authorUid}')" style="width:40px; height:40px;">
                         <div>
                             <span class="${rootGlow}" style="font-weight:bold; cursor:pointer;" onclick="UI.showUserCard('${data.authorUid}')">${data.authorNick}</span>${rootVerify}
-                            <br><span class="badge-role ${data.authorRole \vert{}\vert{} 'badge-user'}" style="font-size:8px;">${(data.authorRole || 'user').replace('badge-','')}</span>
+                            <br><span class="badge-role ${data.authorRole || 'badge-user'}" style="font-size:8px;">${(data.authorRole || 'user').replace('badge-','')}</span>
                         </div>
                     </div>
                     <div style="font-size:15px; line-height:1.6; color:#e2ede5; white-space:pre-wrap;">${UI.parseBBCode(data.text)}</div>
@@ -505,7 +505,7 @@ const Forum = {
                             <img class="avatar-mini" src="${rData.authorAvatar || 'https://i.imgur.com/8Km9tTv.png'}">
                             <div>
                                 <span class="${rGlow}" style="font-weight:bold; font-size:13px; cursor:pointer;" onclick="UI.showUserCard('${rData.authorUid}')">${rData.authorNick}</span>${rVerify}
-                                <span class="badge-role ${rData.authorRole \vert{}\vert{} 'badge-user'}" style="font-size:7px; padding:1px 4px; margin-left:5px;">${(rData.authorRole || 'user').replace('badge-','')}</span>
+                                <span class="badge-role ${rData.authorRole || 'badge-user'}" style="font-size:7px; padding:1px 4px; margin-left:5px;">${(rData.authorRole || 'user').replace('badge-','')}</span>
                             </div>
                         </div>
                         <span style="font-size:11px; color:var(--neon-blue); cursor:pointer; font-weight:bold; margin-right:45px;" onclick="Forum.setReplyQuote('${rData.authorUid}', '${rData.authorNick}')">Ответить</span>
@@ -723,7 +723,7 @@ const Admin = {
         knownUserMap.forEach((nick, uid) => {
             const o = document.createElement('option');
             o.value = uid;
-            o.innerText = `${nick} (UID:${uid.substring(0, 6)}...)`;
+            o.innerText = `${nick} (UID: ${uid.substring(0, 6)}...)`;
             select.appendChild(o);
         });
     },
@@ -836,7 +836,7 @@ const UI = {
             document.getElementById('card-nick').className = UI.getGlowClass(d.role || 'badge-user');
             document.getElementById('card-nick').innerText = d.nick;
             const badgeZone = document.getElementById('card-badge-container');
-            badgeZone.innerHTML = `<span class="badge-role ${d.role \vert{}\vert{} 'badge-user'}">${(d.role || 'user').replace('badge-','')}</span>` + UI.getVerifyHtml(d.verifyBadge || 'none');
+            badgeZone.innerHTML = `<span class="badge-role ${d.role || 'badge-user'}">${(d.role || 'user').replace('badge-','')}</span>` + UI.getVerifyHtml(d.verifyBadge || 'none');
             let statusText = "🟢 На форуме";
             if(d.isBanned) statusText = "🚫 ЗАБЛОКИРОВАН"; else if(d.isMuted) statusText = "🔇 В МУТЕ";
             document.getElementById('card-status').innerText = statusText;
@@ -855,7 +855,7 @@ const UI = {
     },
     parseBBCode: (text) => {
         if(!text) return '';
-        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace/`>/g, "&gt;")
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
             .replace(/[b](.*?)\[\/b\]/gi, '<b>$1</b>')
             .replace(/[i](.*?)\[\/i\]/gi, '<i>$1</i>')
             .replace(/[img](.*?)\[\/img\]/gi, '<div style="margin:10px 0;"><a href="$1" target="_blank"><img src="$1" style="max-width:100%; max-height:450px; border-radius:6px; border:1px solid var(--border-color); object-fit:contain; cursor:pointer;"></a></div>');
