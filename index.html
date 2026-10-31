@@ -30,46 +30,47 @@
             position: sticky; top: 0; z-index: 1000;
         }
 
-        .logo-wrapper { display: flex; align-items: center; gap: 15px; cursor: pointer; }
-        .logo { font-size: 20px; font-weight: 900; color: #fff; letter-spacing: 1px; }
-        .logo span { color: var(--accent); }
+        /* ЛОГОТИП СЛЕВА: Текст + Домик справа от текста */
+        .logo-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+        .logo { font-size: 20px; font-weight: 900; letter-spacing: 1px; color: #ffffff; }
+        .logo span { color: #70e000; }
 
-        /* СТИЛИ ДЛЯ ТОЧНОГО ЛОГОТИПА ДОМИКА */
+        /* АККУРАТНЫЙ И РОВНЫЙ ЛОГОТИП ДОМИКА */
         .hatka-logo-icon {
             position: relative;
-            width: 52px;
-            height: 38px;
+            width: 42px;
+            height: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         .hatka-roof {
             position: absolute;
-            top: 0;
-            left: 4px;
-            width: 44px;
-            height: 22px;
-            border-top: 4px solid #ffffff;
-            border-left: 4px solid #ffffff;
+            top: 2px;
+            left: 3px;
+            width: 36px;
+            height: 18px;
+            border-top: 3px solid #ffffff;
+            border-left: 3px solid #ffffff;
             transform: rotate(45deg);
             border-top-left-radius: 2px;
         }
         .hatka-text {
             position: absolute;
-            bottom: 6px;
+            bottom: 4px;
             font-family: Impact, Arial Black, sans-serif;
-            font-size: 15px;
+            font-size: 13px;
             font-weight: 900;
             color: #ccff33;
             letter-spacing: 0.5px;
-            text-shadow: 0 0 2px rgba(0,0,0,0.8);
+            text-shadow: 0 0 2px rgba(0,0,0,0.9);
             z-index: 2;
         }
         .hatka-base {
             position: absolute;
             bottom: 0;
-            left: 2px;
-            width: 48px;
+            left: 1px;
+            width: 40px;
             height: 3px;
             background: #ffffff;
             border-radius: 1px;
@@ -162,6 +163,7 @@
     </script>
 
     <header>
+        <!-- Логотип: Слева текст HATKA (белый) RP (зеленый), а справа от него значок домика -->
         <div class="logo-wrapper" onclick="location.reload()">
             <div class="logo">HATKA<span>RP</span></div>
             <div class="hatka-logo-icon">
@@ -170,6 +172,7 @@
                 <div class="hatka-base"></div>
             </div>
         </div>
+
         <div style="display:flex; align-items:center; gap:20px;">
             <button class="btn-core" style="background: linear-gradient(135deg, #00c6ff, #0072ff);" onclick="UI.show('m-donate')">💎 Донат</button>
             
