@@ -30,29 +30,29 @@
             position: sticky; top: 0; z-index: 1000;
         }
 
-        /* ЛОГОТИП СЛЕВА: Домик слева, текст справа */
+        /* ЛОГОТИП СЛЕВА: Домик слева, текст справа (без рамки) */
         .logo-wrapper { display: flex; align-items: center; gap: 10px; cursor: pointer; }
         
-        /* Стили для иконки домика-логотипа */
+        /* Стили для иконки домика (без рамки и фона) */
         .house-logo-icon {
-            width: 42px;
-            height: 42px;
+            width: 32px;
+            height: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(112, 224, 0, 0.1);
-            border: 2px solid #70e000;
-            border-radius: 8px;
-            transition: 0.2s;
+            transition: transform 0.2s;
         }
         .logo-wrapper:hover .house-logo-icon {
-            box-shadow: 0 0 12px rgba(112, 224, 0, 0.4);
-            transform: scale(1.05);
+            transform: scale(1.1);
         }
         .house-logo-icon svg {
-            width: 26px;
-            height: 26px;
-            fill: #70e000;
+            width: 28px;
+            height: 28px;
+            fill: #ffffff; /* Белый цвет иконки */
+            transition: fill 0.2s;
+        }
+        .logo-wrapper:hover .house-logo-icon svg {
+            fill: #70e000; /* При наведении домик становится зелёным */
         }
 
         .logo { font-size: 22px; font-weight: 900; letter-spacing: 1px; color: #ffffff; font-family: Impact, Arial Black, sans-serif; }
@@ -145,7 +145,7 @@
     </script>
 
     <header>
-        <!-- Шапка: Слева иконка-домик, а сразу после нее текст HATKA (белый) RP (зеленый) -->
+        <!-- Шапка: Слева чистая иконка-домик без рамок, сразу после нее текст HATKA (белый) RP (зеленый) -->
         <div class="logo-wrapper" onclick="location.reload()">
             <div class="house-logo-icon">
                 <svg viewBox="0 0 24 24">
