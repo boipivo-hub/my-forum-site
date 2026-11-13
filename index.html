@@ -30,9 +30,31 @@
             position: sticky; top: 0; z-index: 1000;
         }
 
-        /* ЛОГОТИП СЛЕВА: Сначала картинка-домик, затем текст */
-        .logo-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-        .hatka-img-logo { height: 38px; width: auto; object-fit: contain; display: block; }
+        /* ЛОГОТИП СЛЕВА: Домик слева, текст справа */
+        .logo-wrapper { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        
+        /* Стили для иконки домика-логотипа */
+        .house-logo-icon {
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(112, 224, 0, 0.1);
+            border: 2px solid #70e000;
+            border-radius: 8px;
+            transition: 0.2s;
+        }
+        .logo-wrapper:hover .house-logo-icon {
+            box-shadow: 0 0 12px rgba(112, 224, 0, 0.4);
+            transform: scale(1.05);
+        }
+        .house-logo-icon svg {
+            width: 26px;
+            height: 26px;
+            fill: #70e000;
+        }
+
         .logo { font-size: 22px; font-weight: 900; letter-spacing: 1px; color: #ffffff; font-family: Impact, Arial Black, sans-serif; }
         .logo span { color: #70e000; }
 
@@ -123,9 +145,13 @@
     </script>
 
     <header>
-        <!-- Шапка: Слева вверху картинка-домик, а сразу после нее текст HATKA (белый) RP (зеленый) -->
+        <!-- Шапка: Слева иконка-домик, а сразу после нее текст HATKA (белый) RP (зеленый) -->
         <div class="logo-wrapper" onclick="location.reload()">
-            <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=" alt="Hatka Logo" class="hatka-img-logo" id="actual-hatka-logo">
+            <div class="house-logo-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3zm5 15h-2v-6H9v6H7v-7.81l5-4.5 5 4.5V18z"/>
+                </svg>
+            </div>
             <div class="logo">HATKA<span>RP</span></div>
         </div>
 
@@ -152,11 +178,6 @@
             <div id="header-auth"></div>
         </div>
     </header>
-
-    <!-- Скрипт подстановки твоей картинки домика (чтобы работало без скачивания файла) -->
-    <script>
-        document.getElementById('actual-hatka-logo').src = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
-    </script>
 
     <div class="forum-container">
         <aside class="sidebar">
