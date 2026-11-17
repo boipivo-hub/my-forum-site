@@ -1,4 +1,38 @@
 // =================================================================
+// 🛡️ ADVANCED FRONTEND SECURITY MODULE (Anti-F12 & Anti-Spam)
+// =================================================================
+(function() {
+    // 1. Блокировка клавиш разработчика (F12, Ctrl+Shift+I/J/C, Ctrl+U)
+    document.addEventListener('keydown', function(e) {
+        if (
+            e.key === 'F12' ||
+            (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
+            (e.ctrlKey && (e.key === 'U' || e.key === 'u'))
+        ) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    });
+
+    // 2. Блокировка контекстного меню (ПКМ) для защиты от "Исследовать элемент"
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+    });
+
+    // 3. Детектор открытия DevTools через отладчик
+    setInterval(function() {
+        const startTime = performance.now();
+        debugger; // Ловушка для отладчика
+        const endTime = performance.now();
+        if (endTime - startTime > 100) {
+            document.body.innerHTML = '<div style="background:#06060c;color:#ff003c;height:100vh;display:flex;justify-content:center;align-items:center;font-family:sans-serif;font-size:24px;font-weight:bold;">Доступ ограничен системой безопасности Hatka RP.</div>';
+        }
+    }, 1000);
+})();
+
+// =================================================================
 // ⚙️ GLOBAL CORE & VARIABLES
 // =================================================================
 const db = firebase.database();
@@ -20,7 +54,7 @@ function registerKnownUser(uid, nick) {
 }
 
 /**
- * Обработка и сжатие изображений
+ * Защищенная обработка и сжатие изображений с ограничением размера
  */
 function processImageInput(fileInputId, urlInputId) {
     return new Promise((resolve, reject) => {
@@ -34,6 +68,9 @@ function processImageInput(fileInputId, urlInputId) {
             const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
             if (!validTypes.includes(file.type)) {
                 return reject(new Error('Разрешены только изображения в формате PNG, JPG, GIF или WEBP.'));
+            }
+            if (file.size > 5 * 1024 * 1024) { // Ограничение 5 МБ
+                return reject(new Error('Файл слишком большой. Максимальный размер 5 МБ.'));
             }
 
             const reader = new FileReader();
@@ -83,6 +120,23 @@ function processImageInput(fileInputId, urlInputId) {
 }
 
 // =================================================================
+// ⏱️ ЗАЩИТА ОТ ДВОЙНЫХ КЛИКОВ (DEBOUNCE / THROTTLE)
+// =================================================================
+function lockButton(btnElement, timeout = 2000) {
+    if (!btnElement) return true;
+    if (btnElement.dataset.locked === 'true') return false;
+    btnElement.dataset.locked = 'true';
+    btnElement.style.opacity = '0.5';
+    btnElement.style.pointerEvents = 'none';
+    setTimeout(() => {
+        btnElement.dataset.locked = 'false';
+        btnElement.style.opacity = '1';
+        btnElement.style.pointerEvents = 'auto';
+    }, timeout);
+    return true;
+}
+
+// =================================================================
 // 🚀 INITIALIZATION & APP START
 // =================================================================
 document.addEventListener("DOMContentLoaded", () => {
@@ -120,7 +174,7 @@ function initDataSynchronization() {
 }
 
 // =================================================================
-// 🔑 AUTHENTICATION MODULE
+// 🔑 AUTHENTICATION MODULE (Google Secure OAuth)
 // =================================================================
 const Auth = {
     listen: () => {
@@ -140,6 +194,12 @@ const Auth = {
                         db.ref('users/' + user.uid).set(currentProfileData);
                     }
                     
+                    if (currentProfileData.isBanned) {
+                        alert("Ваш аккаунт заблокирован на проекте Hatka RP!");
+                        auth.signOut();
+                        return;
+                    }
+
                     registerKnownUser(user.uid, currentProfileData.nick);
                     Auth.checkStaffPrivileges();
                     Auth.renderHeader(true);
@@ -148,8 +208,10 @@ const Auth = {
                 currentUser = null;
                 currentProfileData = null;
                 Auth.renderHeader(false);
-                document.getElementById('admin-panel-btn').style.display = 'none';
-                document.getElementById('leader-panel-btn').style.display = 'none';
+                const adminBtn = document.getElementById('admin-panel-btn');
+                const leaderBtn = document.getElementById('leader-panel-btn');
+                if (adminBtn) adminBtn.style.display = 'none';
+                if (leaderBtn) leaderBtn.style.display = 'none';
             }
         });
     },
@@ -165,16 +227,19 @@ const Auth = {
     checkStaffPrivileges: () => {
         if (!currentUser) return;
         
+        const adminBtn = document.getElementById('admin-panel-btn');
+        const leaderBtn = document.getElementById('leader-panel-btn');
+
         if (currentProfileData && (currentProfileData.role === 'badge-admin' || currentProfileData.role === 'badge-founder')) {
-            document.getElementById('admin-panel-btn').style.display = 'block';
+            if (adminBtn) adminBtn.style.display = 'block';
         } else {
-            document.getElementById('admin-panel-btn').style.display = 'none';
+            if (adminBtn) adminBtn.style.display = 'none';
         }
 
         if (currentProfileData && currentProfileData.role === 'badge-leader' && currentProfileData.nodeModeratorId) {
-            document.getElementById('leader-panel-btn').style.display = 'block';
+            if (leaderBtn) leaderBtn.style.display = 'block';
         } else {
-            document.getElementById('leader-panel-btn').style.display = 'none';
+            if (leaderBtn) leaderBtn.style.display = 'none';
         }
 
         AppNotif.listen(currentUser.uid);
@@ -208,6 +273,7 @@ const Forum = {
     loadNode: (nodeId, nodeTitle) => {
         currentSelectedNodeId = nodeId;
         const zone = document.getElementById('forum-render');
+        if(!zone) return;
         zone.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h2 style="margin:0;">📁 ${nodeTitle}</h2>
@@ -278,8 +344,10 @@ const Forum = {
         UI.show('m-topic');
     },
     post: () => {
-        const title = document.getElementById('t-title').value.trim();
-        let text = document.getElementById('t-text').value.trim();
+        const titleElem = document.getElementById('t-title');
+        const textElem = document.getElementById('t-text');
+        const title = titleElem.value.trim();
+        let text = textElem.value.trim();
         const status = document.getElementById('t-status').value;
 
         if(!title || !text || !currentSelectedNodeId) {
@@ -307,8 +375,8 @@ const Forum = {
             return db.ref('topics/' + currentSelectedNodeId).push(topicData);
         }).then(() => {
             UI.close('m-topic');
-            document.getElementById('t-title').value = '';
-            document.getElementById('t-text').value = '';
+            titleElem.value = '';
+            textElem.value = '';
             const fileInput = document.getElementById('t-image-file');
             const urlInput = document.getElementById('t-image-url');
             if (fileInput) fileInput.value = '';
@@ -446,10 +514,12 @@ const Forum = {
     },
     cancelReplyQuote: () => {
         activeFsReplyToUid = null; activeFsReplyToNick = null;
-        document.getElementById('reply-target-indicator').style.display = 'none';
+        const ind = document.getElementById('reply-target-indicator');
+        if(ind) ind.style.display = 'none';
     },
     sendFsReply: () => {
-        let text = document.getElementById('fs-reply-text').value.trim();
+        const replyTextElem = document.getElementById('fs-reply-text');
+        let text = replyTextElem.value.trim();
         if(!text || !currentSelectedTopicId) return;
 
         processImageInput('fs-reply-image-file', 'fs-reply-image-url').then(imageUrl => {
@@ -479,7 +549,7 @@ const Forum = {
                 }
             });
         }).then(() => {
-            document.getElementById('fs-reply-text').value = '';
+            replyTextElem.value = '';
             const fileInput = document.getElementById('fs-reply-image-file');
             const urlInput = document.getElementById('fs-reply-image-url');
             if (fileInput) fileInput.value = '';
